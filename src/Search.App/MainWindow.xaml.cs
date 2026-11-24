@@ -82,6 +82,7 @@ public partial class MainWindow : Window
             foreach (var e in shape.Tabs)
             {
                 var t = Tab.From(e);
+                t.Icon = CachedIcon(t.Url);
                 (t.IsPin ? pins : tabs).Add(t);
             }
         }
@@ -244,13 +245,10 @@ public partial class MainWindow : Window
             var memory = new MemoryStream();
             await source.CopyToAsync(memory);
             if (memory.Length == 0) return null;
-            memory.Position = 0;
-            var image = new BitmapImage();
-            image.BeginInit();
-            image.CacheOption = BitmapCacheOption.OnLoad;
-            image.StreamSource = memory;
-            image.EndInit();
-            image.Freeze();
+            var image = Decode(memory.ToArray());
+            // Kept on disk by site, so a pin or a sleeping tab wears its icon at the next launch (Favicons.swift).
+            if (image is not null && Address.Host(core.Source) is { } host)
+                try { File.WriteAllBytes(FaviconFile(host), memory.ToArray()); } catch (IOException) { }
             return image;
         }
         catch (Exception e)
@@ -258,6 +256,38 @@ public partial class MainWindow : Window
             App.Log(e);
             return null;
         }
+    }
+
+    static string FaviconFile(string host)
+    {
+        var dir = Path.Combine(Store.Root, "Favicons");
+        Directory.CreateDirectory(dir);
+        var safe = string.Concat(host.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+        return Path.Combine(dir, safe + ".png");
+    }
+
+    static ImageSource? Decode(byte[] bytes)
+    {
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.StreamSource = new MemoryStream(bytes);
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+        catch (Exception e) { App.Log(e); return null; }
+    }
+
+    /// <summary>The icon this site had last time, if Search has seen it.</summary>
+    static ImageSource? CachedIcon(string url)
+    {
+        if (Address.Host(url) is not { } host) return null;
+        var file = FaviconFile(host);
+        try { return File.Exists(file) ? Decode(File.ReadAllBytes(file)) : null; }
+        catch (IOException) { return null; }
     }
 
     /// <summary>A page asking for a window gets a tab next to it, which keeps window.opener so sign-in pop-ups work.</summary>
@@ -304,6 +334,7 @@ public partial class MainWindow : Window
     {
         if (closed.Pop() is not var (entry, index)) return;
         var t = Tab.From(entry);
+        t.Icon = CachedIcon(t.Url);
         if (t.IsPin) pins.Insert(Math.Min(index, pins.Count), t);
         else tabs.Insert(Math.Min(index, tabs.Count), t);
         Select(t);

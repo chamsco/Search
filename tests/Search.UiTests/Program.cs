@@ -60,7 +60,8 @@ try
 
     Keyboard.Type("you");
     Thread.Sleep(2000);
-    Step("Type \"you\": popular sites suggested, youtube.com completed inline", true, Shot("suggestions-known-sites"));
+    var rows = window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.ListItem)).Length;
+    Step("Type \"you\": popular sites suggested, youtube.com completed inline", rows >= 2, $"{rows} rows · " + Shot("suggestions-known-sites"));
 
     Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A);
     Keyboard.Type("weather paris");
@@ -118,7 +119,11 @@ try
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(5000);
-    Step("Open Search again: pinned page and tabs come back", window is not null, Shot("restored"));
+    var restored = File.ReadAllText(Path.Combine(data, "session.json"));
+    var hasPin = restored.Contains("\"pinId\"");
+    var hasIcon = Directory.Exists(Path.Combine(data, "Favicons")) && Directory.GetFiles(Path.Combine(data, "Favicons")).Length > 0;
+    Step("Open Search again: pinned page and tabs come back, pin keeps its icon", window is not null && hasPin && hasIcon,
+        $"pin saved: {hasPin}, icons cached: {hasIcon} · " + Shot("restored"));
 }
 catch (Exception e)
 {
