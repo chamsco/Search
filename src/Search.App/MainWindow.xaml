@@ -85,8 +85,10 @@
       <Grid Width="15" Height="15">
         <Image Source="{Binding Icon}" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"
                Visibility="{Binding HasIcon, Converter={StaticResource Visible}}" />
+        <TextBlock Text="{Binding Glyph}" FontFamily="{StaticResource Glyphs}" FontSize="12" Foreground="{DynamicResource Row.Muted}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasGlyph, Converter={StaticResource Visible}}" />
         <Border CornerRadius="3.3" Background="{DynamicResource Mark.Fill}"
-                Visibility="{Binding HasIcon, Converter={StaticResource Hidden}}">
+                Visibility="{Binding ShowsLetter, Converter={StaticResource Visible}}">
           <TextBlock Text="{Binding Monogram}" FontSize="8.4" FontWeight="Medium" Foreground="{DynamicResource Ink}"
                      HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
@@ -178,9 +180,11 @@
         <Grid Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
           <Image Source="{Binding Icon}" RenderOptions.BitmapScalingMode="HighQuality"
                  Visibility="{Binding HasIcon, Converter={StaticResource Visible}}" />
+          <TextBlock Text="{Binding Glyph}" FontFamily="{StaticResource Glyphs}" FontSize="13" Foreground="{DynamicResource Ink}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasGlyph, Converter={StaticResource Visible}}" />
           <TextBlock Text="{Binding Monogram}" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource Ink}"
                      HorizontalAlignment="Center" VerticalAlignment="Center"
-                     Visibility="{Binding HasIcon, Converter={StaticResource Hidden}}" />
+                     Visibility="{Binding ShowsLetter, Converter={StaticResource Visible}}" />
         </Grid>
         </Grid>
       </Border>
@@ -260,13 +264,14 @@
   </Window.Resources>
 
   <Grid x:Name="Root">
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
     <Grid.ColumnDefinitions>
       <ColumnDefinition x:Name="SideColumn" Width="232" />
       <ColumnDefinition Width="*" />
     </Grid.ColumnDefinitions>
 
     <!-- The column -->
-    <DockPanel x:Name="Side" Grid.Column="0">
+    <DockPanel x:Name="Side" Grid.Column="0" Grid.RowSpan="2">
       <!-- The strip: the window's own doors where the Mac has its lights, in the lights' order (close, minimise, zoom), then back, forward and reload. -->
       <Grid DockPanel.Dock="Top" Height="52">
         <StackPanel Orientation="Horizontal" Margin="10,0,10,0" VerticalAlignment="Center">
@@ -293,6 +298,12 @@
         </ItemsControl.ItemsPanel>
       </ItemsControl>
 
+      <!-- The foot of the column: home, downloads, bookmarks. -->
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="10,0,10,8" Height="30">
+        <Button Style="{StaticResource Door}" Content="&#xE80F;" ToolTip="Home" Click="Home_Click" />
+        <Button Style="{StaticResource Door}" x:Name="DownloadsDoor" Content="&#xE896;" ToolTip="Downloads (Ctrl+Shift+J)" Click="DownloadsDoor_Click" />
+        <Button Style="{StaticResource Door}" Content="&#xE8A4;" ToolTip="Bookmarks" Click="BookmarksDoor_Click" />
+      </StackPanel>
       <!-- An update downloaded and ready (Updater.swift's "Restart to Update"). -->
       <Border x:Name="UpdatePill" DockPanel.Dock="Bottom" Margin="10,0,10,10" Height="30" CornerRadius="9" Visibility="Collapsed"
               Background="{DynamicResource Row.Wash}" Cursor="Hand" MouseLeftButtonUp="UpdatePill_Click">
@@ -326,19 +337,26 @@
     </DockPanel>
 
     <!-- The column's edge, dragged to make it wider (176 to 440, as on the Mac). -->
-    <Thumb Grid.Column="0" HorizontalAlignment="Right" Width="6" Margin="0,52,-3,0" Cursor="SizeWE"
+    <Thumb Grid.Column="0" Grid.RowSpan="2" HorizontalAlignment="Right" Width="6" Margin="0,52,-3,0" Cursor="SizeWE"
            DragDelta="SideEdge_DragDelta" DragCompleted="SideEdge_DragCompleted" Opacity="0">
       <Thumb.Template><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Thumb.Template>
     </Thumb>
 
     <!-- The page's card: 8 from the window's edges, corners of 10. -->
+    <!-- The bookmarks bar: loose bookmarks as chips, folders as menus. -->
+    <Border x:Name="BarHost" Grid.Column="1" Grid.Row="0" Margin="0,8,8,0" Height="28" Visibility="Collapsed">
+      <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel x:Name="BarItems" Orientation="Horizontal" />
+      </ScrollViewer>
+    </Border>
+
     <!-- The card's shadow, drawn by a sibling: an effect on the card itself would re-render the page's host every frame. -->
-    <Border x:Name="CardShadow" Grid.Column="1" Margin="{Binding Margin, ElementName=Card}" CornerRadius="10" Background="{DynamicResource Ground}">
+    <Border x:Name="CardShadow" Grid.Column="1" Grid.Row="1" Margin="{Binding Margin, ElementName=Card}" CornerRadius="10" Background="{DynamicResource Ground}">
       <Border.Effect>
         <DropShadowEffect Color="Black" Opacity="0.07" BlurRadius="6" ShadowDepth="1" Direction="270" />
       </Border.Effect>
     </Border>
-    <Border x:Name="Card" Grid.Column="1" Margin="0,8,8,8" CornerRadius="10" Background="{DynamicResource Ground}"
+    <Border x:Name="Card" Grid.Column="1" Grid.Row="1" Margin="0,8,8,8" CornerRadius="10" Background="{DynamicResource Ground}"
             BorderBrush="{DynamicResource Hairline}" BorderThickness="0.5">
       <Grid>
         <Grid x:Name="Stage" />
@@ -371,6 +389,71 @@
         </Grid>
       </Grid>
     </Border>
+
+    <!-- Find on page (Ctrl+F): over the card's top right. A popup, so it can lie over the page's own window. -->
+    <Popup x:Name="FindPopup" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=Card}" StaysOpen="True" PopupAnimation="Fade">
+      <Border Style="{StaticResource Sheet}" Margin="12,6,18,22" Padding="10,6" CornerRadius="12">
+        <Border.Effect><DropShadowEffect Color="Black" Opacity="0.10" BlurRadius="18" ShadowDepth="5" Direction="270" /></Border.Effect>
+        <StackPanel Orientation="Horizontal">
+          <TextBox x:Name="FindBox" Width="190" FontSize="13" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource Ink}"
+                   CaretBrush="{DynamicResource Ink}" VerticalContentAlignment="Center" Height="26" TextChanged="FindBox_TextChanged" PreviewKeyDown="FindBox_PreviewKeyDown" />
+          <TextBlock x:Name="FindCount" FontSize="12" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="4,0,8,0" MinWidth="42" TextAlignment="Right" />
+          <Button Style="{StaticResource Door}" Content="&#xE70E;" ToolTip="Previous (Shift+Enter)" Click="FindPrev_Click" />
+          <Button Style="{StaticResource Door}" Content="&#xE70D;" ToolTip="Next (Enter)" Click="FindNext_Click" />
+          <Button Style="{StaticResource Door}" Content="&#xE8BB;" FontSize="9" ToolTip="Close (Esc)" Click="FindClose_Click" Margin="0" />
+        </StackPanel>
+      </Border>
+    </Popup>
+
+    <!-- Add this page to bookmarks (Ctrl+Shift+B): a card to name it as you add it. -->
+    <Popup x:Name="MarkPopup" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=Card}" StaysOpen="False" PopupAnimation="Fade">
+      <Border Style="{StaticResource Sheet}" Margin="12,6,18,22" Padding="14" Width="300" CornerRadius="12">
+        <Border.Effect><DropShadowEffect Color="Black" Opacity="0.10" BlurRadius="18" ShadowDepth="5" Direction="270" /></Border.Effect>
+        <StackPanel>
+          <TextBlock Text="Bookmark added" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" Margin="0,0,0,10" />
+          <TextBox x:Name="MarkName" FontSize="13" Height="30" Padding="8,0" VerticalContentAlignment="Center" Background="Transparent" Foreground="{DynamicResource Ink}"
+                   BorderBrush="{DynamicResource Hairline}" CaretBrush="{DynamicResource Ink}" PreviewKeyDown="MarkName_PreviewKeyDown" />
+          <ComboBox x:Name="MarkFolder" Height="30" Margin="0,8,0,0" DisplayMemberPath="Name" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Remove" Padding="12,0" Height="28" Margin="0,0,6,0" Click="MarkRemove_Click" />
+            <Button Content="Done" Padding="16,0" Height="28" Click="MarkDone_Click" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Popup>
+
+    <!-- Downloads, floating by their door (DownloadsFloat.swift). -->
+    <Popup x:Name="DownloadsPopup" AllowsTransparency="True" Placement="Top" PlacementTarget="{Binding ElementName=DownloadsDoor}" StaysOpen="False" PopupAnimation="Fade">
+      <Border Style="{StaticResource Sheet}" Margin="10,10,16,10" Padding="6" Width="320" CornerRadius="12">
+        <Border.Effect><DropShadowEffect Color="Black" Opacity="0.10" BlurRadius="18" ShadowDepth="5" Direction="270" /></Border.Effect>
+        <StackPanel>
+          <TextBlock x:Name="DownloadsNone" Text="Nothing downloaded yet." FontSize="12.5" Foreground="{DynamicResource Muted}" Margin="10,10" />
+          <ItemsControl x:Name="DownloadList" MaxHeight="320">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type local:DownloadItem}">
+                <Border CornerRadius="9" Padding="10,7" Margin="0,0,0,2" Background="Transparent" x:Name="Item">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Name}" FontSize="13" Foreground="{DynamicResource Ink}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Line}" FontSize="12" Foreground="{DynamicResource Muted}" TextTrimming="CharacterEllipsis" />
+                      <ProgressBar Value="{Binding Fraction, Mode=OneWay}" Maximum="1" Height="3" Margin="0,5,0,0" Background="{DynamicResource Hairline}"
+                                   Foreground="{DynamicResource Ink}" BorderThickness="0" Visibility="{Binding InProgress, Converter={StaticResource Visible}}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                      <Button Style="{StaticResource Door}" Content="&#xE8E5;" ToolTip="Open" Click="DownloadOpen_Click" Visibility="{Binding CanOpen, Converter={StaticResource Visible}}" />
+                      <Button Style="{StaticResource Door}" Content="&#xE838;" ToolTip="Show in folder" Click="DownloadShow_Click" Visibility="{Binding CanOpen, Converter={StaticResource Visible}}" />
+                      <Button Style="{StaticResource Door}" Content="&#xE711;" FontSize="9" ToolTip="Cancel" Click="DownloadCancel_Click" Visibility="{Binding InProgress, Converter={StaticResource Visible}}" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Content="Show all downloads" Height="28" Margin="4,6,4,2" Click="DownloadsAll_Click" />
+        </StackPanel>
+      </Border>
+    </Popup>
 
     <!-- Suggestions while editing a page's address in its row: a popup, so it can lie over the page. -->
     <Popup x:Name="InlinePopup" AllowsTransparency="True" Placement="Bottom" StaysOpen="True" PopupAnimation="Fade">

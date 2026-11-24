@@ -1,0 +1,64 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Bookmarks</title><link rel="stylesheet" href="common.css">
+<style>.folder { margin: 18px 0 4px; } .folder > .head { display:flex; align-items:center; gap:10px; padding:0 10px; min-height:32px; font-weight:500; } .folder .count { color: var(--muted); font-weight: 400; }
+.dragging { opacity: .4; } .over { box-shadow: 0 -2px 0 var(--ink); } input.edit { height: 26px; border-radius: 7px; flex: 1; }</style></head>
+<body><div class="page">
+  <h1>Bookmarks</h1><p class="sub">Drag to put them in the order you choose. Loose bookmarks show on the bookmarks bar.</p>
+  <div class="toolbar"><input id="q" class="grow" type="search" placeholder="Search bookmarks" autocomplete="off"><button id="newfolder">New folder</button></div>
+  <div id="list"></div>
+</div>
+<script src="bridge.js"></script>
+<script>
+let state = { items: [], folders: [] }, filter = '', dragId = null;
+const list = document.getElementById('list');
+document.getElementById('q').addEventListener('input', e => { filter = e.target.value.toLowerCase(); draw(); });
+document.getElementById('newfolder').onclick = () => host.send('bookmarks.addFolder', { name: 'New folder' });
+host.on('bookmarks', m => { state = m; draw(); });
+function match(b) { return !filter || (b.title + ' ' + b.url).toLowerCase().includes(filter); }
+function row(b) {
+  return `<div class="row" draggable="true" data-id="${b.id}"><span class="mark">${esc(letter(b.url))}</span>
+    <a class="main" href="${esc(b.url)}"><span class="t">${esc(b.title)}</span><span class="u">${esc(hostOf(b.url))}</span></a>
+    <span class="acts">
+      <button class="icon" title="Rename" data-act="rename">&#xE70F;</button>
+      <button class="icon" title="Remove" data-act="remove">&#xE711;</button></span></div>`;
+}
+function draw() {
+  const loose = state.items.filter(b => !b.folder && match(b));
+  let html = loose.map(row).join('');
+  for (const f of state.folders) {
+    const items = state.items.filter(b => b.folder === f.id && match(b));
+    if (filter && !items.length) continue;
+    html += `<div class="folder" data-folder="${f.id}"><div class="head"><span style="font-family:'Segoe Fluent Icons','Segoe MDL2 Assets';font-size:12px;color:var(--muted)">&#xE8B7;</span>
+      <span class="t">${esc(f.name)}</span><span class="count">${items.length}</span><span style="flex:1"></span>
+      <button class="icon" title="Rename folder" data-act="renameFolder">&#xE70F;</button><button class="icon" title="Delete folder (keeps its bookmarks)" data-act="removeFolder">&#xE74D;</button></div>
+      ${items.map(row).join('') || '<div class="u" style="padding:4px 10px 8px 36px">Drop bookmarks here</div>'}</div>`;
+  }
+  list.innerHTML = html || `<div class="empty">${filter ? 'Nothing matches.' : 'No bookmarks yet. Press Ctrl+Shift+B on a page to add it.'}</div>`;
+}
+function editInline(el, current, done) {
+  const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'edit'; inp.value = current;
+  el.replaceWith(inp); inp.focus(); inp.select();
+  let finished = false; const fin = ok => { if (finished) return; finished = true; if (ok && inp.value.trim()) done(inp.value.trim()); else draw(); };
+  inp.onkeydown = e => { if (e.key === 'Enter') fin(true); else if (e.key === 'Escape') fin(false); }; inp.onblur = () => fin(true);
+}
+list.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const row = b.closest('.row'), folder = b.closest('.folder');
+  if (b.dataset.act === 'remove') host.send('bookmarks.remove', { id: row.dataset.id });
+  else if (b.dataset.act === 'rename') editInline(row.querySelector('.t'), state.items.find(x => x.id === row.dataset.id).title, v => host.send('bookmarks.rename', { id: row.dataset.id, title: v }));
+  else if (b.dataset.act === 'removeFolder') host.send('bookmarks.removeFolder', { id: folder.dataset.folder });
+  else if (b.dataset.act === 'renameFolder') editInline(folder.querySelector('.head .t'), state.folders.find(x => x.id === folder.dataset.folder).name, v => host.send('bookmarks.renameFolder', { id: folder.dataset.folder, name: v }));
+});
+list.addEventListener('dragstart', e => { const r = e.target.closest('.row'); if (!r) return; dragId = r.dataset.id; r.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); });
+list.addEventListener('dragend', () => { dragId = null; draw(); });
+list.addEventListener('dragover', e => { if (!dragId) return; e.preventDefault(); list.querySelectorAll('.over').forEach(x => x.classList.remove('over')); (e.target.closest('.row') || e.target.closest('.folder'))?.classList.add('over'); });
+list.addEventListener('drop', e => {
+  if (!dragId) return; e.preventDefault();
+  const onRow = e.target.closest('.row'), onFolder = e.target.closest('.folder');
+  if (onRow && onRow.dataset.id !== dragId) {
+    const target = state.items.find(x => x.id === onRow.dataset.id);
+    host.send('bookmarks.move', { id: dragId, folder: target.folder || null, before: target.id });
+  } else if (onFolder) host.send('bookmarks.move', { id: dragId, folder: onFolder.dataset.folder, before: null });
+  else host.send('bookmarks.move', { id: dragId, folder: null, before: null });
+});
+host.send('bookmarks.get');
+</script></body></html>

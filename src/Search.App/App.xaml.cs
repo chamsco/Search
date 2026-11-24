@@ -1,4 +1,7 @@
 using System.IO;
+using System.IO.Pipes;
+using System.Security.Cryptography;
+using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -19,6 +22,26 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, a) => Log(a.ExceptionObject as Exception);
 
         base.OnStartup(e);
+
+        // One Search per data folder: a second launch (a link from another app, the Start menu) hands its address to the first.
+        var id = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Store.File("x").ToLowerInvariant())))[..16];
+        var first0 = e.Args.FirstOrDefault(a => !a.StartsWith('-'));
+        instance = new Mutex(true, "Search.Instance." + id, out var owner);
+        if (!owner)
+        {
+            try
+            {
+                using var client = new NamedPipeClientStream(".", "Search.Pipe." + id, PipeDirection.Out);
+                client.Connect(3000);
+                using var w = new StreamWriter(client) { AutoFlush = true };
+                w.WriteLine(first0 ?? "");
+            }
+            catch (Exception ex) { Log(ex); }
+            Shutdown();
+            return;
+        }
+        ShutdownMode = ShutdownMode.OnLastWindowClose;
+        _ = Listen("Search.Pipe." + id);
         Palette.Apply(Resources, Look);
         SystemEvents.UserPreferenceChanged += (_, a) =>
         {
@@ -30,6 +53,33 @@ public partial class App : Application
         var window = new MainWindow(first);
         MainWindow = window;
         window.Show();
+    }
+
+    static Mutex? instance;
+
+    async Task Listen(string name)
+    {
+        while (true)
+        {
+            try
+            {
+                await using var server = new NamedPipeServerStream(name, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                await server.WaitForConnectionAsync();
+                using var reader = new StreamReader(server);
+                var line = (await reader.ReadLineAsync())?.Trim() ?? "";
+                await Dispatcher.InvokeAsync(() => Reached(line));
+            }
+            catch (Exception ex) { Log(ex); await Task.Delay(500); }
+        }
+    }
+
+    /// <summary>Another launch said hello: show the window it would have made, with its address if it had one.</summary>
+    void Reached(string url)
+    {
+        var window = Windows.OfType<MainWindow>().FirstOrDefault(w => w.IsActive) ?? Windows.OfType<MainWindow>().FirstOrDefault();
+        if (window is null) return;
+        if (url.Length > 0) window.OpenExternal(url);
+        else { if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal; window.Activate(); }
     }
 
     public static void Log(Exception? e)

@@ -51,6 +51,13 @@ public static class Address
         return (local ? "http://" : "https://") + text;
     }
 
+    /// <summary>This PC or the local network: no certificate worth expecting there.</summary>
+    public static bool IsLocal(string host) =>
+        host == "localhost" || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) || host == "::1" || host == "[::1]"
+        || host == "127.0.0.1" || host == "0.0.0.0" || PrivateRange(host)
+        || System.Net.IPAddress.TryParse(host, out _);
+
     /// <summary>Dev servers print 0.0.0.0; open it as localhost, the same server.</summary>
     public static string? Reachable(string url)
     {
@@ -125,8 +132,48 @@ public static class Address
         Uri.TryCreate(url, UriKind.Absolute, out var u) && !string.IsNullOrEmpty(u.Host) ? WithoutWww(u.Host) : null;
 }
 
+/// <summary>
+/// Search's own pages (Sources/Search/InternalPages.swift): each in a tab of its
+/// own with an address like search://settings/privacy.
+/// </summary>
 public static class InternalPages
 {
     public const string Scheme = "search";
     public const string NewTab = "";
+    public static readonly string[] Kinds = ["settings", "history", "downloads", "bookmarks"];
+
+    /// <summary>search://settings/privacy → ("settings", "privacy").</summary>
+    public static (string Kind, string? Detail)? Parse(string url)
+    {
+        if (!url.StartsWith(Scheme + "://", StringComparison.OrdinalIgnoreCase)) return null;
+        var rest = url[(Scheme.Length + 3)..].Trim('/');
+        var slash = rest.IndexOf('/');
+        var kind = (slash < 0 ? rest : rest[..slash]).ToLowerInvariant();
+        if (!Kinds.Contains(kind)) return null;
+        var detail = slash < 0 ? null : rest[(slash + 1)..].Trim('/');
+        return (kind, string.IsNullOrEmpty(detail) ? null : detail);
+    }
+
+    public static string Title(string kind) => kind switch
+    {
+        "settings" => "Settings", "history" => "History", "downloads" => "Downloads", "bookmarks" => "Bookmarks", _ => kind,
+    };
+
+    /// <summary>The Segoe Fluent glyph a tab wears instead of a site's icon.</summary>
+    public static string Glyph(string kind) => kind switch
+    {
+        "settings" => "\uE713", "history" => "\uE81C", "downloads" => "\uE896", "bookmarks" => "\uE8A4", _ => "\uE774",
+    };
+
+    /// <summary>Commands in the address field, as Arc's Command Bar: type a word, get the page.</summary>
+    public static readonly (string Name, string Url, string? Key)[] Commands =
+    [
+        ("Settings", "search://settings", "Ctrl+,"),
+        ("History", "search://history", "Ctrl+Y"),
+        ("Downloads", "search://downloads", "Ctrl+Shift+J"),
+        ("Bookmarks", "search://bookmarks", null),
+        ("Keyboard Shortcuts", "search://settings/keyboard", null),
+        ("Clear Browsing Data", "search://settings/privacy", "Ctrl+Shift+Del"),
+        ("Check for Updates", "search://settings/about", null),
+    ];
 }

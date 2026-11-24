@@ -47,9 +47,27 @@ Application Launch()
     return Application.Launch(psi);
 }
 
+
+string SessionText() { try { return File.ReadAllText(Path.Combine(data, "session.json")); } catch { return ""; } }
+string DataText(string name) { try { return File.ReadAllText(Path.Combine(data, name)); } catch { return ""; } }
+void Chord(params VirtualKeyShort[] keys) { Keyboard.TypeSimultaneously(keys); Thread.Sleep(900); }
 using var automation = new UIA3Automation();
 var app = Launch();
 Window? window = null;
+// Text drawn in the app's popups (find count, bookmark card): the app's other top-level windows.
+string PopupText()
+{
+    try
+    {
+        var task = Task.Run(() => string.Join(" · ", app.GetAllTopLevelWindows(automation)
+            .Where(w => w.Title != window!.Title)
+            .SelectMany(w => w.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)).Select(t => t.Name))
+            .Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().Take(12)));
+        return task.Wait(TimeSpan.FromSeconds(12)) ? task.Result : "(timed out reading popups)";
+    }
+    catch (Exception e) { return "(" + e.Message + ")"; }
+}
+
 try
 {
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
@@ -107,6 +125,80 @@ try
     Step("Ctrl+L on a page: address editable in its row, suggestions over the page", true, Shot("edit-address"));
     Keyboard.Press(VirtualKeyShort.ESCAPE);
     Thread.Sleep(500);
+
+
+    // ---- wave 2 ----
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F);
+    Keyboard.Type("git");
+    Thread.Sleep(1200);
+    var findText = PopupText();
+    Step("Ctrl+F, type git: matches are highlighted on the page and counted", findText.Contains(" of ") || findText.Contains("No matches"), $"popup says: {findText.Replace("|", "\\|")} · " + Shot("find"));
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(600);
+    Keyboard.Press(VirtualKeyShort.ESCAPE);
+    Thread.Sleep(500);
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_B);
+    Step("Ctrl+Shift+B: a card to name the bookmark opens, and the page is saved", DataText("bookmarks.json").Contains("\"Url\"") || DataText("bookmarks.json").Contains("\"url\""), $"card says: {PopupText().Replace("|", "\\|")} · " + Shot("bookmark-card"));
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(600);
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_B);
+    Thread.Sleep(600);
+    Step("Ctrl+Alt+B: the bookmarks bar appears above the page with the bookmark in it", DataText("prefs.json").Contains("\"bookmarksBar\": true") || DataText("prefs.json").Contains("\"BookmarksBar\": true") || DataText("prefs.json").Replace(" ", "").ToLower().Contains("\"bookmarksbar\":true"), Shot("bookmarks-bar"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_PLUS);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_PLUS);
+    Thread.Sleep(500);
+    Step("Ctrl+= twice: the page is zoomed in", !app.HasExited, Shot("zoomed"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_0);
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_Y);
+    Thread.Sleep(2500);
+    Step("Ctrl+Y: History opens as a page in a tab", SessionText().Contains("search://history"), Shot("history-page"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_J);
+    Thread.Sleep(2500);
+    Step("Ctrl+Shift+J: Downloads opens as a page in a tab", SessionText().Contains("search://downloads"), Shot("downloads-page"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(2500);
+    Step("Ctrl+, : Settings opens as a page in a tab", SessionText().Contains("search://settings"), Shot("settings-page"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type("http://example.com");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(6000);
+    Step("Type http://example.com: it loads over https://", SessionText().Contains("https://example.com"), Shot("https-upgrade"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type("http://neverssl.com");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(8000);
+    Step("Type http://neverssl.com (no https there): it still loads, as written", SessionText().Contains("http://neverssl.com") && !app.HasExited, Shot("https-fallback"));
+
+    var dl = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type("https://github.com/chamsco/Search/archive/refs/heads/main.zip");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(9000);
+    var got = Directory.Exists(dl) ? Directory.GetFiles(dl, "Search-main*.zip") : [];
+    Step("Open a link to a zip: it downloads to the Downloads folder and the downloads card floats up", got.Length > 0, $"{got.Length} file(s) in {dl} · " + Shot("download-float"));
+    Keyboard.Press(VirtualKeyShort.ESCAPE);
+    Thread.Sleep(500);
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_N);
+    Thread.Sleep(4000);
+    var windows = app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
+    Step("Ctrl+N: a second window opens", windows >= 2, $"{windows} windows · " + Shot("new-window"));
+    Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
+    Thread.Sleep(1500);
+    Step("Close the second window: the first stays", !app.HasExited, Shot("back-to-first"));
+
+    var second = Process.Start(new ProcessStartInfo(exe, "https://example.org") { UseShellExecute = false, Environment = { ["SEARCH_DATA"] = data, ["SEARCH_NO_UPDATES"] = "1" } })!;
+    second.WaitForExit(8000);
+    Thread.Sleep(3000);
+    Step("Start Search again with a link: the running one opens it, no second copy stays", second.HasExited && SessionText().Contains("example.org"), Shot("one-copy"));
 
     Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
     app.WaitWhileMainHandleIsMissing(TimeSpan.FromSeconds(2));

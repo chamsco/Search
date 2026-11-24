@@ -1,6 +1,6 @@
 namespace Search.Core;
 
-public enum SuggestionKind { Open, Visited, Bookmark, Known, Search, Suggested }
+public enum SuggestionKind { Open, Visited, Bookmark, Known, Search, Suggested, Command }
 
 public sealed record Suggestion(string Key, string Title, string Url, SuggestionKind Kind)
 {
@@ -71,6 +71,21 @@ public sealed class History
     }
 
     public void Clear() => visits.Clear();
+
+    public bool Remove(string url) => visits.Remove(Identity(url));
+
+    /// <summary>Clear browsing data's time ranges: everything since the moment given.</summary>
+    public int ClearSince(DateTime since) =>
+        visits.Where(kv => kv.Value.Last >= since).Select(kv => kv.Key).ToList().Count(visits.Remove);
+
+    /// <summary>The History page: newest first, filtered by words in the title or address.</summary>
+    public List<Visit> Query(string typed, int limit = 500)
+    {
+        var words = Fuzzy.Words(typed ?? "");
+        return visits.Values
+            .Where(v => words.Count == 0 || words.All(w => (History.KeyOf(v.Url) + " " + v.Title).Contains(w, StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(v => v.Last).Take(limit).ToList();
+    }
 
     static double Score(Visit v, DateTime at) =>
         v.Count * Math.Exp(-Math.Max(0, (at - v.Last).TotalDays) / 30);

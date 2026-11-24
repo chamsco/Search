@@ -1,0 +1,610 @@
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using Microsoft.Web.WebView2.Core;
+using Search.Core;
+
+namespace Search.App;
+
+/// <summary>
+/// Search's own pages and the features around them: History, Bookmarks, Downloads and Settings as
+/// pages (Sources/Search/InternalPages.swift), the downloads float, find on page, the bookmark card
+/// and bar, zoom, print, HTTPS upgrade.
+/// A page is served from https://search.internal/ and shown as search://kind in the tab.
+/// </summary>
+public partial class MainWindow
+{
+    public const string PagesHost = "search.internal";
+    public static readonly string PagesDir = Path.Combine(AppContext.BaseDirectory, "Pages");
+
+    static readonly JsonSerializerOptions Wire = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    void InitPages()
+    {
+        DownloadList.ItemsSource = Shared.Downloads.Items;
+        DownloadsPopup.Closed += (_, _) => downloadsClosed = Environment.TickCount64;
+        OnDownloadsChanged();
+    }
+
+    // MARK: - addresses
+
+    /// <summary>search://history → https://search.internal/history.html; everything else as it is.</summary>
+    static string NavTarget(string url)
+    {
+        if (InternalPages.Parse(url) is not { } p) return url;
+        return $"https://{PagesHost}/{p.Kind}.html" + (p.Detail is null ? "" : "#" + p.Detail);
+    }
+
+    /// <summary>The reverse, for the address a tab shows. Null when it isn't one of ours.</summary>
+    static string? PageUrl(string source)
+    {
+        if (!Uri.TryCreate(source, UriKind.Absolute, out var u) || !u.Host.Equals(PagesHost, StringComparison.OrdinalIgnoreCase)) return null;
+        var kind = Path.GetFileNameWithoutExtension(u.AbsolutePath);
+        if (!InternalPages.Kinds.Contains(kind)) return null;
+        var detail = u.Fragment.TrimStart('#');
+        return $"search://{kind}" + (detail.Length > 0 ? "/" + detail : "");
+    }
+
+    void OpenPage(string url)
+    {
+        var want = InternalPages.Parse(url);
+        var have = Ordered().FirstOrDefault(t => InternalPages.Parse(t.Url) is { } p && p.Kind == want?.Kind);
+        if (have is not null)
+        {
+            if (have != live) Select(have);
+            if (want?.Detail is not null && have.Url != url) Navigate(url);
+            return;
+        }
+        if (live is { IsBlank: true }) Navigate(url); else Open(url);
+    }
+
+    // MARK: - what a page may ask
+
+    void OnPageMessage(Tab tab, CoreWebView2 core, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        // Any web page can post a message; only our own pages are listened to.
+        if (PageUrl(e.Source) is null || PageUrl(core.Source) is null) return;
+        try
+        {
+            using var doc = JsonDocument.Parse(e.WebMessageAsJson);
+            var m = doc.RootElement;
+            string S(string k) => m.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+            string? N(string k) => m.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+            Guid? G(string k) => Guid.TryParse(N(k), out var g) ? g : null;
+            var type = S("type");
+            switch (type)
+            {
+                case "navigate":
+                    if (S("url") is { Length: > 0 } to && (InternalPages.Parse(to) is not null || to.StartsWith("http", StringComparison.OrdinalIgnoreCase)))
+                        { if (tab == live) Navigate(to); }
+                    break;
+
+                case "history.query":
+                    Send(core, new { type = "history.items", items = Shared.History.Query(S("q"), 500).Select(v => new { url = v.Url, title = v.Title, last = v.Last.ToUniversalTime().ToString("o") }) });
+                    break;
+                case "history.remove":
+                    Shared.History.Remove(S("url")); Shared.History.Save();
+                    break;
+
+                case "bookmarks.get": Send(core, BookmarksMessage()); break;
+                case "bookmarks.remove": if (G("id") is Guid rm) Shared.Bookmarks.Remove(rm); break;
+                case "bookmarks.rename": if (G("id") is Guid rn) Shared.Bookmarks.Rename(rn, S("title")); break;
+                case "bookmarks.addFolder": Shared.Bookmarks.AddFolder(S("name")); break;
+                case "bookmarks.renameFolder": if (G("id") is Guid rf) Shared.Bookmarks.RenameFolder(rf, S("name")); break;
+                case "bookmarks.removeFolder": if (G("id") is Guid df) Shared.Bookmarks.RemoveFolder(df); break;
+                case "bookmarks.move":
+                    if (G("id") is Guid mv)
+                    {
+                        Shared.Bookmarks.Move(mv, G("folder"));
+                        var order = Shared.Bookmarks.Items.Select(b => b.Id).Where(i => i != mv).ToList();
+                        var at = G("before") is Guid before ? order.IndexOf(before) : -1;
+                        Shared.Bookmarks.Reorder(mv, at < 0 ? int.MaxValue : at);
+                    }
+                    break;
+
+                case "downloads.get": Send(core, DownloadsMessage()); break;
+                case "downloads.openFolder": OpenFolder(Shared.Prefs.EffectiveDownloadFolder); break;
+                case "downloads.clear": Shared.Downloads.ClearFinished(); break;
+                case "downloads.open" or "downloads.show" or "downloads.pause" or "downloads.resume" or "downloads.cancel" or "downloads.remove":
+                    if (G("id") is Guid did && Shared.Downloads.Find(did) is { } item) DoDownload(type[10..], item);
+                    break;
+
+                case "settings.get": Send(core, SettingsMessage()); break;
+                case "settings.set": SetSetting(S("key"), m.GetProperty("value")); break;
+                case "settings.chooseFolder":
+                    var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Where downloads go", InitialDirectory = Shared.Prefs.EffectiveDownloadFolder };
+                    if (dialog.ShowDialog(this) == true) Shared.Prefs.Update(d => d.DownloadFolder = dialog.FolderName);
+                    break;
+                case "settings.defaultBrowser": Process.Start(new ProcessStartInfo("ms-settings:defaultapps") { UseShellExecute = true }); break;
+                case "settings.openData": OpenFolder(Path.GetDirectoryName(Store.File("x"))!); break;
+                case "settings.checkUpdates": _ = CheckForUpdates(byHand: true, report: text => { updateLine = text; PostToPages(new { type = "update", text }); }); break;
+                case "settings.clear": _ = ClearData(core, S("range"), m.GetProperty("kinds").EnumerateArray().Select(k => k.GetString() ?? "").ToList()); break;
+            }
+        }
+        catch (Exception ex) { App.Log(ex); }
+    }
+
+    static void Send(CoreWebView2 core, object message)
+    {
+        try { core.PostWebMessageAsJson(JsonSerializer.Serialize(message, Wire)); } catch { /* the page went away */ }
+    }
+
+    /// <summary>To every one of this window's pages of ours that is open.</summary>
+    void PostToPages(object message, string? kind = null)
+    {
+        foreach (var t in Ordered())
+            if (t.View?.CoreWebView2 is { } c && PageUrl(c.Source) is { } own && (kind is null || InternalPages.Parse(own)?.Kind == kind))
+                Send(c, message);
+    }
+
+    object BookmarksMessage() => new
+    {
+        type = "bookmarks",
+        items = Shared.Bookmarks.Items.Select(b => new { id = b.Id, title = b.Title, url = b.Url, folder = b.Folder }),
+        folders = Shared.Bookmarks.Folders.Select(f => new { id = f.Id, name = f.Name }),
+    };
+
+    object DownloadsMessage() => new
+    {
+        type = "downloads",
+        folder = Shared.Prefs.EffectiveDownloadFolder,
+        items = Shared.Downloads.Items.Select(d => new
+        {
+            id = d.Id, name = d.Name, state = d.State.ToString().ToLowerInvariant(), received = d.Received, total = d.Total, paused = d.Paused, exists = d.Exists,
+        }),
+    };
+
+    string? updateLine;
+
+    object SettingsMessage()
+    {
+        var d = Shared.Prefs.Data;
+        string engineVersion; try { engineVersion = CoreWebView2Environment.GetAvailableBrowserVersionString(); } catch { engineVersion = ""; }
+        return new
+        {
+            type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
+            engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
+            version = Version.Current, engineVersion, dataFolder = Path.GetDirectoryName(Store.File("x")), updateText = updateLine,
+        };
+    }
+
+    void SetSetting(string key, JsonElement value)
+    {
+        bool B() => value.ValueKind == JsonValueKind.True;
+        string S() => value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : "";
+        Shared.Prefs.Update(d =>
+        {
+            switch (key)
+            {
+                case "engineSuggests": d.EngineSuggests = B(); break;
+                case "startFresh": d.StartFresh = B(); break;
+                case "bookmarksBar": d.BookmarksBar = B(); break;
+                case "httpsUpgrade": d.HttpsUpgrade = B(); break;
+                case "engine": if (Enum.TryParse<Engine>(S(), out var en)) d.Engine = en; break;
+                case "customEngine": d.CustomEngine = S(); break;
+                case "look": if (Enum.TryParse<LookChoice>(S(), out var lk)) d.Look = lk; break;
+            }
+        });
+    }
+
+    async Task ClearData(CoreWebView2 core, string range, List<string> kinds)
+    {
+        var since = range switch
+        {
+            "hour" => DateTime.Now.AddHours(-1), "day" => DateTime.Now.AddDays(-1), "week" => DateTime.Now.AddDays(-7), _ => DateTime.MinValue,
+        };
+        var done = new List<string>();
+        try
+        {
+            if (kinds.Contains("history")) { Shared.History.ClearSince(since); Shared.History.Save(); done.Add("history"); }
+            if (kinds.Contains("downloads")) { Shared.Downloads.ClearSince(since); done.Add("download list"); }
+            var web = default(CoreWebView2BrowsingDataKinds);
+            if (kinds.Contains("cookies")) { web |= CoreWebView2BrowsingDataKinds.Cookies; done.Add("cookies"); }
+            if (kinds.Contains("cache")) { web |= CoreWebView2BrowsingDataKinds.DiskCache | CoreWebView2BrowsingDataKinds.CacheStorage; done.Add("cache"); }
+            if (kinds.Contains("permissions")) { web |= CoreWebView2BrowsingDataKinds.Settings; done.Add("site permissions"); }
+            if (web != default(CoreWebView2BrowsingDataKinds))
+            {
+                if (since == DateTime.MinValue) await core.Profile.ClearBrowsingDataAsync(web);
+                else await core.Profile.ClearBrowsingDataAsync(web, since, DateTime.Now.AddMinutes(1));
+            }
+            PostToPages(new { type = "refresh" }, "history");
+            PostToPages(new { type = "cleared", text = done.Count == 0 ? "Nothing to clear." : "Cleared " + string.Join(", ", done) + "." });
+        }
+        catch (Exception ex)
+        {
+            App.Log(ex);
+            PostToPages(new { type = "cleared", text = "Couldn't clear everything." });
+        }
+    }
+
+    static void OpenFolder(string path)
+    {
+        try { Directory.CreateDirectory(path); Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true }); } catch (Exception ex) { App.Log(ex); }
+    }
+
+    // MARK: - settings applied
+
+    /// <summary>Look, bar and the address field's engine follow Settings, and so do the pages that show them.</summary>
+    void ApplyPrefs()
+    {
+        var look = Shared.Prefs.Data.Look switch { LookChoice.Light => Palette.Look.Light, LookChoice.Dark => Palette.Look.Dark, _ => Palette.Look.System };
+        if (App.Look != look) { App.Look = look; Palette.Apply(Application.Current.Resources, look); }
+        foreach (var t in Ordered()) if (t.View?.CoreWebView2 is { } c) ApplyColorScheme(c);
+        BarHost.Visibility = Shared.Prefs.Data.BookmarksBar && !fullScreen ? Visibility.Visible : Visibility.Collapsed;
+        BuildBar();
+        ApplyLayout();
+        PostToPages(SettingsMessage(), "settings");
+    }
+
+    void ApplyColorScheme(CoreWebView2 core)
+    {
+        try
+        {
+            core.Profile.PreferredColorScheme = Shared.Prefs.Data.Look switch
+            {
+                LookChoice.Light => CoreWebView2PreferredColorScheme.Light,
+                LookChoice.Dark => CoreWebView2PreferredColorScheme.Dark,
+                _ => CoreWebView2PreferredColorScheme.Auto,
+            };
+        }
+        catch { }
+    }
+
+    void OnBookmarksChanged()
+    {
+        BuildBar();
+        PostToPages(BookmarksMessage(), "bookmarks");
+    }
+
+    void OnDownloadsChanged()
+    {
+        var any = Shared.Downloads.Items.Count > 0;
+        DownloadsNone.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
+        var busy = Shared.Downloads.Items.Any(i => i.InProgress);
+        DownloadsDoor.Content = busy ? "" : "";
+        DownloadsDoor.Opacity = busy ? 1 : 0.85;
+        PostToPages(DownloadsMessage(), "downloads");
+    }
+
+    // MARK: - downloads
+
+    long downloadsClosed;
+
+    void OnDownloadStarting(object? sender, CoreWebView2DownloadStartingEventArgs e)
+    {
+        e.Handled = true; // ours is the list; the engine's own bubble stays away
+        var path = Downloads.UniquePath(Shared.Prefs.EffectiveDownloadFolder, Path.GetFileName(e.ResultFilePath));
+        e.ResultFilePath = path;
+        Shared.Downloads.Begin(e.DownloadOperation, path);
+        if (IsActive || live?.View?.CoreWebView2 == sender) DownloadsPopup.IsOpen = true;
+    }
+
+    void DownloadsDoor_Click(object sender, RoutedEventArgs e)
+    {
+        if (Environment.TickCount64 - downloadsClosed < 250) return; // the click that just closed it
+        DownloadsPopup.IsOpen = true;
+    }
+
+    void DownloadsAll_Click(object sender, RoutedEventArgs e) { DownloadsPopup.IsOpen = false; OpenPage("search://downloads"); }
+
+    DownloadItem? ItemOf(object sender) => (sender as FrameworkElement)?.DataContext as DownloadItem;
+    void DownloadOpen_Click(object sender, RoutedEventArgs e) { if (ItemOf(sender) is { } i) DoDownload("open", i); }
+    void DownloadShow_Click(object sender, RoutedEventArgs e) { if (ItemOf(sender) is { } i) DoDownload("show", i); }
+    void DownloadCancel_Click(object sender, RoutedEventArgs e) { if (ItemOf(sender) is { } i) DoDownload("cancel", i); }
+
+    void DoDownload(string what, DownloadItem i)
+    {
+        try
+        {
+            switch (what)
+            {
+                case "open" when i.CanOpen: Process.Start(new ProcessStartInfo(i.Path) { UseShellExecute = true }); break;
+                case "show" when i.Exists: Process.Start("explorer.exe", $"/select,\"{i.Path}\""); break;
+                case "pause": Shared.Downloads.Pause(i); break;
+                case "resume": Shared.Downloads.Resume(i); break;
+                case "cancel": Shared.Downloads.Cancel(i); break;
+                case "remove": Shared.Downloads.Remove(i); break;
+            }
+        }
+        catch (Exception ex) { App.Log(ex); }
+    }
+
+    // MARK: - the column's foot
+
+    void Home_Click(object sender, RoutedEventArgs e)
+    {
+        if (live is { IsPin: true, Home: { Length: > 0 } home }) Navigate(home); else NewTab();
+    }
+
+    void BookmarksDoor_Click(object sender, RoutedEventArgs e) => OpenPage("search://bookmarks");
+
+    // MARK: - HTTPS upgrade (Settings › Privacy)
+
+    void TryUpgrade(Tab t, CoreWebView2 core, CoreWebView2NavigationStartingEventArgs e)
+    {
+        if (!Shared.Prefs.Data.HttpsUpgrade || !e.Uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) return;
+        if (t.NoUpgrade == e.Uri) { t.NoUpgrade = null; return; }
+        if (!Uri.TryCreate(e.Uri, UriKind.Absolute, out var u) || Address.IsLocal(u.Host) || !u.IsDefaultPort) return;
+        e.Cancel = true;
+        t.UpgradedFrom = e.Uri;
+        var secure = "https://" + e.Uri["http://".Length..];
+        Dispatcher.BeginInvoke(() => core.Navigate(secure));
+    }
+
+    /// <summary>The site has no https: load the page as it was written.</summary>
+    void FallBackFromHttps(Tab t, CoreWebView2 core, CoreWebView2NavigationCompletedEventArgs e)
+    {
+        if (e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled) return;
+        if (t.UpgradedFrom is not { } from) return;
+        t.UpgradedFrom = null;
+        t.NoUpgrade = from;
+        Dispatcher.BeginInvoke(() => core.Navigate(from));
+    }
+
+    // MARK: - find on page (Ctrl+F)
+
+    string findText = "";
+
+    void PlaceTopRight(System.Windows.Controls.Primitives.Popup popup)
+    {
+        if (popup.Child is not FrameworkElement child) return;
+        child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        popup.HorizontalOffset = Math.Max(0, Card.ActualWidth - child.DesiredSize.Width);
+        popup.VerticalOffset = 0;
+    }
+
+    void OpenFind()
+    {
+        if (live?.View?.CoreWebView2 is null || live.IsBlank) return;
+        PlaceTopRight(FindPopup);
+        FindPopup.IsOpen = true;
+        FindBox.Focus();
+        FindBox.SelectAll();
+        if (FindBox.Text.Length > 0) _ = Find(0);
+    }
+
+    void CloseFind()
+    {
+        if (!FindPopup.IsOpen) return;
+        FindPopup.IsOpen = false;
+        _ = RunFind("", 0);
+    }
+
+    void FindStep(int by)
+    {
+        if (!FindPopup.IsOpen) { OpenFind(); return; }
+        _ = Find(by);
+    }
+
+    async Task Find(int step)
+    {
+        var (index, count) = await RunFind(FindBox.Text, step);
+        FindCount.Text = FindBox.Text.Length == 0 ? "" : count == 0 ? "No matches" : $"{index} of {count}";
+    }
+
+    async Task<(int, int)> RunFind(string text, int step)
+    {
+        if (live?.View?.CoreWebView2 is not { } core) return (0, 0);
+        try
+        {
+            var script = FindScript.Replace("__Q__", JsonSerializer.Serialize(text)).Replace("__STEP__", step.ToString());
+            var raw = await core.ExecuteScriptAsync(script);
+            var inner = JsonSerializer.Deserialize<string>(raw);
+            var pair = JsonSerializer.Deserialize<int[]>(inner ?? "[0,0]");
+            return pair is { Length: 2 } ? (pair[0], pair[1]) : (0, 0);
+        }
+        catch { return (0, 0); }
+    }
+
+    void FindBox_TextChanged(object sender, TextChangedEventArgs e) { findText = FindBox.Text; _ = Find(0); }
+
+    void FindBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) { _ = Find(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -1 : 1); e.Handled = true; }
+        else if (e.Key == Key.Escape) { CloseFind(); e.Handled = true; }
+    }
+
+    void FindPrev_Click(object sender, RoutedEventArgs e) => _ = Find(-1);
+    void FindNext_Click(object sender, RoutedEventArgs e) => _ = Find(1);
+    void FindClose_Click(object sender, RoutedEventArgs e) => CloseFind();
+
+    /// <summary>Highlights with the page's own CSS Custom Highlight API, so nothing in the page is changed.</summary>
+    const string FindScript = """
+        (function (q, step) {
+          const st = window.__searchFind ??= { q: '', ranges: [], i: -1 };
+          const clear = () => { try { CSS.highlights.delete('search-find'); CSS.highlights.delete('search-find-now'); } catch (e) {} };
+          if (!q) { clear(); st.q = ''; st.ranges = []; st.i = -1; return JSON.stringify([0, 0]); }
+          if (!document.getElementById('search-find-style')) {
+            const s = document.createElement('style'); s.id = 'search-find-style';
+            s.textContent = '::highlight(search-find){background:#ffe58a;color:#000}::highlight(search-find-now){background:#ff9a3c;color:#000}';
+            (document.head || document.documentElement).appendChild(s);
+          }
+          if (q !== st.q || step === 0) {
+            st.q = q; st.ranges = []; const needle = q.toLowerCase();
+            const root = document.body || document.documentElement;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode(n) {
+              const p = n.parentElement; if (!p) return NodeFilter.FILTER_REJECT;
+              const tag = p.tagName; if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') return NodeFilter.FILTER_REJECT;
+              return n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; } });
+            let n;
+            while ((n = walker.nextNode()) && st.ranges.length < 5000) {
+              const t = n.nodeValue.toLowerCase(); let at = 0;
+              while ((at = t.indexOf(needle, at)) >= 0) {
+                const r = document.createRange(); r.setStart(n, at); r.setEnd(n, at + needle.length);
+                const box = r.getBoundingClientRect();
+                if (box.width > 0 || box.height > 0) st.ranges.push(r);
+                at += needle.length;
+              }
+            }
+            st.i = st.ranges.length ? 0 : -1;
+          } else if (st.ranges.length) st.i = (st.i + step + st.ranges.length) % st.ranges.length;
+          clear();
+          if (st.ranges.length) {
+            CSS.highlights.set('search-find', new Highlight(...st.ranges));
+            const now = new Highlight(st.ranges[st.i]); now.priority = 1; CSS.highlights.set('search-find-now', now);
+            const el = st.ranges[st.i].startContainer.parentElement; if (el) el.scrollIntoView({ block: 'center', inline: 'nearest' });
+          }
+          return JSON.stringify([st.ranges.length ? st.i + 1 : 0, st.ranges.length]);
+        })(__Q__, __STEP__)
+        """;
+
+    // MARK: - bookmarks: the card (Ctrl+Shift+B) and the bar
+
+    static readonly BookmarkFolder NoFolder = new() { Id = Guid.Empty, Name = "No folder" };
+    Bookmark? marked;
+
+    void AddBookmark()
+    {
+        if (live is not { IsBlank: false } t || t.IsInternal) return;
+        marked = Shared.Bookmarks.Add(t.Url, t.Label);
+        MarkName.Text = marked.Title;
+        MarkFolder.ItemsSource = new[] { NoFolder }.Concat(Shared.Bookmarks.Folders).ToList();
+        MarkFolder.SelectedItem = ((IEnumerable<BookmarkFolder>)MarkFolder.ItemsSource).FirstOrDefault(f => f.Id == (marked.Folder ?? Guid.Empty)) ?? NoFolder;
+        PlaceTopRight(MarkPopup);
+        MarkPopup.IsOpen = true;
+        MarkName.Focus();
+        MarkName.SelectAll();
+    }
+
+    void MarkDone_Click(object sender, RoutedEventArgs e)
+    {
+        if (marked is not null)
+        {
+            Shared.Bookmarks.Rename(marked.Id, MarkName.Text);
+            Shared.Bookmarks.Move(marked.Id, MarkFolder.SelectedItem is BookmarkFolder f && f.Id != Guid.Empty ? f.Id : null);
+        }
+        MarkPopup.IsOpen = false;
+        marked = null;
+    }
+
+    void MarkRemove_Click(object sender, RoutedEventArgs e)
+    {
+        if (marked is not null) Shared.Bookmarks.Remove(marked.Id);
+        MarkPopup.IsOpen = false;
+        marked = null;
+    }
+
+    void MarkName_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) { MarkDone_Click(sender, e); e.Handled = true; }
+        else if (e.Key == Key.Escape) { MarkPopup.IsOpen = false; e.Handled = true; }
+    }
+
+    void BuildBar()
+    {
+        BarItems.Children.Clear();
+        if (BarHost.Visibility != Visibility.Visible) return;
+        foreach (var b in Shared.Bookmarks.In(null)) BarItems.Children.Add(BarButton(b.Title, b.Url, null, () => Navigate(b.Url), b));
+        foreach (var f in Shared.Bookmarks.Folders)
+        {
+            var folder = f;
+            var button = BarButton(f.Name, null, "", null, null);
+            button.MouseLeftButtonUp += (_, _) =>
+            {
+                var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+                foreach (var b in Shared.Bookmarks.In(folder.Id))
+                {
+                    var item = new MenuItem { Header = b.Title };
+                    var url = b.Url;
+                    item.Click += (_, _) => Navigate(url);
+                    menu.Items.Add(item);
+                }
+                if (menu.Items.Count == 0) menu.Items.Add(new MenuItem { Header = "Empty", IsEnabled = false });
+                menu.IsOpen = true;
+            };
+            BarItems.Children.Add(button);
+        }
+    }
+
+    Border BarButton(string title, string? url, string? glyph, Action? click, Bookmark? mark)
+    {
+        var text = new TextBlock { Text = title, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 160 };
+        text.SetResourceReference(TextBlock.ForegroundProperty, "Ink");
+        var lead = new TextBlock
+        {
+            Text = glyph ?? (url is null ? "•" : Address.Host(url) is { Length: > 0 } h ? char.ToUpperInvariant(h[0]).ToString() : "•"),
+            FontSize = glyph is null ? 11 : 12, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold,
+        };
+        if (glyph is not null) lead.FontFamily = (FontFamily)FindResource("Glyphs");
+        lead.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(9, 0, 9, 0) };
+        row.Children.Add(lead);
+        row.Children.Add(text);
+        var chip = new Border { CornerRadius = new CornerRadius(8), Height = 26, Margin = new Thickness(0, 0, 2, 0), Background = Brushes.Transparent, Child = row, Cursor = Cursors.Arrow, ToolTip = url };
+        chip.MouseEnter += (_, _) => chip.SetResourceReference(Border.BackgroundProperty, "Row.Hover");
+        chip.MouseLeave += (_, _) => chip.Background = Brushes.Transparent;
+        if (click is not null)
+        {
+            chip.MouseLeftButtonUp += (_, _) => click();
+            chip.MouseUp += (_, e) => { if (e.ChangedButton == MouseButton.Middle && url is not null) Open(url); };
+        }
+        if (mark is not null)
+        {
+            var menu = new ContextMenu();
+            var open = new MenuItem { Header = "Open in New Tab" }; open.Click += (_, _) => Open(mark.Url);
+            var remove = new MenuItem { Header = "Remove Bookmark" }; remove.Click += (_, _) => Shared.Bookmarks.Remove(mark.Id);
+            menu.Items.Add(open); menu.Items.Add(remove);
+            chip.ContextMenu = menu;
+        }
+        return chip;
+    }
+
+    // MARK: - zoom, print, windows
+
+    static readonly double[] ZoomSteps = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
+
+    void Zoom(int by)
+    {
+        if (live?.View is not { CoreWebView2: not null } view) return;
+        var now = view.ZoomFactor;
+        view.ZoomFactor = by == 0 ? 1
+            : by > 0 ? ZoomSteps.FirstOrDefault(z => z > now + 0.001, ZoomSteps[^1])
+            : ZoomSteps.LastOrDefault(z => z < now - 0.001, ZoomSteps[0]);
+        live.Zoom = view.ZoomFactor;
+    }
+
+    void Print()
+    {
+        try { live?.View?.CoreWebView2?.ShowPrintUI(CoreWebView2PrintDialogKind.Browser); } catch (Exception ex) { App.Log(ex); }
+    }
+
+    void NewWindow()
+    {
+        var w = new MainWindow(null, persistent: false);
+        w.Show();
+    }
+
+    /// <summary>A link handed to a running Search (default browser, a second launch).</summary>
+    public void OpenExternal(string url)
+    {
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        var target = File.Exists(url) ? new Uri(Path.GetFullPath(url)).AbsoluteUri : Omnibox.Resolve(url, engine, customEngine);
+        Open(target);
+    }
+
+    void OpenFile()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Open File" };
+        if (dialog.ShowDialog(this) == true) Open(new Uri(dialog.FileName).AbsoluteUri);
+    }
+
+    async void PasteAndGo()
+    {
+        try { if (Clipboard.GetText() is { Length: > 0 } text) Open(Omnibox.Resolve(text.Trim(), engine, customEngine)); } catch { }
+        await Task.CompletedTask;
+    }
+
+    void DuplicateTab()
+    {
+        if (live is { IsBlank: false } t) Open(t.Url);
+    }
+
+    void ToggleDevTools() => live?.View?.CoreWebView2?.OpenDevToolsWindow();
+
+    void ClearBrowsingDataPage() => OpenPage("search://settings/privacy");
+}

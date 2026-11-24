@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><title>History</title><link rel="stylesheet" href="common.css"></head>
+<body><div class="page">
+  <h1>History</h1><p class="sub">Where you have been. Kept on this PC only.</p>
+  <div class="toolbar"><input id="q" class="grow" type="search" placeholder="Search history" autocomplete="off"><button id="clear" class="danger">Clear browsing data…</button></div>
+  <div id="list"></div>
+</div>
+<script src="bridge.js"></script>
+<script>
+const list = document.getElementById('list'), q = document.getElementById('q');
+let timer;
+q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(ask, 120); });
+document.getElementById('clear').onclick = () => host.send('navigate', { url: 'search://settings/privacy' });
+function ask() { host.send('history.query', { q: q.value }); }
+host.on('history.items', m => {
+  if (!m.items.length) { list.innerHTML = `<div class="empty">${q.value ? 'Nothing matches.' : 'No history yet.'}</div>`; return; }
+  let day = '', html = '';
+  for (const v of m.items) {
+    const d = new Date(v.last), key = d.toDateString();
+    if (key !== day) { day = key; const today = new Date().toDateString(), y = new Date(Date.now() - 864e5).toDateString();
+      html += `<div class="day">${key === today ? 'Today' : key === y ? 'Yesterday' : d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</div>`; }
+    html += `<div class="row" data-url="${esc(v.url)}"><span class="mark">${esc(letter(v.url))}</span>
+      <a class="main" href="${esc(v.url)}"><span class="t">${esc(v.title || hostOf(v.url))}</span><span class="u">${esc(hostOf(v.url))}</span></a>
+      <span class="when">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="acts"><button class="icon" title="Remove from history" data-del="1">&#xE711;</button></span></div>`;
+  }
+  list.innerHTML = html;
+});
+list.addEventListener('click', e => { const b = e.target.closest('[data-del]'); if (!b) return; const row = b.closest('.row'); host.send('history.remove', { url: row.dataset.url }); row.remove(); });
+host.on('refresh', ask);
+ask();
+</script></body></html>

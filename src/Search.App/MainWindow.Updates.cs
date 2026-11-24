@@ -34,15 +34,16 @@ public partial class MainWindow
         hourly.Start();
     }
 
-    async Task CheckForUpdates(bool byHand)
+    async Task CheckForUpdates(bool byHand, Action<string>? report = null)
     {
-        if (stage != UpdateStage.None) { if (byHand) ShowUpdateState(); return; }
+        void Say(string text, MessageBoxImage icon) { if (report is not null) report(text); else MessageBox.Show(this, text, "Search", MessageBoxButton.OK, icon); }
+        if (stage != UpdateStage.None) { if (byHand) { ShowUpdateState(); report?.Invoke(stage == UpdateStage.Ready ? $"Search {found?.Version} is ready. Restart to update." : "Downloading an update…"); } return; }
         try
         {
             found = await Updates.Check(http, Version.Number);
             if (found is null)
             {
-                if (byHand) MessageBox.Show(this, $"Search {Version.Current} is the newest version.", "Search", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (byHand) Say($"Search {Version.Current} is the newest version.", MessageBoxImage.Information);
                 return;
             }
             stage = UpdateStage.Fetching;
@@ -56,12 +57,13 @@ public partial class MainWindow
             installer = path;
             stage = UpdateStage.Ready;
             ShowUpdateState();
+            report?.Invoke($"Search {found.Version} is ready. Restart to update.");
         }
         catch (Exception e)
         {
             stage = UpdateStage.None;
             App.Log(e);
-            if (byHand) MessageBox.Show(this, "Search couldn't check for updates. Check your connection and try again.", "Search", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (byHand) Say("Search couldn't check for updates. Check your connection and try again.", MessageBoxImage.Warning);
         }
     }
 
