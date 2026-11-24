@@ -159,7 +159,7 @@ public partial class MainWindow : Window
     {
         EndEditing(commit: false);
         if (t != live) CloseFind();
-        if (live is not null) { live.Live = false; if (live.View is not null) live.View.Visibility = Visibility.Hidden; }
+        if (live is not null) live.Live = false;
         live = t;
         if (SplitOf(t) is { } own) own.Focused = t.Id;
         t.Live = true;
@@ -169,11 +169,16 @@ public partial class MainWindow : Window
         SaveSoon();
     }
 
+    DateTime settled = DateTime.MinValue;
+
     void ShowLive()
     {
         if (live is null) return;
         Title = live.IsBlank ? "Search" : $"{live.Label} - Search";
-        foreach (var o in Ordered()) if (o.View is { } ov) ov.Visibility = Visibility.Hidden;
+        settled = DateTime.UtcNow;
+        var keep = new HashSet<Tab>();
+        if (!live.IsBlank) { keep.Add(live); if (SplitOf(live) is { } own) foreach (var id in own.Tabs) if (TabById(id) is { } m) keep.Add(m); }
+        foreach (var o in Ordered()) if (o.View is { } ov && !keep.Contains(o)) ov.Visibility = Visibility.Hidden;
         if (live.IsBlank)
         {
             if (live.View is not null) live.View.Visibility = Visibility.Hidden;
@@ -222,7 +227,7 @@ public partial class MainWindow : Window
             await view.EnsureCoreWebView2Async(environment, options);
         }
         var core = view.CoreWebView2;
-        void Focused(object? _, RoutedEventArgs __) { if (t != live && t.View == view && SplitOf(t) is { } own && live is not null && own.Holds(live.Id)) Select(t); }
+        void Focused(object? _, RoutedEventArgs __) { if ((DateTime.UtcNow - settled).TotalMilliseconds < 500) return; if (t != live && t.View == view && SplitOf(t) is { } own && live is not null && own.Holds(live.Id)) Select(t); }
         view.GotFocus += Focused;
         view.GotKeyboardFocus += (a, b) => Focused(a, b);
         core.Settings.IsStatusBarEnabled = true;

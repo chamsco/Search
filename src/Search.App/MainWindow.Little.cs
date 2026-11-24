@@ -32,24 +32,27 @@ public partial class MainWindow
     {
         try
         {
-            var w = await Mini(url, little: true);
+            var w = await Mini(url, little: true, place: w =>
+            {
+                w.Width = 440; w.Height = 700;
+                w.WindowStartupLocation = WindowStartupLocation.Manual;
+                w.Left = Math.Max(0, Left + Width - 440 - 24);
+                w.Top = Math.Max(0, Top + 60);
+            });
             if (w is null) return;
-            w.Width = 440; w.Height = 700;
-            w.WindowStartupLocation = WindowStartupLocation.Manual;
-            w.Left = Math.Max(0, Left + Width - 440 - 24);
-            w.Top = Math.Max(0, Top + 60);
             w.OpenInSearch.Click += (_, _) => { var at = w.View.CoreWebView2?.Source ?? url; w.Close(); Open(at); Activate(); };
             w.Shut.Click += (_, _) => w.Close();
             w.PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape || (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control)) { w.Close(); e.Handled = true; } };
-            w.Show();
         }
         catch (Exception e) { App.Log(e); }
     }
 
-    async Task<MiniWindow?> Mini(string url, bool little)
+    async Task<MiniWindow?> Mini(string url, bool little, Action<MiniWindow> place)
     {
         if (environment is null) return null;
         var w = new MiniWindow(little) { Owner = this };
+        place(w);
+        w.Show(); // a web view starts only once its window exists
         var name = live is null ? null : StoreNameOf(live);
         if (name is null) await w.View.EnsureCoreWebView2Async(environment);
         else
@@ -166,15 +169,17 @@ public partial class MainWindow
             dim.MouseDown += (_, _) => ClosePeek();
             dim.Show();
 
-            var panel = await Mini(url, little: false);
+            var panel = await Mini(url, little: false, place: p =>
+            {
+                p.Width = Math.Round(w * 0.82);
+                p.Height = Math.Round(h * 0.9);
+                p.WindowStartupLocation = WindowStartupLocation.Manual;
+                p.Left = topLeft.X + (w - p.Width) / 2;
+                p.Top = topLeft.Y + (h - p.Height) / 2;
+                peek = p;
+                peekFrom = from;
+            });
             if (panel is null || dim is null || live != from) { panel?.Close(); ClosePeek(); return; }
-            peek = panel;
-            peekFrom = from;
-            panel.Width = Math.Round(w * 0.82);
-            panel.Height = Math.Round(h * 0.9);
-            panel.WindowStartupLocation = WindowStartupLocation.Manual;
-            panel.Left = topLeft.X + (w - panel.Width) / 2;
-            panel.Top = topLeft.Y + (h - panel.Height) / 2;
             panel.Shut.Click += (_, _) => ClosePeek();
             panel.OpenInSearch.Content = "Open as tab";
             panel.OpenInSearch.Click += (_, _) =>
@@ -189,7 +194,6 @@ public partial class MainWindow
                 if (e.Key == Key.Escape || (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control)) { ClosePeek(); e.Handled = true; }
             };
             panel.Deactivated += (_, _) => { if (peek == panel && panel.IsVisible && !Shared.Prefs.Data.PeekStays) Dispatcher.BeginInvoke(() => { if (peek == panel && !panel.IsActive && !(dim?.IsActive ?? false)) ClosePeek(); }); };
-            panel.Show();
         }
         catch (Exception e) { App.Log(e); ClosePeek(); }
     }
