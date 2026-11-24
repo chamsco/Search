@@ -220,7 +220,7 @@ try
 
     // ---- wave 3: spaces, profiles, layout ----
     try { app.Close(); } catch { }
-    app.WaitWhileMainHandleIsMissing(TimeSpan.FromSeconds(1));
+    try { app.WaitWhileMainHandleIsMissing(TimeSpan.FromSeconds(1)); } catch { }
     Thread.Sleep(2500);
     File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"spacesOn\":true}");
     var workId = Guid.NewGuid();
