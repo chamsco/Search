@@ -96,6 +96,8 @@ public partial class MainWindow : Window
         var shape = persistent ? Session.Load(space.Id, windowId) : null;
         if (shape is not null)
         {
+            StateOf(space).Groups.AddRange(shape.Groups);
+            StateOf(space).Folders.AddRange(shape.Folders);
             if (shape.SideWidth is double w) SideColumn.Width = new GridLength(Math.Clamp(w, SideMin, SideMax));
             foreach (var e in shape.Tabs)
             {
@@ -107,6 +109,7 @@ public partial class MainWindow : Window
             }
         }
         restoring = false;
+        RebuildRows(StateOf(space));
         if (shape is not null && !Shared.Prefs.Data.StartFresh) RestoreSplits(StateOf(space), shape);
         wasTop = false; // the saved column width must not undo a top layout
         ApplyTabsLayout();
@@ -159,9 +162,12 @@ public partial class MainWindow : Window
     {
         EndEditing(commit: false);
         if (t != live) CloseFind();
+        var previous = live;
         if (live is not null) live.Live = false;
         live = t;
         if (SplitOf(t) is { } own) own.Focused = t.Id;
+        if (t.GroupId is not null) RebuildRows(StateOf(space));
+        if (previous is not null && previous != t) DipPage();
         t.Live = true;
         t.LastSeen = DateTime.UtcNow;
         PeekFollows();
@@ -398,6 +404,7 @@ public partial class MainWindow : Window
     {
         if (t.IsPin || t.IsBlank) return;
         tabs.Remove(t);
+        t.GroupId = null;
         t.PinId = Guid.NewGuid();
         t.Home = t.Url;
         pins.Add(t);
@@ -408,6 +415,7 @@ public partial class MainWindow : Window
     {
         if (!t.IsPin) return;
         pins.Remove(t);
+        t.FolderId = null;
         t.PinId = null;
         t.Home = null;
         tabs.Insert(0, t);
@@ -733,6 +741,7 @@ public partial class MainWindow : Window
             menu.Items.Add(new Separator());
             menu.Items.Add(Item("Rename", () => BeginRenaming(t)));
         }
+        AddGroupItems(menu, t, (h, a, on) => Item(h, a, null, on));
         menu.Items.Add(Item("Duplicate", () => Duplicate(t), enabled: !t.IsBlank));
         if (Shared.Prefs.Data.LittleLinks && !t.IsPin)
             menu.Items.Add(Item("Open in Small Window", () => { var url = t.Url; Close(t); OpenLittle(url); }, enabled: !t.IsBlank && !t.IsInternal));
@@ -783,6 +792,7 @@ public partial class MainWindow : Window
             finally
             {
                 source.Opacity = 1;
+                if (dragging is { } landed) Landed(landed);
                 dragging = null;
                 PinDrop.Visibility = Visibility.Collapsed;
                 SaveSoon();
@@ -799,6 +809,7 @@ public partial class MainWindow : Window
         // Within one list, the row moves as you go, so you see where it will land.
         if (moving.IsPin == target.IsPin)
         {
+            if (moving.IsPin && FoldersShown && moving.FolderId != target.FolderId) { moving.FolderId = target.FolderId; RebuildRows(StateOf(space)); }
             var list = moving.IsPin ? pins : tabs;
             int from = list.IndexOf(moving), to = list.IndexOf(target);
             if (from >= 0 && to >= 0 && from != to) list.Move(from, to);
@@ -812,6 +823,7 @@ public partial class MainWindow : Window
         if (moving.IsPin == target.IsPin) return; // already moved while dragging
         if (target.IsPin && moving.IsBlank) return;
         (moving.IsPin ? pins : tabs).Remove(moving);
+        moving.GroupId = null; moving.FolderId = null;
         if (target.IsPin) { moving.PinId = Guid.NewGuid(); moving.Home = moving.Url; }
         else { moving.PinId = null; moving.Home = null; }
         var to = target.IsPin ? pins : tabs;
@@ -941,15 +953,14 @@ public partial class MainWindow : Window
         if (Side.Visibility == Visibility.Visible)
         {
             sideBefore = SideColumn.ActualWidth;
-            Side.Visibility = Visibility.Collapsed;
-            SideColumn.Width = new GridLength(0);
+            FoldColumn(sideBefore, 0, () => { Side.Visibility = Visibility.Collapsed; SideColumn.Width = new GridLength(0); ApplyLayout(); });
         }
         else
         {
             Side.Visibility = Visibility.Visible;
-            SideColumn.Width = new GridLength(sideBefore);
+            ApplyLayout();
+            FoldColumn(0, sideBefore > 0 ? sideBefore : 232, () => { SideColumn.Width = new GridLength(sideBefore > 0 ? sideBefore : 232); ApplyLayout(); });
         }
-        ApplyLayout();
     }
 
     bool TopLayout => Shared.Prefs.Data.Layout == TabsLayout.Top;
@@ -967,7 +978,7 @@ public partial class MainWindow : Window
         }
         TopBar.Visibility = top ? Visibility.Visible : Visibility.Collapsed;
         var rows = Shared.Prefs.Data.PinsAsRows;
-        PinGrid.ItemTemplate = (DataTemplate)FindResource(rows ? "TabRow" : "PinTile");
+        if (rowsMode != rows) { RebuildRows(StateOf(space)); SetRowSources(StateOf(space)); }
         PinGrid.ItemsPanel = rows
             ? new ItemsPanelTemplate(new FrameworkElementFactory(typeof(StackPanel)))
             : (ItemsPanelTemplate)PinGridPanel;

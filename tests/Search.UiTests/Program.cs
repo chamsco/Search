@@ -456,6 +456,122 @@ try
     Thread.Sleep(9000);
     var back = app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
     Step("Quit with two windows (Ctrl+Shift+Q), open Search again: both windows come back, each with its own tabs", listed && back >= 2 && Directory.GetFiles(data, "session-w*.json").Length >= 1, $"windows.json lists one: {listed}, windows open: {back}, window session files: {Directory.GetFiles(data, "session-w*.json").Length} · " + Shot("windows-restored"));
+
+
+    // ---- wave 5: tab groups, pin folders, motion ----
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w5-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    var work5 = Guid.NewGuid();
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"pinsAsRows\":true,\"spacesOn\":true}");
+    File.WriteAllText(Path.Combine(data, "spaces.json"),
+        "[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Personal\"},{\"id\":\"" + work5 + "\",\"name\":\"Work\",\"colour\":1,\"icon\":0,\"sharesSignIns\":false}]");
+    File.WriteAllText(Path.Combine(data, "session.json"),
+        "{\"tabs\":[{\"url\":\"https://example.org/\",\"title\":\"Example Domain\"},{\"url\":\"https://example.com/\",\"title\":\"Example Domain\"},{\"url\":\"https://example.net/\",\"title\":\"Example Domain\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(7000);
+
+    System.Text.Json.JsonElement Session5() { using var d = System.Text.Json.JsonDocument.Parse(SessionText()); return d.RootElement.Clone(); }
+    AutomationElement? MenuEntry(string name)
+    {
+        try
+        {
+            return automation.GetDesktop().FindAllDescendants(cf => cf.ByName(name)).FirstOrDefault(e => e.ControlType == FlaUI.Core.Definitions.ControlType.MenuItem);
+        }
+        catch { return null; }
+    }
+    AutomationElement? Heading(string name) => window!.FindAllDescendants(cf => cf.ByName(name)).FirstOrDefault(e => e.ControlType != FlaUI.Core.Definitions.ControlType.MenuItem);
+    void Choose(AutomationElement row, params string[] path)
+    {
+        Mouse.Click(CentreOf(row), MouseButton.Right);
+        Thread.Sleep(900);
+        foreach (var name in path)
+        {
+            var item = MenuEntry(name);
+            item?.Click();
+            Thread.Sleep(900);
+        }
+    }
+
+    Choose(Rows()[1], "Add to Group", "New Group");
+    Keyboard.Type("Research");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(2500);
+    string GroupsNote() { try { return System.Text.RegularExpressions.Regex.Replace(Session5().GetProperty("groups").ToString(), "\\s+", "").Replace("|", "/"); } catch { return "none"; } }
+    Step("Tab menu › Add to Group › New Group, type Research: a heading appears above the tab, the group is saved",
+        GroupsNote().Contains("Research") && Heading("Research") is not null, $"groups: {GroupsNote()} · " + Shot("group-new"));
+
+    Choose(Rows()[2], "Add to Group", "Research");
+    Thread.Sleep(2000);
+    int Members() { try { var root = Session5(); var gid = root.GetProperty("groups")[0].GetProperty("id").GetString(); return root.GetProperty("tabs").EnumerateArray().Count(t => t.TryGetProperty("group", out var g) && g.GetString() == gid); } catch { return -1; } }
+    Step("Add the third tab to Research from its menu: two tabs sit under the heading", Members() == 2, $"members: {Members()} · " + Shot("group-two"));
+
+    var head = Heading("Research");
+    if (head is not null) Mouse.Click(CentreOf(head));
+    Thread.Sleep(2500);
+    var folded = GroupsNote().Contains("\"collapsed\":true");
+    var rowsWhileFolded = Rows().Count;
+    Step("Click the heading: the group folds to its name and a count", folded, $"collapsed saved: {folded}, tab rows left: {rowsWhileFolded} · " + Shot("group-folded"));
+    if (head is not null) Mouse.Click(CentreOf(head));
+    Thread.Sleep(2000);
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type("example.org/?loose");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(5000);
+    var loose = Rows().LastOrDefault();
+    head = Heading("Research");
+    if (loose is not null && head is not null) Mouse.Drag(CentreOf(loose), CentreOf(head));
+    Thread.Sleep(3000);
+    Step("Drag a loose tab onto the Research heading: it joins the group", Members() == 3, $"members: {Members()} · " + Shot("group-drop"));
+
+    // Pin a tab, then folders: pinned rows are on, so the pin is a row.
+    Choose(Rows()[0], "Pin");
+    Thread.Sleep(2000);
+    Choose(Rows()[0], "Move to Folder", "New Folder");
+    Keyboard.Type("Work");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(2500);
+    string FoldersNote() { try { return System.Text.RegularExpressions.Regex.Replace(Session5().GetProperty("folders").ToString(), "\\s+", "").Replace("|", "/"); } catch { return "none"; } }
+    Step("Pin a tab, its menu › Move to Folder › New Folder, type Work: a folder heading holds the pin",
+        FoldersNote().Contains("Work") && SessionText().Contains("\"folder\""), $"folders: {FoldersNote()} · " + Shot("folder-new"));
+
+    var wh = Heading("Work");
+    if (wh is not null) { Mouse.Click(CentreOf(wh), MouseButton.Right); Thread.Sleep(900); MenuEntry("New Folder Inside")?.Click(); Thread.Sleep(1200); Keyboard.Type("Deep"); Keyboard.Press(VirtualKeyShort.RETURN); }
+    Thread.Sleep(2500);
+    var nested = false;
+    try { var fs = Session5().GetProperty("folders"); nested = fs.GetArrayLength() == 2 && fs.EnumerateArray().Any(f => f.TryGetProperty("parent", out var p) && p.ValueKind == System.Text.Json.JsonValueKind.String); } catch { }
+    Step("Right-click the folder › New Folder Inside, type Deep: a folder inside a folder, set further in", nested, $"folders: {FoldersNote()} · " + Shot("folder-nested"));
+
+    Quit();
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(8000);
+    Step("Quit and open again: the group, the folder and the folder inside it are still there", Heading("Research") is not null && Heading("Work") is not null && Heading("Deep") is not null,
+        $"headings found: Research {Heading("Research") is not null}, Work {Heading("Work") is not null}, Deep {Heading("Deep") is not null} · " + Shot("groups-restored"));
+
+    // Motion: a still can only catch it part of the way, so each is shot straight away and again once settled.
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_S);
+    var midFold = Shot("column-folding");
+    Thread.Sleep(1200);
+    var folded2 = window.FindFirstDescendant(cf => cf.ByAutomationId("NewTabRow")) is null;
+    Step("Ctrl+Shift+S: the column folds away (a still shot straight after, then settled)", folded2, $"column gone: {folded2} · {midFold} · " + Shot("column-folded"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_S);
+    Thread.Sleep(1200);
+    Step("Ctrl+Shift+S again: the column comes back", window.FindFirstDescendant(cf => cf.ByAutomationId("NewTabRow")) is not null, Shot("column-back"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_2);
+    var midSwipe = Shot("space-swiping");
+    Thread.Sleep(1500);
+    Step("Ctrl+Alt+2: the rows of the next space slide in from the side (a still straight after, then settled)", !app.HasExited, $"{midSwipe} · " + Shot("space-swiped"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
+    Thread.Sleep(1500);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_2);
+    var midSwitch = Shot("tab-switching");
+    Thread.Sleep(800);
+    Step("Ctrl+2: the page dips as the next tab comes up, its row takes the wash (a still straight after, then settled)", !app.HasExited, $"{midSwitch} · " + Shot("tab-switched"));
 }
 catch (Exception e)
 {

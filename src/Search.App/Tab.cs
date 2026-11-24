@@ -55,6 +55,17 @@ public sealed class Tab : INotifyPropertyChanged
     public WebView2? View { get; set; }
     public bool Asleep => View is null;
 
+    Guid? groupId;
+    /// <summary>The tab group it is in.</summary>
+    public Guid? GroupId { get => groupId; set { if (Set(ref groupId, value)) Raise(nameof(InGroup)); } }
+    public bool InGroup => groupId is not null;
+    /// <summary>For a pin, the folder among the pinned rows it is in.</summary>
+    public Guid? FolderId { get; set; }
+
+    System.Windows.Thickness indent = new(0, 0, 0, 2);
+    /// <summary>How far in the row is set: inside a group, or a pinned folder.</summary>
+    public System.Windows.Thickness Indent { get => indent; set => Set(ref indent, value); }
+
     bool inSplit;
     /// <summary>Shown beside others in Split View.</summary>
     public bool InSplit { get => inSplit; set => Set(ref inSplit, value); }
@@ -95,12 +106,12 @@ public sealed class Tab : INotifyPropertyChanged
 
     public SessionEntry ToEntry() => new()
     {
-        Url = url, Title = title, PinId = pinId, Home = Home, Name = name, LastSeen = LastSeen,
+        Url = url, Title = title, PinId = pinId, Home = Home, Name = name, LastSeen = LastSeen, Group = groupId, Folder = FolderId,
     };
 
     public static Tab From(SessionEntry e) => new()
     {
-        url = e.Url, title = e.Title, pinId = e.PinId, Home = e.Home, name = e.Name, LastSeen = e.LastSeen ?? DateTime.UtcNow,
+        url = e.Url, title = e.Title, pinId = e.PinId, Home = e.Home, name = e.Name, LastSeen = e.LastSeen ?? DateTime.UtcNow, groupId = e.Group, FolderId = e.Folder,
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;

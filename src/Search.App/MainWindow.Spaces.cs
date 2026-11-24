@@ -24,6 +24,10 @@ public partial class MainWindow
         public ObservableCollection<Tab> Pins { get; } = [];
         public ObservableCollection<Tab> Tabs { get; } = [];
         public List<TabSplit> Splits { get; } = [];
+        public List<TabGroup> Groups { get; } = [];
+        public List<PinFolder> Folders { get; } = [];
+        public ObservableCollection<object> Rows { get; } = [];
+        public ObservableCollection<object> PinRows { get; } = [];
         public Tab? Live { get; set; }
         public bool Restored { get; set; }
     }
@@ -38,6 +42,8 @@ public partial class MainWindow
         void Mark(object? _, NotifyCollectionChangedEventArgs e) { foreach (Tab t in e.NewItems ?? Array.Empty<Tab>()) t.SpaceId = s.Id; }
         st.Pins.CollectionChanged += Mark;
         st.Tabs.CollectionChanged += Mark;
+        st.Pins.CollectionChanged += (_, e) => RowsChanged(st, e, pins: true);
+        st.Tabs.CollectionChanged += (_, e) => RowsChanged(st, e, pins: false);
         return states[s.Id] = st;
     }
 
@@ -63,10 +69,9 @@ public partial class MainWindow
 
     void BindLists()
     {
-        PinGrid.ItemsSource = pins;
-        TabList.ItemsSource = tabs;
-        TopPins.ItemsSource = pins;
-        TopTabs.ItemsSource = tabs;
+        var st = StateOf(space);
+        RebuildRows(st);
+        SetRowSources(st);
     }
 
     // MARK: - saving
@@ -80,6 +85,8 @@ public partial class MainWindow
             Tabs = all.Select(t => t.ToEntry()).ToList(),
             Active = liveTab is null ? 0 : Math.Max(0, all.IndexOf(liveTab)),
             SideWidth = SideColumn.Width.Value,
+            Groups = [.. StateOf(s).Groups],
+            Folders = [.. StateOf(s).Folders],
             Splits = StateOf(s).Splits.Where(x => x.IsValid && x.Tabs.All(id => all.Any(t => t.Id == id)))
                 .Select(x => x.ToEntry(id => all.FindIndex(t => t.Id == id))).ToList(),
         }, s.Id, windowId);
@@ -97,6 +104,8 @@ public partial class MainWindow
     void SwitchSpace(Space target)
     {
         if (target.Id == space.Id || !Shared.Book.Spaces.Contains(target)) return;
+        var mineNow = Shared.Book.In(profileId).ToList();
+        var swipe = Math.Sign(mineNow.IndexOf(target) - mineNow.IndexOf(space));
         EndEditing(commit: false);
         CloseFind();
         MarkPopup.IsOpen = false;
@@ -115,6 +124,8 @@ public partial class MainWindow
             st.Restored = true;
             restoring = true;
             var shape = persistent ? Session.Load(target.Id, windowId) : null;
+            st.Groups.AddRange(shape?.Groups ?? []);
+            st.Folders.AddRange(shape?.Folders ?? []);
             foreach (var e in shape?.Tabs ?? [])
             {
                 var t = Tab.From(e);
@@ -122,6 +133,7 @@ public partial class MainWindow
                 (t.IsPin ? pins : tabs).Add(t);
             }
             restoring = false;
+            RebuildRows(st);
             if (shape is not null) RestoreSplits(st, shape);
             if (shape is not null && Ordered().ElementAtOrDefault(shape.Active) is { } was) st.Live = was;
         }
@@ -130,6 +142,7 @@ public partial class MainWindow
         if (pick is null) NewTab(); else Select(pick);
         ApplyWash();
         RebuildStrip();
+        SwipeRows(swipe);
         SaveSoon();
     }
 
@@ -279,6 +292,7 @@ public partial class MainWindow
     {
         if (target.Id == space.Id) return;
         var wasLive = t == live;
+        t.GroupId = null; t.FolderId = null;
         if (t.View is { } v) { Stage.Children.Remove(v); v.Dispose(); t.View = null; }
         (t.IsPin ? pins : tabs).Remove(t);
         t.Live = false;
