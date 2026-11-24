@@ -137,3 +137,79 @@ public class HistoryTests
     public void IdentityIgnoresSchemeWwwAndSlash() =>
         Assert.Equal(History.Identity("http://www.example.com/"), History.Identity("https://example.com#top"));
 }
+
+public class SuggestionTests
+{
+    [Fact]
+    public void FirstDayKnowsPopularSites()
+    {
+        var h = new History(() => new DateTime(2026, 11, 24));
+        var s = h.Suggestions("you");
+        Assert.Equal("youtube.com", s[0].Key);
+        Assert.Equal("tube.com", History.Completion("you", s));
+    }
+
+    [Fact]
+    public void KnownSiteFoundByItsName() =>
+        Assert.Contains(new History().Suggestions("hacker"), s => s.Key == "news.ycombinator.com");
+
+    [Fact]
+    public void VisitedOutranksKnown()
+    {
+        var h = new History(() => new DateTime(2026, 11, 24));
+        h.Record("https://gitlab.com/", "GitLab");
+        Assert.Equal("gitlab.com", h.Suggestions("git")[0].Key);
+    }
+
+    [Fact]
+    public void KnownSiteDroppedOnceVisited()
+    {
+        var h = new History(() => new DateTime(2026, 11, 24));
+        h.Record("https://github.com/driceroland/search", "Search");
+        Assert.DoesNotContain(h.Suggestions("github"), s => s.Kind == SuggestionKind.Known);
+    }
+
+    [Theory]
+    [InlineData("[\"cat\",[\"cats\",\"cat videos\"]]", 2)]
+    [InlineData("[{\"phrase\":\"cats\"},{\"phrase\":\"cat food\"}]", 2)]
+    [InlineData("not json", 0)]
+    public void ParsesEngineSuggestions(string body, int count) => Assert.Equal(count, EngineSuggester.Parse(body).Count);
+
+    [Fact]
+    public void EngineWordsGoUnderTheRestWithoutRepeatingTheTypedText()
+    {
+        var rows = Omnibox.Offers("cat", new History(), Engine.Google);
+        var all = Omnibox.WithEngine(rows, "cat", ["cat", "cats", "Cats"], Engine.Google);
+        Assert.Single(all, s => s.Kind == SuggestionKind.Suggested);
+        Assert.Equal(SuggestionKind.Suggested, all[^1].Kind);
+    }
+}
+
+public class UpdateTests
+{
+    const string Feed = """
+    [
+      {"tag_name":"v1.0.19.14","draft":false,"html_url":"https://github.com/chamsco/Search/releases/tag/v1.0.19.14",
+       "assets":[{"name":"Search-win-x64-portable.zip","browser_download_url":"https://x/zip"},
+                 {"name":"Search-Setup-1.0.19.14-x64.exe","browser_download_url":"https://x/14.exe"}]},
+      {"tag_name":"v1.0.19-win.3","draft":false,"html_url":"h","assets":[{"name":"Search-Setup-1.0.19-x64.exe","browser_download_url":"https://x/3.exe"}]},
+      {"tag_name":"v1.0.19.20","draft":true,"html_url":"h","assets":[{"name":"Search-Setup-1.0.19.20-x64.exe","browser_download_url":"https://x/20.exe"}]}
+    ]
+    """;
+
+    [Fact]
+    public void PicksNewestNonDraftWithInstaller()
+    {
+        var r = Updates.Newer(Feed, new System.Version(1, 0, 19, 3));
+        Assert.NotNull(r);
+        Assert.Equal("https://x/14.exe", r!.InstallerUrl);
+    }
+
+    [Fact]
+    public void NothingWhenUpToDate() => Assert.Null(Updates.Newer(Feed, new System.Version(1, 0, 19, 14)));
+
+    [Theory]
+    [InlineData("v1.0.19-win.3", "1.0.19.3")]
+    [InlineData("v1.0.19.14", "1.0.19.14")]
+    public void ReadsBothTagShapes(string tag, string version) => Assert.Equal(System.Version.Parse(version), Updates.VersionOf(tag));
+}

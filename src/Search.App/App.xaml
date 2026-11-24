@@ -6,5 +6,82 @@
     <!-- SF Pro on the Mac; Segoe UI Variable on Windows 11, Segoe UI on Windows 10. -->
     <FontFamily x:Key="Text">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="Glyphs">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <!-- Menus in Search's own look: the ground, a hairline, corners of 10, a soft shadow (as the field's list). -->
+    <Style TargetType="ContextMenu">
+      <Setter Property="OverridesDefaultStyle" Value="True" />
+      <Setter Property="HasDropShadow" Value="False" />
+      <Setter Property="FontFamily" Value="{StaticResource Text}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ContextMenu">
+            <Border Margin="10,4,14,18" Padding="5" CornerRadius="10" MinWidth="200"
+                    Background="{DynamicResource Ground}" BorderBrush="{DynamicResource Hairline}" BorderThickness="1">
+              <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.10" BlurRadius="18" ShadowDepth="5" Direction="270" />
+              </Border.Effect>
+              <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="MenuItem">
+      <Setter Property="OverridesDefaultStyle" Value="True" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="MenuItem">
+            <Border x:Name="B" CornerRadius="6" Padding="10,5" Background="Transparent">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding InputGestureText}" Margin="24,0,0,0"
+                           Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" />
+                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
+              </DockPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="B" Property="Background" Value="{DynamicResource Wash}" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource Faint}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="Separator">
+      <Setter Property="OverridesDefaultStyle" Value="True" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Separator">
+            <Border Height="1" Margin="8,5" Background="{DynamicResource Hairline}" />
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ToolTip">
+      <Setter Property="OverridesDefaultStyle" Value="True" />
+      <Setter Property="HasDropShadow" Value="False" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToolTip">
+            <Border Margin="4,4,8,10" Padding="8,4" CornerRadius="6" Background="{DynamicResource Ground}"
+                    BorderBrush="{DynamicResource Hairline}" BorderThickness="1">
+              <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.08" BlurRadius="10" ShadowDepth="2" Direction="270" />
+              </Border.Effect>
+              <ContentPresenter TextElement.FontSize="12" TextElement.Foreground="{DynamicResource Ink}"
+                                TextElement.FontFamily="{StaticResource Text}" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Application.Resources>
 </Application>

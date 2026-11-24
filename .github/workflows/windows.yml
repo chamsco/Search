@@ -3,12 +3,32 @@ name: Windows build
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
+  # Fast check on Linux: the core tests, and the whole solution compiled for Windows.
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Test
+        run: dotnet test tests/Search.Core.Tests -c Release
+      - name: Compile everything
+        run: dotnet build Search.sln -c Release
+
   build:
     runs-on: windows-latest
+    env:
+      VERSION: 1.0.19.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -17,9 +37,47 @@ jobs:
       - name: Test
         run: dotnet test tests/Search.Core.Tests -c Release
       - name: Publish Search.exe
-        run: dotnet publish src/Search.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o out/win-x64
+        run: dotnet publish src/Search.App -c Release -r win-x64 --self-contained true -p:Version=${{ env.VERSION }} -o out/win-x64
       - name: Build installer
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\Search.iss'
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ env.VERSION }} installer\Search.iss'
+
+      # Runs the real app on this runner's desktop and screenshots each step.
+      - name: Try the app
+        id: ui
+        continue-on-error: true
+        run: dotnet run --project tests/Search.UiTests -c Release -- out/win-x64/Search.exe out/screens
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Screenshots
+          path: out/screens
+      - name: Put screenshots on the pull request
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $dir = "pr-${{ github.event.pull_request.number }}/${{ github.run_number }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin ci-screenshots 2>$null
+          if ($LASTEXITCODE -eq 0) { git worktree add shots origin/ci-screenshots } else { git worktree add --detach shots; Push-Location shots; git checkout --orphan ci-screenshots; git rm -rfq .; Pop-Location }
+          New-Item -ItemType Directory -Force "shots/$dir" | Out-Null
+          Copy-Item out/screens/* "shots/$dir/"
+          Push-Location shots
+          git add -A; git commit -qm "Screenshots for $dir"; git push -q origin HEAD:ci-screenshots
+          Pop-Location
+          $base = "https://github.com/${{ github.repository }}/blob/ci-screenshots/$dir"
+          $body = "### The app on Windows (build ${{ env.VERSION }})`n`nRun by CI on ``windows-latest``: [steps and log](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}). Result: **${{ steps.ui.outcome }}**`n`n"
+          $body += (Get-Content out/screens/steps.md -Raw) + "`n"
+          foreach ($png in Get-ChildItem out/screens/*.png | Sort-Object Name) { $body += "`n**$($png.BaseName)**`n`n![$($png.BaseName)]($base/$($png.Name)?raw=true)`n" }
+          $body += "`n---`n_Posted by CI_"
+          Set-Content body.md $body
+          gh pr comment ${{ github.event.pull_request.number }} --body-file body.md --edit-last --create-if-none
+      - name: Fail if the app didn't behave
+        if: steps.ui.outcome == 'failure'
+        run: exit 1
+
       - uses: actions/upload-artifact@v4
         with:
           name: Search-win-x64
@@ -28,3 +86,18 @@ jobs:
         with:
           name: Search-Setup
           path: out/Search-Setup-*.exe
+
+      # Every merge to main (and a v* tag, or a run by hand) becomes a release
+      # the app's own updater picks up.
+      - name: Publish release
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "v${{ env.VERSION }}" }
+          $setup = Get-ChildItem out/Search-Setup-*.exe | Select-Object -First 1
+          $zip = "out/Search-win-x64-portable.zip"
+          Compress-Archive -Path out/win-x64/* -DestinationPath $zip
+          gh release create $tag $setup.FullName $zip --target "${{ github.sha }}" `
+            --title "Search for Windows ${{ env.VERSION }}" --notes-file installer/RELEASE_NOTES.md --generate-notes

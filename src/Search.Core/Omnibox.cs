@@ -35,4 +35,16 @@ public static class Omnibox
             rows.Add(new Suggestion(text, $"Search {engine.Title()}", engine.SearchUrl(text), SuggestionKind.Search));
         return rows;
     }
+
+    /// <summary>The engine's own suggestions, added under the rest: words, not places, and none that repeats what was typed.</summary>
+    public static List<Suggestion> WithEngine(List<Suggestion> rows, string typed, IEnumerable<string> words, Engine engine, int limit = 4)
+    {
+        var text = typed.Trim();
+        var extra = words
+            .Where(w => !string.Equals(w.Trim(), text, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(limit)
+            .Select(w => new Suggestion(w, "", engine.SearchUrl(w), SuggestionKind.Suggested));
+        return rows.Concat(extra).ToList();
+    }
 }

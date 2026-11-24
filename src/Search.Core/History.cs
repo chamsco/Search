@@ -102,6 +102,16 @@ public sealed class History
             if (fit is null) continue;
             scored.Add((new Suggestion(key, v.Title, v.Url, SuggestionKind.Visited), fit.Value * Math.Log(2 + Score(v, at))));
         }
+        var visitedHosts = visits.Values.Select(v => Address.Host(v.Url)).Where(h => h is not null).ToHashSet();
+        foreach (var (host, title) in Known.Sites)
+        {
+            if (visitedHosts.Contains(host)) continue;
+            var findable = title.ToLowerInvariant() + " " + host;
+            if (!words.All(w => findable.Contains(w, StringComparison.Ordinal))) continue;
+            var fit = Fit(needle, words, host, findable);
+            if (fit is null) continue;
+            scored.Add((new Suggestion(host, title, "https://" + host, SuggestionKind.Known), fit.Value * Known.Weight));
+        }
         if (scored.Count < limit && needle.Length >= 3)
         {
             foreach (var v in visits.Values)
@@ -110,6 +120,12 @@ public sealed class History
                 var findable = (key + " " + v.Title).ToLowerInvariant();
                 if (Fuzzy.Match(words, findable) != 0) continue;
                 scored.Add((new Suggestion(key, v.Title, v.Url, SuggestionKind.Visited), 1 * Math.Log(2 + Score(v, at))));
+            }
+            foreach (var (host, title) in Known.Sites)
+            {
+                if (visitedHosts.Contains(host)) continue;
+                if (Fuzzy.Match(words, title.ToLowerInvariant() + " " + host) != 0) continue;
+                scored.Add((new Suggestion(host, title, "https://" + host, SuggestionKind.Known), Known.Weight));
             }
         }
         return scored
@@ -149,7 +165,7 @@ public sealed class History
         if (single && options[0].Kind != SuggestionKind.Visited) return null;
         foreach (var o in single ? options.Take(1) : options)
         {
-            if (o.Kind is not (SuggestionKind.Visited or SuggestionKind.Bookmark or SuggestionKind.Open)) continue;
+            if (o.Kind is not (SuggestionKind.Visited or SuggestionKind.Bookmark or SuggestionKind.Open or SuggestionKind.Known)) continue;
             var key = o.Key;
             if (key.Length < typed.Length) continue;
             if (single && key.IndexOfAny(['/', '?', '#']) >= 0) continue;
