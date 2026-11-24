@@ -1,0 +1,128 @@
+[21:14:15.654] row press 1 at 117,79
+[21:14:16.069] row moved 2,4
+[21:14:16.070] drag start Example Domain
+[21:14:16.361] drag hits 85 TextBlock:T@71 Border:T@65 Border:T@65 Border:T@65
+[21:14:16.364] drag over row rows=[T0,H,T1,T2,T3] at=17,65 h=28 local=103,20 ctx=Tab idx=0 drag=0 grp=
+[21:14:16.470] drag hits 87 
+[21:14:16.534] drag hits 87 
+[21:14:16.596] drag hits 87 
+[21:14:16.614] drag hits 89 
+[21:14:16.674] drag hits 89 
+[21:14:16.738] drag hits 89 
+[21:14:16.798] drag hits 89 
+[21:14:16.806] drag hits 91 
+[21:14:16.860] drag hits 91 
+[21:14:16.922] drag hits 91 
+[21:14:16.987] drag hits 91 
+[21:14:17.050] drag hits 91 
+[21:14:17.110] drag hits 91 
+[21:14:17.175] drag hits 91 
+[21:14:17.236] drag hits 91 
+[21:14:17.297] drag hits 91 
+[21:14:17.423] drag hits 91 
+[21:14:17.484] drag hits 91 
+[21:14:17.548] drag hits 91 
+[21:14:17.610] drag hits 91 
+[21:14:17.674] drag hits 91 
+[21:14:17.734] drag hits 91 
+[21:14:17.800] drag hits 91 
+[21:14:18.299] drag hits 108 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.300] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=108,1 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.360] drag hits 108 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.361] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=108,1 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.422] drag hits 108 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.423] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=108,1 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.487] drag hits 113 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.487] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=108,6 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.547] drag hits 113 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.547] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=108,6 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.612] drag hits 113 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.613] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=108,6 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.631] drag hits 119 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.631] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=109,12 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.689] drag hits 119 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.690] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=109,12 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.752] drag hits 119 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.753] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=109,12 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.815] drag hits 119 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.815] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=109,12 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.823] drag hits 125 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.823] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=110,18 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.875] drag hits 125 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.876] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=110,18 ctx=Tab idx=0 drag=0 grp=
+[21:14:18.940] drag hits 125 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:18.941] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=110,18 ctx=Tab idx=0 drag=0 grp=
+[21:14:19.000] drag hits 125 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:19.000] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=110,18 ctx=Tab idx=0 drag=0 grp=
+[21:14:19.014] drag hits 130 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:19.015] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=110,23 ctx=Tab idx=0 drag=0 grp=
+[21:14:19.063] drag hits 130 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:19.064] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=110,23 ctx=Tab idx=0 drag=0 grp=
+[21:14:19.127] drag hits 130 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:19.128] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=110,23 ctx=Tab idx=0 drag=0 grp=
+[21:14:19.188] drag hits 130 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[21:14:19.188] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=110,23 ctx=Tab idx=0 drag=0 grp=
+[21:14:19.471] drag hits 142 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.471] drag over heading
+[21:14:19.535] drag hits 142 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.535] drag over heading
+[21:14:19.591] drag hits 148 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.591] drag over heading
+[21:14:19.641] drag hits 148 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.641] drag over heading
+[21:14:19.704] drag hits 148 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.704] drag over heading
+[21:14:19.769] drag hits 148 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.770] drag over heading
+[21:14:19.783] drag hits 150 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.784] drag over heading
+[21:14:19.848] drag hits 150 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.848] drag over heading
+[21:14:19.909] drag hits 150 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.910] drag over heading
+[21:14:19.969] drag hits 150 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:19.970] drag over heading
+[21:14:20.034] drag hits 150 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.035] drag over heading
+[21:14:20.040] drag hits 151 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.040] drag over heading
+[21:14:20.094] drag hits 151 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.094] drag over heading
+[21:14:20.158] drag hits 151 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.158] drag over heading
+[21:14:20.220] drag hits 151 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.220] drag over heading
+[21:14:20.284] drag hits 151 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.284] drag over heading
+[21:14:20.296] drag hits 152 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.296] drag over heading
+[21:14:20.361] drag hits 152 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.361] drag over heading
+[21:14:20.425] drag hits 152 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.425] drag over heading
+[21:14:20.484] drag hits 152 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.485] drag over heading
+[21:14:20.550] drag hits 152 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.551] drag over heading
+[21:14:20.552] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.553] drag over heading
+[21:14:20.611] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.612] drag over heading
+[21:14:20.672] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.673] drag over heading
+[21:14:20.735] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.736] drag over heading
+[21:14:20.800] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.800] drag over heading
+[21:14:20.860] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.860] drag over heading
+[21:14:20.925] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.925] drag over heading
+[21:14:20.987] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:20.987] drag over heading
+[21:14:21.049] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:21.050] drag over heading
+[21:14:21.114] drag hits 153 TextBoxView:H@137 Grid:H@137 ScrollViewer:H@137 Border:H@137 TextBlock:H@141 Border:H@137
+[21:14:21.114] drag over heading
+[21:14:21.139] drop on heading
+[21:14:21.145] drag ended Move
