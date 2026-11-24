@@ -1,0 +1,62 @@
+[20:40:04.963] row press 1 at 117,79
+[20:40:05.346] row moved 2,4
+[20:40:05.347] drag start Example Domain
+[20:40:05.524] drag preview TextBlock at 120,85
+[20:40:05.526] drag over row at=17,65 h=28 local=103,20 ctx=Tab idx=0 drag=0 grp=
+[20:40:05.641] drag preview Border at 120,85
+[20:40:05.682] drag preview Border at 121,88
+[20:40:05.737] drag preview Border at 121,88
+[20:40:05.798] drag preview Border at 121,88
+[20:40:05.842] drag preview Border at 122,90
+[20:40:05.906] drag preview Border at 122,90
+[20:40:05.967] drag preview Border at 122,90
+[20:40:06.018] drag preview Border at 123,92
+[20:40:06.080] drag preview Border at 123,92
+[20:40:06.139] drag preview Border at 123,92
+[20:40:07.251] drag preview Border at 130,108
+[20:40:07.253] drag over row at=17,107 h=28 local=113,1 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.312] drag preview Border at 130,108
+[20:40:07.312] drag over row at=17,107 h=28 local=113,1 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.373] drag preview Border at 130,108
+[20:40:07.374] drag over row at=17,107 h=28 local=113,1 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.440] drag preview Border at 130,108
+[20:40:07.440] drag over row at=17,107 h=28 local=113,1 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.442] drag preview Border at 131,109
+[20:40:07.442] drag over row at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.498] drag preview Border at 131,109
+[20:40:07.499] drag over row at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.562] drag preview Border at 131,109
+[20:40:07.563] drag over row at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.625] drag preview Border at 131,109
+[20:40:07.626] drag over row at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.687] drag preview Border at 131,109
+[20:40:07.687] drag over row at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.698] drag preview Border at 132,110
+[20:40:07.698] drag over row at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.751] drag preview Border at 132,110
+[20:40:07.751] drag over row at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.812] drag preview Border at 132,110
+[20:40:07.812] drag over row at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.873] drag preview Border at 132,110
+[20:40:07.873] drag over row at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.938] drag preview Border at 132,110
+[20:40:07.939] drag over row at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:40:07.954] drag preview Border at 133,111
+[20:40:07.955] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.016] drag preview Border at 133,111
+[20:40:08.016] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.077] drag preview Border at 133,111
+[20:40:08.077] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.140] drag preview Border at 133,111
+[20:40:08.140] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.205] drag preview Border at 133,111
+[20:40:08.205] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.266] drag preview Border at 133,111
+[20:40:08.266] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.327] drag preview Border at 133,111
+[20:40:08.327] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.391] drag preview Border at 133,111
+[20:40:08.391] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.453] drag preview Border at 133,111
+[20:40:08.453] drag over row at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:40:08.491] drag ended Move
