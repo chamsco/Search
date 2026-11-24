@@ -171,8 +171,9 @@ try
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
     Keyboard.Type("http://neverssl.com");
     Keyboard.Press(VirtualKeyShort.RETURN);
-    Thread.Sleep(8000);
-    Step("Type http://neverssl.com (no https there): it still loads, as written", SessionText().Contains("http://neverssl.com") && !app.HasExited, Shot("https-fallback"));
+    Thread.Sleep(15000);
+    var urls = System.Text.RegularExpressions.Regex.Matches(SessionText(), "\"url\":\"([^\"]*neverssl[^\"]*)\"").Select(m => m.Groups[1].Value);
+    Step("Type http://neverssl.com (no https there): it still loads, as written", SessionText().Contains("http://neverssl.com") && !app.HasExited, $"tab url: {string.Join(", ", urls)} · " + Shot("https-fallback"));
 
     var dl = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
@@ -184,11 +185,13 @@ try
     Keyboard.Press(VirtualKeyShort.ESCAPE);
     Thread.Sleep(500);
 
+    Mouse.Click(new Point(640, 420)); // outside click dismisses the floating downloads card
+    Thread.Sleep(600);
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_N);
     Thread.Sleep(4000);
     var windows = app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
     Step("Ctrl+N: a second window opens", windows >= 2, $"{windows} windows · " + Shot("new-window"));
-    foreach (var w in app.GetAllTopLevelWindows(automation).Where(w => !string.IsNullOrEmpty(w.Title) && w.Properties.NativeWindowHandle.Value != window!.Properties.NativeWindowHandle.Value)) { try { w.Close(); } catch { } }
+    Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
     Thread.Sleep(1500);
     Step("Close the second window: the first stays", !app.HasExited, Shot("back-to-first"));
 

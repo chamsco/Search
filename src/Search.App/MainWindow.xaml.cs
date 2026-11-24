@@ -848,6 +848,7 @@ public partial class MainWindow : Window
         else if (ctrl && key == Key.S && shift) ToggleSide();
         else if (key == Key.F11) ToggleFullScreen();
         else if (key == Key.Escape && FindPopup.IsOpen) CloseFind();
+        else if (key == Key.Escape && DownloadsPopup.IsOpen) DownloadsPopup.IsOpen = false;
         else if (key == Key.Escape && fullScreen && core?.ContainsFullScreenElement != true) ToggleFullScreen();
         else handled = false;
 
