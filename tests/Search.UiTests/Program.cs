@@ -556,11 +556,11 @@ try
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_S);
     var midFold = Shot("column-folding");
     Thread.Sleep(1200);
-    var folded2 = window.FindFirstDescendant(cf => cf.ByAutomationId("NewTabRow")) is null;
+    var folded2 = window.FindFirstDescendant(cf => cf.ByName("New tab")) is null;
     Step("Ctrl+Shift+S: the column folds away (a still shot straight after, then settled)", folded2, $"column gone: {folded2} · {midFold} · " + Shot("column-folded"));
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_S);
     Thread.Sleep(1200);
-    Step("Ctrl+Shift+S again: the column comes back", window.FindFirstDescendant(cf => cf.ByAutomationId("NewTabRow")) is not null, Shot("column-back"));
+    Step("Ctrl+Shift+S again: the column comes back", window.FindFirstDescendant(cf => cf.ByName("New tab")) is not null, Shot("column-back"));
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_2);
     var midSwipe = Shot("space-swiping");
