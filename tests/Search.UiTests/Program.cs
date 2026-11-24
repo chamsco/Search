@@ -601,6 +601,209 @@ try
     var midSwitch = Shot("tab-switching");
     Thread.Sleep(800);
     Step("Ctrl+2: the page dips as the next tab comes up, its row takes the wash (a still straight after, then settled)", !app.HasExited, $"{midSwitch} · " + Shot("tab-switched"));
+
+    // ---- wave 6: page features and privacy ----
+    Quit();
+    // A site of our own on localhost (a secure origin for the engine), so permissions, notifications and the rest can be asked for.
+    var port = 18930 + Random.Shared.Next(0, 50);
+    var server = new System.Net.HttpListener();
+    server.Prefixes.Add($"http://localhost:{port}/");
+    server.Start();
+    const string indexPage = "<!doctype html><title>Wave six</title><body style='font:16px sans-serif'><h1>Wave six</h1>" +
+        "<button onclick=\"navigator.geolocation.getCurrentPosition(()=>{document.title='geo ok'},()=>{document.title='geo denied'})\">Ask location</button> " +
+        "<button onclick=\"Notification.requestPermission().then(p=>{document.title='note '+p; if(p==='granted') new Notification('Hello from a page',{body:'It works'})})\">Ask notifications</button> " +
+        "<button onclick=\"fetch('https://doubleclick.net/x',{mode:'no-cors'}).then(()=>document.title='probe done',()=>document.title='probe failed')\">Probe a tracker</button>";
+    const string articlePage = "<!doctype html><title>The Article</title><body><nav><a href='/'>Home</a> <a href='/x'>News</a> <a href='/y'>Sport</a></nav><aside><a href='/z'>Related story one</a> <a href='/w'>Related story two</a></aside>" +
+        "<article><h1>A long walk home</h1>" +
+        "<p>The evening came down slowly over the harbour, and the lamps along the quay were lit one by one, each with its small halo of mist, so that the whole waterfront seemed to be breathing in the cold.</p>" +
+        "<p>She had walked this way every night for eleven years and had never once noticed how the boats leaned toward each other at the turn of the tide, as if they were sharing a piece of news they could not say aloud.</p>" +
+        "<p>At the corner where the bakery used to be there was now a shop that sold only umbrellas, and in the window, among the black and the navy, hung a single yellow one, open, as though it had been waiting for her.</p></article>" +
+        "<footer><a href='/terms'>Terms</a> <a href='/privacy'>Privacy</a></footer>";
+    const string styledPage = "<!doctype html><title>Styled</title><body style='background:white'><h1>Styled</h1><script>setTimeout(()=>{document.title='bg='+getComputedStyle(document.body).backgroundColor},2000)</script>";
+    const string videoPage = "<!doctype html><title>Video</title><video id=v muted autoplay playsinline width=320 height=180></video><canvas id=c width=320 height=180 style='display:none'></canvas>" +
+        "<script>const c=document.getElementById('c'),x=c.getContext('2d');setInterval(()=>{x.fillStyle='hsl('+(Date.now()/10%360)+',70%,50%)';x.fillRect(0,0,320,180)},50);const v=document.getElementById('v');v.srcObject=c.captureStream(20);v.play();</script>";
+    var serving = Task.Run(async () =>
+    {
+        while (server.IsListening)
+        {
+            try
+            {
+                var ctx = await server.GetContextAsync();
+                var path = ctx.Request.Url!.AbsolutePath;
+                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, _ => indexPage };
+                var bytes = System.Text.Encoding.UTF8.GetBytes(html);
+                ctx.Response.ContentType = "text/html; charset=utf-8";
+                ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+                ctx.Response.Close();
+            }
+            catch { }
+        }
+    });
+    var origin6 = $"http://localhost:{port}";
+    var site6 = $"localhost:{port}";
+
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"blockTrackers\":true,\"siteStylesOn\":true}");
+    File.WriteAllText(Path.Combine(data, "styles.json"), "{\"hosts\":{\"localhost\":\"body{background:rgb(1,2,3)!important}\"}}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/\",\"title\":\"Wave six\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(9000);
+
+    Point RowPoints6() => new Point(window!.BoundingRectangle.Left + 117, 72);
+    AutomationElement? Anywhere(string name) { try { return automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(name)); } catch { return null; } }
+    bool Await(Func<bool> what, int ms = 8000) { var until = DateTime.UtcNow.AddMilliseconds(ms); while (DateTime.UtcNow < until) { if (what()) return true; Thread.Sleep(300); } return what(); }
+    AutomationElement? OnPage(string name) { try { return window!.FindFirstDescendant(cf => cf.ByName(name)); } catch { return null; } }
+    string Trace6() { try { using var fs = new FileStream(Path.Combine(data, "trace.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(fs); return r.ReadToEnd(); } catch { return ""; } }
+    void ClickPage(string name) { if (OnPage(name) is { } el) { Mouse.Click(CentreOf(el)); } Thread.Sleep(1200); }
+    void ClickCard(string name) { if (Anywhere(name) is { } el) { Mouse.Click(CentreOf(el)); } Thread.Sleep(1200); }
+
+    // Permissions
+    ClickPage("Ask location");
+    var asked = Await(() => Anywhere($"{site6} wants to know your location") is not null, 6000);
+    var askedShot = Shot("permission-card");
+    ClickCard("Allow");
+    var kept = Await(() => DataText("permissions.json").Contains("\"Location\":\"Allow\"") || DataText("permissions.json").Contains("\"Location\":0"), 5000);
+    Step("A page asks for your location: a card over the page asks, Allow is kept for that site", asked && kept, $"card shown: {asked}, kept: {DataText("permissions.json")} · {askedShot}");
+    ClickPage("geo denied"); ClickPage("geo ok"); ClickPage("Ask location");
+    Thread.Sleep(1500);
+    Step("Asked again: no card, the kept answer is used", Anywhere($"{site6} wants to know your location") is null, Shot("permission-remembered"));
+
+    // Notifications
+    ClickPage("Ask notifications");
+    var askedNote = Await(() => Anywhere($"{site6} wants to show notifications") is not null, 6000);
+    ClickCard("Allow");
+    var shown = Await(() => Anywhere($"{site6}: Hello from a page") is not null, 8000);
+    Step("A page asks to show notifications, then sends one: the card names the site and the message", askedNote && shown, $"asked: {askedNote}, shown: {shown} · " + Shot("notification"));
+    ClickCard("Dismiss");
+
+    // Trackers
+    ClickPage("Probe a tracker");
+    Thread.Sleep(2500);
+    var blocked = Trace6().Contains("tracker blocked https://doubleclick.net");
+    Step("Block trackers on: a page asking for a doubleclick.net address is never sent it", blocked, $"trace: {(blocked ? "tracker blocked https://doubleclick.net/x" : "no line")}");
+
+    // Site Information
+    Mouse.Click(RowPoints6(), MouseButton.Right);
+    Thread.Sleep(900);
+    MenuEntry("Site Information")?.Click();
+    var info = Await(() => Anywhere("The connection is not secure: what you send can be read on the way.") is not null, 5000);
+    Step("Tab menu › Site Information: the site, how it is connected and what it may use", info && Anywhere(site6) is not null, Shot("site-information"));
+    ClickCard("Done");
+
+    // Settings › Sites
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    if (OnPage("Sites") is { } nav) Mouse.Click(CentreOf(nav));
+    Thread.Sleep(1500);
+    var listed6 = Await(() => OnPage("Location: allowed") is not null || OnPage(site6) is not null, 5000);
+    Step("Settings › Sites lists what the site was allowed", listed6, Shot("settings-sites"));
+    if (OnPage("Forget") is { } forget) Mouse.Click(CentreOf(forget));
+    Thread.Sleep(1500);
+    Step("Forget takes the answer back", !DataText("permissions.json").Contains(origin6), $"permissions.json: {DataText("permissions.json")}");
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+    Thread.Sleep(800);
+
+    // Copy Clean Link
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type($"{origin6}/?utm_source=news&id=7&fbclid=abc");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_C);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4500);
+    var cleanSaved = Await(() => SessionText().Contains(origin6 + "/?id=7\"") || SessionText().Contains(origin6 + "/?id=7\\u0022"), 6000);
+    Step("Ctrl+Alt+Shift+C on a page with utm_ and fbclid in its address, pasted into a new tab: only id=7 is left", cleanSaved, "session: " + System.Text.RegularExpressions.Regex.Match(SessionText(), "[^\"]*\\?id=7[^\"]*").Value + " · " + Shot("clean-link"));
+
+    // Site search with Tab
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type("youtube");
+    Thread.Sleep(600);
+    Keyboard.Press(VirtualKeyShort.TAB);
+    Thread.Sleep(800);
+    var chipShot = Shot("site-search-chip");
+    Keyboard.Type("cats");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(6000);
+    var searched = Await(() => SessionText().Contains("youtube.com/results?search_query=cats"), 8000);
+    Step("Type youtube, Tab, cats, Enter: YouTube's own search for cats opens", searched, chipShot + " · " + Shot("site-search-result"));
+
+    // Site style
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type($"{origin6}/styled");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    var styled = Await(() => OnPage("bg=rgb(1, 2, 3)") is not null, 12000);
+    Step("A style kept for localhost (Settings › Sites) is on its pages: the background reads rgb(1, 2, 3)", styled, Shot("site-style"));
+
+    // Reading mode
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type($"{origin6}/article");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_R);
+    Thread.Sleep(1500);
+    var readerLine = System.Text.RegularExpressions.Regex.Match(Trace6(), "reader \"opened (\\d+)\"").Groups[1].Value;
+    Step("Ctrl+Alt+Shift+R on an article: reading mode opens with its three paragraphs, the links around it left out", readerLine == "3", $"paragraphs: {readerLine} · " + Shot("reading-mode"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_R);
+
+    // Picture in picture
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type($"{origin6}/video");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_P);
+    Thread.Sleep(2500);
+    var pipTrace = Trace6().Split('\n').LastOrDefault(l => l.Contains("pip ")) ?? "";
+    Step("Ctrl+Shift+P on a page with a playing video: it floats in a picture-in-picture window", pipTrace.Contains("opened"), pipTrace.Trim().Replace("|", "/") + " · " + Shot("picture-in-picture"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_P);
+
+    // Proxy
+    Quit();
+    var proxyPort = port + 100;
+    var proxySaw = new List<string>();
+    var proxy = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, proxyPort);
+    proxy.Start();
+    var proxying = Task.Run(async () =>
+    {
+        while (true)
+        {
+            try
+            {
+                var client = await proxy.AcceptTcpClientAsync();
+                _ = Task.Run(() =>
+                {
+                    using var c = client;
+                    var stream = c.GetStream();
+                    var buf = new byte[8192];
+                    var n = stream.Read(buf, 0, buf.Length);
+                    var head = System.Text.Encoding.ASCII.GetString(buf, 0, n);
+                    var first = head.Split('\n')[0].Trim();
+                    lock (proxySaw) proxySaw.Add(first);
+                    if (!first.StartsWith("GET http://", StringComparison.Ordinal)) return;
+                    var body = "<!doctype html><title>Via the proxy</title><h1>Via the proxy</h1>";
+                    var reply = $"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}";
+                    var bytes = System.Text.Encoding.ASCII.GetBytes(reply);
+                    stream.Write(bytes, 0, bytes.Length);
+                });
+            }
+            catch { return; }
+        }
+    });
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6p-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"proxyMode\":\"Custom\",\"proxyServer\":\"127.0.0.1:" + proxyPort + "\"}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"http://proxy-probe.test/\",\"title\":\"\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    var viaProxy = Await(() => OnPage("Via the proxy") is not null, 20000);
+    string saw; lock (proxySaw) saw = string.Join(" / ", proxySaw.Where(l => l.Contains("proxy-probe")).Take(2));
+    Step("Settings › Privacy › Proxy set to a server of its own: a page for a name that exists nowhere loads through it", viaProxy && saw.Length > 0, $"the proxy saw: {saw} · " + Shot("proxy"));
+    proxy.Stop();
+    server.Stop();
 }
 catch (Exception e)
 {
