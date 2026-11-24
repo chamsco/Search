@@ -386,7 +386,18 @@ try
         Keyboard.Release(VirtualKeyShort.SHIFT);
     }
     Thread.Sleep(6000);
-    Step("Shift+click a link: its page opens over this one in a panel, the page behind dimmed", link is not null && titled() == windowsBefore + 1, $"link found: {link is not null}, windows {windowsBefore} -> {titled()} · " + Shot("peek"));
+    string EdgeLaunch()
+    {
+        try
+        {
+            var ps = Process.Start(new ProcessStartInfo("powershell", "-NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\"Name='msedge.exe'\\\" | Where-Object { $_.CommandLine -notmatch 'webview2|--type=' } | ForEach-Object { $_.ProcessId.ToString() + ' parent ' + $_.ParentProcessId + ' ' + $_.CommandLine } | Select-Object -First 3\"") { RedirectStandardOutput = true, UseShellExecute = false })!;
+            var o = ps.StandardOutput.ReadToEnd(); ps.WaitForExit(15000);
+            return o.Replace("|", "/").ReplaceLineEndings(" ");
+        }
+        catch (Exception e) { return e.Message; }
+    }
+    var edgeNote = EdgeLaunch();
+    Step("Shift+click a link: its page opens over this one in a panel, the page behind dimmed", link is not null && titled() == windowsBefore + 1, $"link found: {link is not null}, windows {windowsBefore} -> {titled()}, browser started: {edgeNote} · " + Shot("peek"));
     Keyboard.Press(VirtualKeyShort.ESCAPE);
     Thread.Sleep(1500);
     Step("Esc: the peek goes away", titled() == windowsBefore, $"windows {titled()} · " + Shot("peek-closed"));
@@ -444,6 +455,7 @@ catch (Exception e)
 finally
 {
     try { if (!app.HasExited) app.Close(); } catch { }
+    try { var tr = Path.Combine(data, "trace.log"); if (File.Exists(tr)) File.Copy(tr, Path.Combine(outDir, "trace.log"), true); } catch { }
     var crash = Path.Combine(data, "crash.log");
     if (File.Exists(crash))
     {

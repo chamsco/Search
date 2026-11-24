@@ -88,6 +88,12 @@ public partial class App : Application
         else { if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal; window.Activate(); }
     }
 
+    /// <summary>A line in trace.log, for finding out what happened on a machine nobody can watch.</summary>
+    public static void Trace(string line)
+    {
+        try { File.AppendAllText(Store.File("trace.log"), $"[{DateTime.Now:HH:mm:ss.fff}] {line}\n"); } catch { }
+    }
+
     public static void Log(Exception? e)
     {
         if (e is null) return;

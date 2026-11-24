@@ -53,6 +53,7 @@ public partial class MainWindow
         var w = new MiniWindow(little) { Owner = this };
         place(w);
         w.Show(); // a web view starts only once its window exists
+        App.Trace("mini: shown");
         var name = live is null ? null : StoreNameOf(live);
         if (name is null) await w.View.EnsureCoreWebView2Async(environment);
         else
@@ -64,7 +65,7 @@ public partial class MainWindow
         var core = w.View.CoreWebView2;
         ApplyColorScheme(core);
         core.DownloadStarting += OnDownloadStarting;
-        core.NewWindowRequested += (_, e) => { e.Handled = true; core.Navigate(e.Uri); };
+        core.NewWindowRequested += (_, e) => { App.Trace("mini: new window asked for " + e.Uri); e.Handled = true; core.Navigate(e.Uri); };
         core.DocumentTitleChanged += (_, _) => w.Say(core.DocumentTitle, core.Source);
         core.SourceChanged += (_, _) => w.Say(core.DocumentTitle, core.Source);
         w.Say("", url);
@@ -149,6 +150,7 @@ public partial class MainWindow
 
     public async void ShowPeek(string url)
     {
+        App.Trace("peek: asked for " + url);
         if (live is null || WindowState == WindowState.Minimized) return;
         ClosePeek();
         var from = live;
@@ -168,6 +170,7 @@ public partial class MainWindow
             };
             dim.MouseDown += (_, _) => ClosePeek();
             dim.Show();
+            App.Trace("peek: dim shown");
 
             var panel = await Mini(url, little: false, place: p =>
             {
@@ -179,6 +182,7 @@ public partial class MainWindow
                 peek = p;
                 peekFrom = from;
             });
+            App.Trace($"peek: web view started, panel {(panel is null ? "none" : "ok")}, dim {(dim is null ? "gone" : "ok")}, same tab {live == from}");
             if (panel is null || dim is null || live != from) { panel?.Close(); ClosePeek(); return; }
             panel.Shut.Click += (_, _) => ClosePeek();
             panel.OpenInSearch.Content = "Open as tab";
@@ -200,6 +204,7 @@ public partial class MainWindow
 
     public void ClosePeek()
     {
+        if (peek is not null || dim is not null) App.Trace("peek: closed");
         var p = peek; var d = dim;
         peek = null; dim = null; peekFrom = null;
         try { p?.Close(); } catch { }
