@@ -785,7 +785,7 @@ public partial class MainWindow : Window
             if (Math.Abs(d.Y) < 4 && Math.Abs(d.X) < 4) return;
             source.PreviewMouseMove -= Move;
             if (source.DataContext is not Tab t) return;
-            dragging = t;
+            dragging = t; App.Trace($"drag start {t.Title}");
             PinDrop.Visibility = pins.Count == 0 && !t.IsPin && !t.IsBlank ? Visibility.Visible : Visibility.Collapsed;
             source.Opacity = 0.55;
             try { DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move); }

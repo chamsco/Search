@@ -353,12 +353,12 @@ public partial class MainWindow
     void Heading_DragOver(object sender, DragEventArgs e)
     {
         e.Effects = dragging is { IsBlank: false } ? DragDropEffects.Move : DragDropEffects.None;
-        e.Handled = true;
+        e.Handled = true; App.Trace("drag over heading");
     }
 
     void Heading_Drop(object sender, DragEventArgs e)
     {
-        e.Handled = true;
+        e.Handled = true; App.Trace("drop on heading");
         if (e.Data.GetData(typeof(Tab)) is not Tab moving || (sender as FrameworkElement)?.DataContext is not RowHeading h || moving.IsBlank) return;
         var st = StateOf(space);
         if (h.IsFolder)
