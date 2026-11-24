@@ -1,6 +1,7 @@
 namespace Search.Core;
 
 public enum LookChoice { System, Light, Dark }
+public enum TabsLayout { Sidebar, Top }
 
 /// <summary>Settings. Port of the ones that apply on Windows from Sources/Search/Prefs.swift; kept in prefs.json.</summary>
 public sealed class PrefsData
@@ -19,6 +20,12 @@ public sealed class PrefsData
     public bool StartFresh { get; set; }
     public bool ShowAddressOnTab { get; set; }
     public double SideWidth { get; set; } = 232;
+    /// <summary>Settings › Tabs › Spaces: off until turned on, as on the Mac; until then there is one space and nothing about it shows.</summary>
+    public bool SpacesOn { get; set; }
+    /// <summary>Settings › Tabs › Layout: the column of tabs at the side, or a strip along the top.</summary>
+    public TabsLayout Layout { get; set; } = TabsLayout.Sidebar;
+    /// <summary>Settings › Tabs › Pins as rows instead of squares.</summary>
+    public bool PinsAsRows { get; set; }
 }
 
 public sealed class Prefs

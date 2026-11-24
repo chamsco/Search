@@ -28,14 +28,14 @@ public sealed class BookmarkFile
 /// </summary>
 public sealed class Bookmarks
 {
-    const string FileName = "bookmarks.json";
+    string FileName = "bookmarks.json";
     BookmarkFile file = new();
     public event Action? Changed;
 
     public IReadOnlyList<Bookmark> Items => file.Items;
     public IReadOnlyList<BookmarkFolder> Folders => file.Folders;
 
-    public static Bookmarks Load() => new() { file = Store.Read<BookmarkFile>(FileName) ?? new() };
+    public static Bookmarks Load(string fileName = "bookmarks.json") => new() { FileName = fileName, file = Store.Read<BookmarkFile>(fileName) ?? new() };
     void Save() { Store.Write(FileName, file); Changed?.Invoke(); }
 
     public Bookmark? Find(string url) =>
