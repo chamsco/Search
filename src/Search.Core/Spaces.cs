@@ -80,6 +80,7 @@ public sealed class SpaceBook
 {
     public List<Profile> Profiles { get; private set; } = [Profile.Personal()];
     public List<Space> Spaces { get; private set; } = [Space.First()];
+    public event Action? Changed;
 
     public static SpaceBook Load()
     {
@@ -99,13 +100,14 @@ public sealed class SpaceBook
     {
         Store.Write("profiles.json", Profiles);
         Store.Write("spaces.json", Spaces);
+        Changed?.Invoke();
     }
 
     public Profile ProfileOf(Guid id) => Profiles.FirstOrDefault(p => p.Id == id) ?? Profiles[0];
     public IEnumerable<Space> In(Guid profile) => Spaces.Where(s => s.ProfileId == profile);
 
     /// <summary>The space that holds the profile's sign-ins: its first.</summary>
-    public Space HomeOf(Guid profile) => In(profile).FirstOrDefault() ?? Core.Space.First();
+    public Space HomeOf(Guid profile) => (profile == Core.Spaces.PersonalId ? In(profile).FirstOrDefault(s => s.IsFirst) : null) ?? In(profile).FirstOrDefault() ?? Core.Space.First();
 
     /// <summary>The name of the engine's store a space's pages use. Null is the default store, which the first space of
     /// Personal has always used, so turning spaces on signs nobody out; a profile has a store of its own, and a space
@@ -122,6 +124,11 @@ public sealed class SpaceBook
         Spaces.Add(s);
         Save();
         return s;
+    }
+
+    public void UpdateSpace(Guid space, Action<Space> change)
+    {
+        if (Spaces.FirstOrDefault(s => s.Id == space) is { } s) { change(s); Save(); }
     }
 
     public void Rename(Guid space, string name)

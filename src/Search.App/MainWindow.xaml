@@ -169,9 +169,66 @@
       </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!-- The same row, laid along the top strip (Settings › Tabs › Layout: Top). -->
+    <DataTemplate x:Key="TabChip" DataType="{x:Type local:Tab}">
+      <Border x:Name="Row" Width="172" Height="30" CornerRadius="9" Background="Transparent" Margin="0,0,2,0" WindowChrome.IsHitTestVisibleInChrome="True"
+              MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
+        <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
+        <Border.Triggers>
+          <EventTrigger RoutedEvent="Loaded"><BeginStoryboard Storyboard="{StaticResource Arrive}" /></EventTrigger>
+        </Border.Triggers>
+        <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
+        <Grid>
+        <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Hover}" Opacity="0" />
+        <Grid Margin="10,0,7,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <ContentPresenter x:Name="MarkHost" Content="{Binding}" ContentTemplate="{StaticResource Mark}" Margin="0,0,8,0" VerticalAlignment="Center" />
+          <TextBlock x:Name="Title" Grid.Column="1" Text="{Binding Label}" FontSize="12.5" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Row.Muted}" />
+          <TextBox x:Name="Field" Grid.Column="0" Grid.ColumnSpan="2" Visibility="Collapsed" FontSize="12.5" BorderThickness="0" Background="Transparent"
+                   Foreground="{DynamicResource Ink}" CaretBrush="{DynamicResource Ink}" VerticalContentAlignment="Center" Padding="-2,0,0,0"
+                   PreviewKeyDown="InlineField_PreviewKeyDown" TextChanged="InlineField_TextChanged" LostKeyboardFocus="InlineField_LostFocus" />
+          <Grid Grid.Column="2" Width="15" Height="15" Margin="8,0,0,0">
+            <ContentControl x:Name="Ring" Template="{StaticResource Ring}" Visibility="Collapsed" />
+            <Button x:Name="Close" Style="{StaticResource Door}" Width="15" Height="15" Margin="0" FontSize="8" Content="&#xE8BB;"
+                    Visibility="Hidden" Click="CloseTab_Click" ToolTip="Close tab (Ctrl+W)" />
+          </Grid>
+        </Grid>
+        </Grid>
+      </Border>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding IsBlank}" Value="True">
+          <Setter TargetName="MarkHost" Property="Visibility" Value="Collapsed" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Loading}" Value="True">
+          <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+        </DataTrigger>
+        <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+          <Trigger.EnterActions><BeginStoryboard Storyboard="{StaticResource HoverIn}" /></Trigger.EnterActions>
+          <Trigger.ExitActions><BeginStoryboard Storyboard="{StaticResource HoverOut}" /></Trigger.ExitActions>
+          <Setter TargetName="Close" Property="Visibility" Value="Visible" />
+          <Setter TargetName="Ring" Property="Visibility" Value="Collapsed" />
+        </Trigger>
+        <DataTrigger Binding="{Binding Live}" Value="True">
+          <Setter TargetName="Row" Property="Background" Value="{DynamicResource Row.Wash}" />
+          <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource Ink}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Editing}" Value="True">
+          <Setter TargetName="Field" Property="Visibility" Value="Visible" />
+          <Setter TargetName="Title" Property="Visibility" Value="Hidden" />
+          <Setter TargetName="MarkHost" Property="Visibility" Value="Hidden" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
     <!-- A pin: a square under the lights, 34 tall, the site's icon in the middle. -->
     <DataTemplate x:Key="PinTile" DataType="{x:Type local:Tab}">
-      <Border x:Name="Tile" Height="34" CornerRadius="9" Margin="2" Background="{DynamicResource Row.Tile}"
+      <Border x:Name="Tile" Height="34" WindowChrome.IsHitTestVisibleInChrome="True" CornerRadius="9" Margin="2" Background="{DynamicResource Row.Tile}"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening" ToolTip="{Binding Label}"
               AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
         <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
@@ -264,14 +321,50 @@
   </Window.Resources>
 
   <Grid x:Name="Root">
-    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
     <Grid.ColumnDefinitions>
       <ColumnDefinition x:Name="SideColumn" Width="232" />
       <ColumnDefinition Width="*" />
     </Grid.ColumnDefinitions>
 
+    <!-- Tabs along the top: the window's doors, the spaces, pins, tabs and the foot's doors in one strip. -->
+    <Grid x:Name="TopBar" Grid.Row="0" Grid.ColumnSpan="2" Grid.Column="0" Height="46" Visibility="Collapsed">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <StackPanel Orientation="Horizontal" Margin="10,0,8,0" VerticalAlignment="Center">
+        <Button Style="{StaticResource CloseDoor}" Content="&#xE8BB;" FontSize="9" Click="CloseWindow_Click" ToolTip="Close" />
+        <Button Style="{StaticResource Door}" Content="&#xE921;" FontSize="9" Click="Minimize_Click" ToolTip="Minimize" />
+        <Button Style="{StaticResource Door}" Content="&#xE922;" FontSize="9" Click="Maximize_Click" ToolTip="Maximize" />
+        <Border Width="8" />
+        <Button Style="{StaticResource Door}" x:Name="TopBackDoor" Content="&#xE76B;" Click="Back_Click" ToolTip="Back (Alt+Left)" />
+        <Button Style="{StaticResource Door}" x:Name="TopForwardDoor" Content="&#xE76C;" Click="Forward_Click" ToolTip="Forward (Alt+Right)" />
+        <Button Style="{StaticResource Door}" x:Name="TopReloadDoor" Content="&#xE72C;" FontSize="10" Click="Reload_Click" ToolTip="Reload (Ctrl+R)" />
+      </StackPanel>
+      <ScrollViewer x:Name="TopScroll" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Focusable="False" PreviewMouseWheel="TopScroll_Wheel">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <StackPanel x:Name="TopSpaceStrip" Orientation="Horizontal" Margin="0,0,6,0" WindowChrome.IsHitTestVisibleInChrome="True" />
+          <ItemsControl x:Name="TopPins" ItemTemplate="{StaticResource PinTile}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemContainerStyle><Style TargetType="ContentPresenter"><Setter Property="Width" Value="40" /></Style></ItemsControl.ItemContainerStyle>
+          </ItemsControl>
+          <ItemsControl x:Name="TopTabs" ItemTemplate="{StaticResource TabChip}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          </ItemsControl>
+          <Border Width="30" Height="30" CornerRadius="9" Background="Transparent" Cursor="Arrow" ToolTip="New Tab (Ctrl+T)" WindowChrome.IsHitTestVisibleInChrome="True" MouseLeftButtonUp="NewTab_Click">
+            <TextBlock Text="&#xE710;" FontFamily="{StaticResource Glyphs}" FontSize="11" Foreground="{DynamicResource Row.Faint}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,10,0" VerticalAlignment="Center">
+        <Button Style="{StaticResource Door}" x:Name="TopUpdateDoor" Content="&#xE895;" ToolTip="Restart to Update" Click="TopUpdate_Click" Visibility="Collapsed" />
+        <Button Style="{StaticResource Door}" Content="&#xE80F;" ToolTip="Home" Click="Home_Click" />
+        <Button Style="{StaticResource Door}" x:Name="TopDownloadsDoor" Content="&#xE896;" ToolTip="Downloads (Ctrl+Shift+J)" Click="DownloadsDoor_Click" />
+        <Button Style="{StaticResource Door}" Content="&#xE8A4;" ToolTip="Bookmarks" Click="BookmarksDoor_Click" />
+        <Button Style="{StaticResource Door}" x:Name="TopProfileDoor" AutomationProperties.AutomationId="ProfileDoor" Content="&#xE77B;" ToolTip="Profiles" Click="ProfileDoor_Click" Visibility="Collapsed" />
+      </StackPanel>
+    </Grid>
+
     <!-- The column -->
-    <DockPanel x:Name="Side" Grid.Column="0" Grid.RowSpan="2">
+    <DockPanel x:Name="Side" Grid.Column="0" Grid.RowSpan="3">
       <!-- The strip: the window's own doors where the Mac has its lights, in the lights' order (close, minimise, zoom), then back, forward and reload. -->
       <Grid DockPanel.Dock="Top" Height="52">
         <StackPanel Orientation="Horizontal" Margin="10,0,10,0" VerticalAlignment="Center">
@@ -303,7 +396,10 @@
         <Button Style="{StaticResource Door}" Content="&#xE80F;" ToolTip="Home" Click="Home_Click" />
         <Button Style="{StaticResource Door}" x:Name="DownloadsDoor" Content="&#xE896;" ToolTip="Downloads (Ctrl+Shift+J)" Click="DownloadsDoor_Click" />
         <Button Style="{StaticResource Door}" Content="&#xE8A4;" ToolTip="Bookmarks" Click="BookmarksDoor_Click" />
+        <Button Style="{StaticResource Door}" x:Name="ProfileDoor" AutomationProperties.AutomationId="ProfileDoor" Content="&#xE77B;" ToolTip="Profiles" Click="ProfileDoor_Click" Visibility="Collapsed" />
       </StackPanel>
+      <!-- Spaces: one icon each, above the foot. Shown once spaces are turned on in Settings › Tabs. -->
+      <WrapPanel x:Name="SpaceStrip" DockPanel.Dock="Bottom" Margin="10,0,10,4" Visibility="Collapsed" />
       <!-- An update downloaded and ready (Updater.swift's "Restart to Update"). -->
       <Border x:Name="UpdatePill" DockPanel.Dock="Bottom" Margin="10,0,10,10" Height="30" CornerRadius="9" Visibility="Collapsed"
               Background="{DynamicResource Row.Wash}" Cursor="Hand" MouseLeftButtonUp="UpdatePill_Click">
@@ -337,26 +433,26 @@
     </DockPanel>
 
     <!-- The column's edge, dragged to make it wider (176 to 440, as on the Mac). -->
-    <Thumb Grid.Column="0" Grid.RowSpan="2" HorizontalAlignment="Right" Width="6" Margin="0,52,-3,0" Cursor="SizeWE"
+    <Thumb Grid.Column="0" Grid.RowSpan="3" HorizontalAlignment="Right" Width="6" Margin="0,52,-3,0" Cursor="SizeWE"
            DragDelta="SideEdge_DragDelta" DragCompleted="SideEdge_DragCompleted" Opacity="0">
       <Thumb.Template><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Thumb.Template>
     </Thumb>
 
     <!-- The page's card: 8 from the window's edges, corners of 10. -->
     <!-- The bookmarks bar: loose bookmarks as chips, folders as menus. -->
-    <Border x:Name="BarHost" Grid.Column="1" Grid.Row="0" Margin="0,8,8,0" Height="28" Visibility="Collapsed">
+    <Border x:Name="BarHost" Grid.Column="1" Grid.Row="1" Margin="0,8,8,0" Height="28" Visibility="Collapsed">
       <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Focusable="False">
         <StackPanel x:Name="BarItems" Orientation="Horizontal" />
       </ScrollViewer>
     </Border>
 
     <!-- The card's shadow, drawn by a sibling: an effect on the card itself would re-render the page's host every frame. -->
-    <Border x:Name="CardShadow" Grid.Column="1" Grid.Row="1" Margin="{Binding Margin, ElementName=Card}" CornerRadius="10" Background="{DynamicResource Ground}">
+    <Border x:Name="CardShadow" Grid.Column="1" Grid.Row="2" Margin="{Binding Margin, ElementName=Card}" CornerRadius="10" Background="{DynamicResource Ground}">
       <Border.Effect>
         <DropShadowEffect Color="Black" Opacity="0.07" BlurRadius="6" ShadowDepth="1" Direction="270" />
       </Border.Effect>
     </Border>
-    <Border x:Name="Card" Grid.Column="1" Grid.Row="1" Margin="0,8,8,8" CornerRadius="10" Background="{DynamicResource Ground}"
+    <Border x:Name="Card" Grid.Column="1" Grid.Row="2" Margin="0,8,8,8" CornerRadius="10" Background="{DynamicResource Ground}"
             BorderBrush="{DynamicResource Hairline}" BorderThickness="0.5">
       <Grid>
         <Grid x:Name="Stage" />

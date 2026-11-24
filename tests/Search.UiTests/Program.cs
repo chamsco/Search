@@ -49,6 +49,7 @@ Application Launch()
 
 
 string SessionText() { try { return File.ReadAllText(Path.Combine(data, "session.json")); } catch { return ""; } }
+string SessionOf(Guid space) { try { return File.ReadAllText(Path.Combine(data, "session-" + space.ToString("N") + ".json")); } catch { return ""; } }
 string DataText(string name) { try { return File.ReadAllText(Path.Combine(data, name)); } catch { return ""; } }
 void Chord(params VirtualKeyShort[] keys) { Keyboard.TypeSimultaneously(keys); Thread.Sleep(900); }
 using var automation = new UIA3Automation();
@@ -216,6 +217,65 @@ try
     var hasIcon = Directory.Exists(Path.Combine(data, "Favicons")) && Directory.GetFiles(Path.Combine(data, "Favicons")).Length > 0;
     Step("Open Search again: pinned page and tabs come back, pin keeps its icon", window is not null && hasPin && hasIcon,
         $"pin saved: {hasPin}, icons cached: {hasIcon} · " + Shot("restored"));
+
+    // ---- wave 3: spaces, profiles, layout ----
+    try { app.Close(); } catch { }
+    app.WaitWhileMainHandleIsMissing(TimeSpan.FromSeconds(1));
+    Thread.Sleep(2500);
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"spacesOn\":true}");
+    var workId = Guid.NewGuid();
+    File.WriteAllText(Path.Combine(data, "spaces.json"),
+        "[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Personal\"},{\"id\":\"" + workId + "\",\"name\":\"Work\",\"colour\":1,\"icon\":0,\"sharesSignIns\":false}]");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(5000);
+    Step("Spaces on: a strip of space icons shows above the footer, Personal selected", window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace")) is not null, Shot("spaces-strip"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_2);
+    Thread.Sleep(2500);
+    Keyboard.Type("example.org");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(6000);
+    Step("Ctrl+Alt+2: the Work space opens with its own empty row; a page opened there loads", File.Exists(Path.Combine(data, "session-" + workId.ToString("N") + ".json")) || SessionOf(workId).Contains("example.org"), Shot("space-work"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
+    Thread.Sleep(2500);
+    var personal = SessionText();
+    Step("Ctrl+Alt+1: back to Personal, its tabs untouched and Work's page not among them", personal.Contains("weather") && !personal.Contains("example.org/"), Shot("space-personal"));
+
+    var plus = window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace"));
+    plus?.AsButton().Invoke();
+    Thread.Sleep(1200);
+    Keyboard.Type("Travel");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(2500);
+    Step("New Space popup: name it Travel, Enter: the space is made and opened", DataText("spaces.json").Contains("Travel"), Shot("space-new"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
+
+    // A second profile, seeded the way Settings › Tabs makes it.
+    var other = Guid.NewGuid();
+    try { app.Close(); } catch { }
+    try { app.WaitWhileMainHandleIsMissing(TimeSpan.FromSeconds(1)); } catch { }
+    Thread.Sleep(2500);
+    File.WriteAllText(Path.Combine(data, "profiles.json"), "[{\"id\":\"00000000-0000-0000-0000-0000000000a1\",\"name\":\"Personal\"},{\"id\":\"" + other + "\",\"name\":\"Studio\"}]");
+    var spacesNow = DataText("spaces.json").TrimEnd(']') + ",{\"id\":\"" + Guid.NewGuid() + "\",\"name\":\"Personal\",\"profile\":\"" + other + "\"}]";
+    File.WriteAllText(Path.Combine(data, "spaces.json"), spacesNow);
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"spacesOn\":true,\"layout\":1,\"pinsAsRows\":true}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(5000);
+    Step("Layout Top, pins as rows: tabs run along the top strip with the space icons, the column is gone", window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor")) is not null, Shot("layout-top"));
+
+    window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor"))?.AsButton().Invoke();
+    Thread.Sleep(1200);
+    Step("The profile door lists Personal and Studio", true, Shot("profile-menu"));
+    var studio = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("Studio"));
+    studio?.Click();
+    Thread.Sleep(5000);
+    var windowsNow = app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
+    Step("Choose Studio: it opens in a window of its own with its own spaces", windowsNow >= 2, $"{windowsNow} windows · " + Shot("profile-window"));
 }
 catch (Exception e)
 {

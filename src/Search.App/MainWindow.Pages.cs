@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
@@ -84,25 +85,25 @@ public partial class MainWindow
                     break;
 
                 case "history.query":
-                    Send(core, new { type = "history.items", items = Shared.History.Query(S("q"), 500).Select(v => new { url = v.Url, title = v.Title, last = v.Last.ToUniversalTime().ToString("o") }) });
+                    Send(core, new { type = "history.items", items = history.Query(S("q"), 500).Select(v => new { url = v.Url, title = v.Title, last = v.Last.ToUniversalTime().ToString("o") }) });
                     break;
                 case "history.remove":
-                    Shared.History.Remove(S("url")); Shared.History.Save();
+                    history.Remove(S("url")); history.Save();
                     break;
 
                 case "bookmarks.get": Send(core, BookmarksMessage()); break;
-                case "bookmarks.remove": if (G("id") is Guid rm) Shared.Bookmarks.Remove(rm); break;
-                case "bookmarks.rename": if (G("id") is Guid rn) Shared.Bookmarks.Rename(rn, S("title")); break;
-                case "bookmarks.addFolder": Shared.Bookmarks.AddFolder(S("name")); break;
-                case "bookmarks.renameFolder": if (G("id") is Guid rf) Shared.Bookmarks.RenameFolder(rf, S("name")); break;
-                case "bookmarks.removeFolder": if (G("id") is Guid df) Shared.Bookmarks.RemoveFolder(df); break;
+                case "bookmarks.remove": if (G("id") is Guid rm) Marks.Remove(rm); break;
+                case "bookmarks.rename": if (G("id") is Guid rn) Marks.Rename(rn, S("title")); break;
+                case "bookmarks.addFolder": Marks.AddFolder(S("name")); break;
+                case "bookmarks.renameFolder": if (G("id") is Guid rf) Marks.RenameFolder(rf, S("name")); break;
+                case "bookmarks.removeFolder": if (G("id") is Guid df) Marks.RemoveFolder(df); break;
                 case "bookmarks.move":
                     if (G("id") is Guid mv)
                     {
-                        Shared.Bookmarks.Move(mv, G("folder"));
-                        var order = Shared.Bookmarks.Items.Select(b => b.Id).Where(i => i != mv).ToList();
+                        Marks.Move(mv, G("folder"));
+                        var order = Marks.Items.Select(b => b.Id).Where(i => i != mv).ToList();
                         var at = G("before") is Guid before ? order.IndexOf(before) : -1;
-                        Shared.Bookmarks.Reorder(mv, at < 0 ? int.MaxValue : at);
+                        Marks.Reorder(mv, at < 0 ? int.MaxValue : at);
                     }
                     break;
 
@@ -114,6 +115,24 @@ public partial class MainWindow
                     break;
 
                 case "settings.get": Send(core, SettingsMessage()); break;
+                case "space.add": Shared.Book.AddSpace(G("profile") ?? profileId, S("name"), 1, true); break;
+                case "space.update" when G("id") is Guid sid:
+                    Shared.Book.UpdateSpace(sid, sp =>
+                    {
+                        if (m.TryGetProperty("name", out var nm) && nm.GetString() is { Length: > 0 } n) sp.Name = n.Trim();
+                        if (m.TryGetProperty("colour", out var c1)) sp.Colour = Math.Clamp(c1.GetInt32(), 0, Spaces.Colours.Length - 1);
+                        if (m.TryGetProperty("colour2", out var c2)) sp.Colour2 = Math.Clamp(c2.GetInt32(), 0, Spaces.Colours.Length - 1);
+                        if (m.TryGetProperty("strength", out var st) && Enum.TryParse<SpaceStrength>(st.GetString(), out var sv)) sp.Strength = sv;
+                        if (m.TryGetProperty("icon", out var ic)) sp.Icon = Math.Clamp(ic.GetInt32(), 0, Spaces.Icons.Length - 1);
+                        if (m.TryGetProperty("shares", out var sh)) sp.SharesSignIns = sh.GetBoolean();
+                    });
+                    break;
+                case "space.delete": if (G("id") is Guid sd) Shared.Book.DeleteSpace(sd); break;
+                case "space.move": if (G("id") is Guid sm && m.TryGetProperty("by", out var by)) Shared.Book.Move(sm, by.GetInt32()); break;
+                case "profile.add": Shared.Book.AddProfile(S("name")); break;
+                case "profile.rename": if (G("id") is Guid pr) Shared.Book.RenameProfile(pr, S("name")); break;
+                case "profile.delete": if (G("id") is Guid pd) Shared.Book.DeleteProfile(pd); break;
+                case "profile.open": if (G("id") is Guid po) OpenProfile(po); break;
                 case "settings.set": SetSetting(S("key"), m.GetProperty("value")); break;
                 case "settings.chooseFolder":
                     var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Where downloads go", InitialDirectory = Shared.Prefs.EffectiveDownloadFolder };
@@ -144,8 +163,8 @@ public partial class MainWindow
     object BookmarksMessage() => new
     {
         type = "bookmarks",
-        items = Shared.Bookmarks.Items.Select(b => new { id = b.Id, title = b.Title, url = b.Url, folder = b.Folder }),
-        folders = Shared.Bookmarks.Folders.Select(f => new { id = f.Id, name = f.Name }),
+        items = Marks.Items.Select(b => new { id = b.Id, title = b.Title, url = b.Url, folder = b.Folder }),
+        folders = Marks.Folders.Select(f => new { id = f.Id, name = f.Name }),
     };
 
     object DownloadsMessage() => new
@@ -168,6 +187,10 @@ public partial class MainWindow
         {
             type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
             engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
+            spacesOn = d.SpacesOn, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
+            spaces = Shared.Book.Spaces.Select(sp => new { id = sp.Id, name = sp.Name, colour = sp.Colour, colour2 = sp.Colour2, strength = sp.Strength.ToString(), icon = sp.IconIndex, shares = sp.SharesSignIns, profile = sp.ProfileId, first = sp.IsFirst }),
+            profiles = Shared.Book.Profiles.Select(pf => new { id = pf.Id, name = pf.Name, personal = pf.IsPersonal }),
+            iconGlyphs = Spaces.Icons, iconNames = Spaces.IconNames, colourNames = Spaces.ColourNames,
             version = Version.Current, engineVersion, dataFolder = Path.GetDirectoryName(Store.File("x")), updateText = updateLine,
         };
     }
@@ -183,6 +206,9 @@ public partial class MainWindow
                 case "engineSuggests": d.EngineSuggests = B(); break;
                 case "startFresh": d.StartFresh = B(); break;
                 case "bookmarksBar": d.BookmarksBar = B(); break;
+                case "spacesOn": d.SpacesOn = B(); break;
+                case "pinsAsRows": d.PinsAsRows = B(); break;
+                case "layout": if (Enum.TryParse<TabsLayout>(S(), out var lay)) d.Layout = lay; break;
                 case "httpsUpgrade": d.HttpsUpgrade = B(); break;
                 case "engine": if (Enum.TryParse<Engine>(S(), out var en)) d.Engine = en; break;
                 case "customEngine": d.CustomEngine = S(); break;
@@ -200,7 +226,7 @@ public partial class MainWindow
         var done = new List<string>();
         try
         {
-            if (kinds.Contains("history")) { Shared.History.ClearSince(since); Shared.History.Save(); done.Add("history"); }
+            if (kinds.Contains("history")) { history.ClearSince(since); history.Save(); done.Add("history"); }
             if (kinds.Contains("downloads")) { Shared.Downloads.ClearSince(since); done.Add("download list"); }
             var web = default(CoreWebView2BrowsingDataKinds);
             if (kinds.Contains("cookies")) { web |= CoreWebView2BrowsingDataKinds.Cookies; done.Add("cookies"); }
@@ -236,7 +262,10 @@ public partial class MainWindow
         foreach (var t in Ordered()) if (t.View?.CoreWebView2 is { } c) ApplyColorScheme(c);
         BarHost.Visibility = Shared.Prefs.Data.BookmarksBar && !fullScreen ? Visibility.Visible : Visibility.Collapsed;
         BuildBar();
+        ApplyTabsLayout();
         ApplyLayout();
+        ApplyWash();
+        RebuildStrip();
         PostToPages(SettingsMessage(), "settings");
     }
 
@@ -280,12 +309,19 @@ public partial class MainWindow
         var path = Downloads.UniquePath(Shared.Prefs.EffectiveDownloadFolder, Path.GetFileName(e.ResultFilePath));
         e.ResultFilePath = path;
         Shared.Downloads.Begin(e.DownloadOperation, path);
-        if (IsActive || live?.View?.CoreWebView2 == sender) DownloadsPopup.IsOpen = true;
+        if (IsActive || live?.View?.CoreWebView2 == sender)
+        {
+            DownloadsPopup.PlacementTarget = TopLayout ? TopDownloadsDoor : DownloadsDoor;
+            DownloadsPopup.Placement = TopLayout ? PlacementMode.Bottom : PlacementMode.Top;
+            DownloadsPopup.IsOpen = true;
+        }
     }
 
     void DownloadsDoor_Click(object sender, RoutedEventArgs e)
     {
         if (Environment.TickCount64 - downloadsClosed < 250) return; // the click that just closed it
+        DownloadsPopup.PlacementTarget = (UIElement)sender;
+        DownloadsPopup.Placement = TopLayout ? PlacementMode.Bottom : PlacementMode.Top;
         DownloadsPopup.IsOpen = true;
     }
 
@@ -472,9 +508,9 @@ public partial class MainWindow
     void AddBookmark()
     {
         if (live is not { IsBlank: false } t || t.IsInternal) return;
-        marked = Shared.Bookmarks.Add(t.Url, t.Label);
+        marked = Marks.Add(t.Url, t.Label);
         MarkName.Text = marked.Title;
-        MarkFolder.ItemsSource = new[] { NoFolder }.Concat(Shared.Bookmarks.Folders).ToList();
+        MarkFolder.ItemsSource = new[] { NoFolder }.Concat(Marks.Folders).ToList();
         MarkFolder.SelectedItem = ((IEnumerable<BookmarkFolder>)MarkFolder.ItemsSource).FirstOrDefault(f => f.Id == (marked.Folder ?? Guid.Empty)) ?? NoFolder;
         PlaceTopRight(MarkPopup);
         MarkPopup.IsOpen = true;
@@ -485,8 +521,8 @@ public partial class MainWindow
     {
         if (marked is not null)
         {
-            Shared.Bookmarks.Rename(marked.Id, MarkName.Text);
-            Shared.Bookmarks.Move(marked.Id, MarkFolder.SelectedItem is BookmarkFolder f && f.Id != Guid.Empty ? f.Id : null);
+            Marks.Rename(marked.Id, MarkName.Text);
+            Marks.Move(marked.Id, MarkFolder.SelectedItem is BookmarkFolder f && f.Id != Guid.Empty ? f.Id : null);
         }
         MarkPopup.IsOpen = false;
         marked = null;
@@ -494,7 +530,7 @@ public partial class MainWindow
 
     void MarkRemove_Click(object sender, RoutedEventArgs e)
     {
-        if (marked is not null) Shared.Bookmarks.Remove(marked.Id);
+        if (marked is not null) Marks.Remove(marked.Id);
         MarkPopup.IsOpen = false;
         marked = null;
     }
@@ -509,15 +545,15 @@ public partial class MainWindow
     {
         BarItems.Children.Clear();
         if (BarHost.Visibility != Visibility.Visible) return;
-        foreach (var b in Shared.Bookmarks.In(null)) BarItems.Children.Add(BarButton(b.Title, b.Url, null, () => Navigate(b.Url), b));
-        foreach (var f in Shared.Bookmarks.Folders)
+        foreach (var b in Marks.In(null)) BarItems.Children.Add(BarButton(b.Title, b.Url, null, () => Navigate(b.Url), b));
+        foreach (var f in Marks.Folders)
         {
             var folder = f;
             var button = BarButton(f.Name, null, "", null, null);
             button.MouseLeftButtonUp += (_, _) =>
             {
                 var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
-                foreach (var b in Shared.Bookmarks.In(folder.Id))
+                foreach (var b in Marks.In(folder.Id))
                 {
                     var item = new MenuItem { Header = b.Title };
                     var url = b.Url;
@@ -557,7 +593,7 @@ public partial class MainWindow
         {
             var menu = new ContextMenu();
             var open = new MenuItem { Header = "Open in New Tab" }; open.Click += (_, _) => Open(mark.Url);
-            var remove = new MenuItem { Header = "Remove Bookmark" }; remove.Click += (_, _) => Shared.Bookmarks.Remove(mark.Id);
+            var remove = new MenuItem { Header = "Remove Bookmark" }; remove.Click += (_, _) => Marks.Remove(mark.Id);
             menu.Items.Add(open); menu.Items.Add(remove);
             chip.ContextMenu = menu;
         }
@@ -618,4 +654,15 @@ public partial class MainWindow
     void ToggleDevTools() => live?.View?.CoreWebView2?.OpenDevToolsWindow();
 
     void ClearBrowsingDataPage() => OpenPage("search://settings/privacy");
+}
+
+public partial class MainWindow
+{
+    void TopScroll_Wheel(object sender, MouseWheelEventArgs e)
+    {
+        TopScroll.ScrollToHorizontalOffset(TopScroll.HorizontalOffset - e.Delta);
+        e.Handled = true;
+    }
+
+    void TopUpdate_Click(object sender, RoutedEventArgs e) => InstallUpdate();
 }
