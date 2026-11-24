@@ -16,8 +16,8 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Pins as rows, pin folders | ⬜ | |
 | Tab rows: icon or letter, title, close, loading ring | ✅ | |
 | Middle-click closes a tab | ✅ | |
-| Drag to reorder tabs and pins | ✅ | |
-| Tab context menu | 🟡 | Pin, duplicate, copy address, copy as Markdown, reload, close, close below, reopen. Rename, mute, move to space ⬜ |
+| Drag to reorder tabs and pins | ✅ | Rows make room as you drag; drop on the pins (or "Drop here to pin") to pin |
+| Tab context menu | 🟡 | In Search's own style. Pin/Unpin, Back to Pinned Page, Replace Pinned Page, Rename, Duplicate, Copy Address, Copy as Markdown Link, Put to Sleep, Close Tab, Close Other Tabs. Groups, spaces, split, folders, Copy Clean Link, Site Information, Side Panel ⬜ (each waits on its feature) |
 | Tabs sleep until shown | ✅ | Restored tabs load on first view |
 | Spaces, space colours, swipe | ⬜ | |
 | Profiles | ⬜ | Will map to WebView2 profiles |
@@ -36,10 +36,11 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Empty tab: centred field | ✅ | |
 | Edit address in the row (Ctrl+L, Alt+D, F6) | ✅ | |
 | History suggestions, ranking, typo forgiveness | ✅ | |
+| Popular sites on the first day (History.swift `known`) | ✅ | Same 47 sites |
 | Inline completion | ✅ | |
 | Switch to an open tab | ✅ | |
 | Search engine choice (8 + custom) | 🟡 | Logic done; Settings UI ⬜ |
-| Engine suggestions as you type | ⬜ | Endpoints ported |
+| Engine suggestions as you type | ✅ | All 8 engines; never for an address |
 | Site search with Tab, commands (Arc command bar) | ⬜ | |
 | Bookmarks in suggestions | ⬜ | |
 
@@ -99,7 +100,9 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Snap layouts on the maximise button | ⬜ | |
 | Mouse back / forward buttons | ✅ | |
 | Notifications from sites | 🟡 | WebView2's own |
-| Updater | ⬜ | |
+| Updater | ✅ | Checks GitHub releases at launch and hourly, downloads quietly, "Restart to Update" in the column; Alt+Space › Check for Updates… |
+| About Search | ✅ | Alt+Space › About Search |
+| Crash log | ✅ | `%LOCALAPPDATA%\Search\crash.log`; errors no longer close the app |
 | AppleScript | ⛔ | |
 | Handoff | ⛔ | |
 
@@ -120,6 +123,14 @@ The Mac app has a full, customisable shortcut list (`Shortcuts.swift`); only the
 | ⌘S toggle column | Ctrl+Shift+S | ✅ |
 | Pin Tab (no Mac shortcut) | Ctrl+Shift+D (added) | ✅ |
 | ⌃⌘F full screen | F11 | ✅ |
+
+## Motion
+| Feature | Status | Notes |
+|---|---|---|
+| Hover fades | ✅ | Rows and pins |
+| New rows slide in | ✅ | |
+| Suggestion list scales in | ✅ | |
+| Tab switch, column fold, space swipe animations | ⬜ | |
 
 ## Known differences
 

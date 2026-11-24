@@ -69,6 +69,17 @@
       </Setter>
     </Style>
 
+    <!-- Motion.quick: hovers fade in and out rather than snapping. -->
+    <Storyboard x:Key="HoverIn"><DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" /></Storyboard>
+    <Storyboard x:Key="HoverOut"><DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18" /></Storyboard>
+    <!-- A row arriving (a new tab, a reopened one) slides down into place and fades in. -->
+    <Storyboard x:Key="Arrive">
+      <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.18" />
+      <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="-6" To="0" Duration="0:0:0.22">
+        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+      </DoubleAnimation>
+    </Storyboard>
+
     <!-- The site's icon, or its letter until a visit brings one (Icons.swift Mark). -->
     <DataTemplate x:Key="Mark" DataType="{x:Type local:Tab}">
       <Grid Width="15" Height="15">
@@ -102,10 +113,15 @@
     <!-- A tab's row in the column (Side.swift TabRow): 28 tall, corners of 9. -->
     <DataTemplate x:Key="TabRow" DataType="{x:Type local:Tab}">
       <Border x:Name="Row" Height="28" CornerRadius="9" Background="Transparent" Margin="0,0,0,2"
-              MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening" ToolTip="{Binding Url}"
-              AllowDrop="True" Drop="Row_Drop"
-              ToolTipService.InitialShowDelay="900">
+              MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
+        <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
+        <Border.Triggers>
+          <EventTrigger RoutedEvent="Loaded"><BeginStoryboard Storyboard="{StaticResource Arrive}" /></EventTrigger>
+        </Border.Triggers>
         <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
+        <Grid>
+        <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Hover}" Opacity="0" />
         <Grid Margin="10,0,7,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
@@ -124,6 +140,7 @@
                     Visibility="Hidden" Click="CloseTab_Click" ToolTip="Close tab (Ctrl+W)" />
           </Grid>
         </Grid>
+        </Grid>
       </Border>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding IsBlank}" Value="True">
@@ -133,7 +150,8 @@
           <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
         </DataTrigger>
         <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-          <Setter TargetName="Row" Property="Background" Value="{DynamicResource Row.Hover}" />
+          <Trigger.EnterActions><BeginStoryboard Storyboard="{StaticResource HoverIn}" /></Trigger.EnterActions>
+          <Trigger.ExitActions><BeginStoryboard Storyboard="{StaticResource HoverOut}" /></Trigger.ExitActions>
           <Setter TargetName="Close" Property="Visibility" Value="Visible" />
           <Setter TargetName="Ring" Property="Visibility" Value="Collapsed" />
         </Trigger>
@@ -153,8 +171,10 @@
     <DataTemplate x:Key="PinTile" DataType="{x:Type local:Tab}">
       <Border x:Name="Tile" Height="34" CornerRadius="9" Margin="2" Background="{DynamicResource Row.Tile}"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening" ToolTip="{Binding Label}"
-              AllowDrop="True" Drop="Row_Drop">
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
         <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
+        <Grid>
+        <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" Opacity="0" />
         <Grid Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
           <Image Source="{Binding Icon}" RenderOptions.BitmapScalingMode="HighQuality"
                  Visibility="{Binding HasIcon, Converter={StaticResource Visible}}" />
@@ -162,10 +182,12 @@
                      HorizontalAlignment="Center" VerticalAlignment="Center"
                      Visibility="{Binding HasIcon, Converter={StaticResource Hidden}}" />
         </Grid>
+        </Grid>
       </Border>
       <DataTemplate.Triggers>
         <Trigger SourceName="Tile" Property="IsMouseOver" Value="True">
-          <Setter TargetName="Tile" Property="Background" Value="{DynamicResource Row.Wash}" />
+          <Trigger.EnterActions><BeginStoryboard Storyboard="{StaticResource HoverIn}" /></Trigger.EnterActions>
+          <Trigger.ExitActions><BeginStoryboard Storyboard="{StaticResource HoverOut}" /></Trigger.ExitActions>
         </Trigger>
         <DataTrigger Binding="{Binding Live}" Value="True">
           <Setter TargetName="Tile" Property="Background" Value="{DynamicResource Row.PinLive}" />
@@ -192,6 +214,12 @@
         </DataTrigger>
         <DataTrigger Binding="{Binding Kind}" Value="Visited">
           <Setter TargetName="Glyph" Property="Text" Value="&#xE81C;" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Kind}" Value="Known">
+          <Setter TargetName="Glyph" Property="Text" Value="&#xE774;" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Kind}" Value="Suggested">
+          <Setter TargetName="Glyph" Property="Text" Value="&#xE721;" />
         </DataTrigger>
         <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
           <Setter TargetName="B" Property="Background" Value="{DynamicResource Wash}" />
@@ -253,12 +281,26 @@
       </Grid>
 
       <!-- Pins: squares, four to a line. -->
-      <ItemsControl x:Name="PinGrid" DockPanel.Dock="Top" Margin="8,0,8,6" ItemTemplate="{StaticResource PinTile}">
+      <Border x:Name="PinDrop" DockPanel.Dock="Top" Height="34" Margin="10,0,10,8" CornerRadius="9" Visibility="Collapsed"
+              BorderThickness="1" BorderBrush="{DynamicResource Hairline}" Background="{DynamicResource Row.Tile}"
+              AllowDrop="True" Drop="PinDrop_Drop">
+        <TextBlock Text="Drop here to pin" FontSize="12" Foreground="{DynamicResource Row.Muted}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+      <ItemsControl x:Name="PinGrid" DockPanel.Dock="Top" Margin="8,0,8,6" ItemTemplate="{StaticResource PinTile}"
+                    AllowDrop="True" Drop="PinDrop_Drop" Background="Transparent">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
       </ItemsControl>
 
+      <!-- An update downloaded and ready (Updater.swift's "Restart to Update"). -->
+      <Border x:Name="UpdatePill" DockPanel.Dock="Bottom" Margin="10,0,10,10" Height="30" CornerRadius="9" Visibility="Collapsed"
+              Background="{DynamicResource Row.Wash}" Cursor="Hand" MouseLeftButtonUp="UpdatePill_Click">
+        <StackPanel Orientation="Horizontal" Margin="10,0">
+          <TextBlock Text="&#xE896;" FontFamily="{StaticResource Glyphs}" FontSize="11" Margin="0,0,8,0" VerticalAlignment="Center" Foreground="{DynamicResource Ink}" />
+          <TextBlock x:Name="UpdateText" Text="Restart to Update" FontSize="12.5" VerticalAlignment="Center" Foreground="{DynamicResource Ink}" />
+        </StackPanel>
+      </Border>
       <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="10,0,10,10">
         <StackPanel>
           <ItemsControl x:Name="TabList" ItemTemplate="{StaticResource TabRow}" AllowDrop="True" />
@@ -317,7 +359,8 @@
               </Grid>
             </Border>
             <Canvas VerticalAlignment="Top" Margin="0,58,0,0">
-              <Border x:Name="BlankOffersSheet" Style="{StaticResource Sheet}" Padding="6" Width="560" Visibility="Collapsed" Margin="0,8,0,0">
+              <Border x:Name="BlankOffersSheet" Style="{StaticResource Sheet}" Padding="6" Width="560" Visibility="Collapsed" Margin="0,8,0,0" RenderTransformOrigin="0.5,0">
+                <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>
                 <Border.Effect>
                   <DropShadowEffect Color="Black" Opacity="0.07" BlurRadius="20" ShadowDepth="6" Direction="270" />
                 </Border.Effect>

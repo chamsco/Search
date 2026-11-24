@@ -29,9 +29,11 @@ public partial class MainWindow : Window
     readonly History history = History.Load();
     readonly DispatcherTimer saveSoon;
     Engine engine = Engines.Standard;
+    bool engineSuggests = true;
     CoreWebView2Environment? environment;
     Tab? live;
     string? typedBeforeCompletion;
+    readonly Dictionary<TextBox, string> lastTyped = [];
     bool restoring;
 
     public MainWindow(string? open = null)
@@ -42,7 +44,7 @@ public partial class MainWindow : Window
         saveSoon = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         saveSoon.Tick += (_, _) => { saveSoon.Stop(); SaveNow(); };
 
-        SourceInitialized += (_, _) => RoundWindowCorners();
+        SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
         Loaded += async (_, _) => await StartAsync(open);
         Closing += (_, _) => { SaveNow(); history.Save(); };
@@ -92,6 +94,7 @@ public partial class MainWindow : Window
         }
         else if (all.Count == 0) NewTab();
         else Select(all[Math.Clamp(shape?.Active ?? 0, 0, all.Count - 1)]);
+        StartUpdates();
     }
 
     IEnumerable<Tab> Ordered() => pins.Concat(tabs);
@@ -170,8 +173,14 @@ public partial class MainWindow : Window
         var view = new WebView2 { Visibility = Visibility.Hidden, DefaultBackgroundColor = System.Drawing.Color.Transparent };
         t.View = view;
         Stage.Children.Add(view);
-        _ = Attach(t, view, navigate: true);
+        _ = AttachSafely(t, view);
         return view;
+    }
+
+    async Task AttachSafely(Tab t, WebView2 view)
+    {
+        try { await Attach(t, view, navigate: true); }
+        catch (Exception e) { App.Log(e); }
     }
 
     async Task Attach(Tab t, WebView2 view, bool navigate)
@@ -203,9 +212,20 @@ public partial class MainWindow : Window
             UpdateDoors();
         };
         core.HistoryChanged += (_, _) => UpdateDoors();
-        core.FaviconChanged += async (_, _) => t.Icon = await Favicon(core);
+        core.FaviconChanged += async (_, _) =>
+        {
+            try { t.Icon = await Favicon(core); } catch (Exception e) { App.Log(e); }
+        };
         core.NewWindowRequested += (_, e) => OnNewWindow(t, e);
         core.WindowCloseRequested += (_, _) => Close(t);
+        // The engine's own processes can fail (a page's renderer, the GPU). Reload what was lost rather than leave a grey card.
+        core.ProcessFailed += (_, e) =>
+        {
+            App.Log(new Exception($"WebView2 process failed: {e.ProcessFailedKind} ({e.Reason}) on {t.Url}"));
+            t.Loading = false;
+            if (e.ProcessFailedKind is CoreWebView2ProcessFailedKind.RenderProcessExited or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive)
+                try { core.Reload(); } catch (Exception ex) { App.Log(ex); }
+        };
         core.ContainsFullScreenElementChanged += (_, _) => FullScreen(core.ContainsFullScreenElement);
 
         if (t == live) RoundLiveView();
@@ -214,19 +234,30 @@ public partial class MainWindow : Window
 
     static async Task<ImageSource?> Favicon(CoreWebView2 core)
     {
+        // Any icon a site serves must not be able to bring the browser down:
+        // copied into memory first (the engine's stream can't seek), and any
+        // failure to decode it just leaves the letter showing.
         try
         {
-            using var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
-            if (stream is null || stream.Length == 0) return null;
+            using var source = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
+            if (source is null) return null;
+            var memory = new MemoryStream();
+            await source.CopyToAsync(memory);
+            if (memory.Length == 0) return null;
+            memory.Position = 0;
             var image = new BitmapImage();
             image.BeginInit();
             image.CacheOption = BitmapCacheOption.OnLoad;
-            image.StreamSource = stream;
+            image.StreamSource = memory;
             image.EndInit();
             image.Freeze();
             return image;
         }
-        catch (Exception e) when (e is COMException or NotSupportedException or IOException) { return null; }
+        catch (Exception e)
+        {
+            App.Log(e);
+            return null;
+        }
     }
 
     /// <summary>A page asking for a window gets a tab next to it, which keeps window.opener so sign-in pop-ups work.</summary>
@@ -246,6 +277,7 @@ public partial class MainWindow : Window
             e.Handled = true;
             Select(t);
         }
+        catch (Exception ex) { App.Log(ex); }
         finally { deferral.Complete(); }
     }
 
@@ -337,11 +369,59 @@ public partial class MainWindow : Window
     void BlankField_TextChanged(object sender, TextChangedEventArgs e)
     {
         Placeholder.Visibility = BlankField.Text.Length == 0 ? Visibility.Visible : Visibility.Hidden;
-        var offers = Offers(BlankField.Text);
-        BlankOffers.ItemsSource = offers;
-        BlankOffers.SelectedIndex = -1;
+        if (typedBeforeCompletion is not null) return;
+        var typed = BlankField.SelectionLength > 0 ? BlankField.Text[..BlankField.SelectionStart] : BlankField.Text;
+        var offers = Offers(typed);
+        ShowOffers(BlankOffers, offers);
+        var was = BlankOffersSheet.Visibility;
         BlankOffersSheet.Visibility = offers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (was != Visibility.Visible && offers.Count > 0) Appear(BlankOffersSheet);
         ShowCompletion(BlankField, offers);
+        AskEngine(typed, BlankOffers, offers, () => BlankOffersSheet.Visibility = Visibility.Visible);
+    }
+
+    static void ShowOffers(ListBox list, List<Suggestion> offers)
+    {
+        list.ItemsSource = offers;
+        list.SelectedIndex = -1;
+    }
+
+    /// <summary>The list arrives: a little scale and a fade (Motion.quick on the Mac).</summary>
+    static void Appear(FrameworkElement sheet)
+    {
+        var quick = new Duration(TimeSpan.FromMilliseconds(140));
+        var ease = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut };
+        sheet.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0, 1, quick));
+        if (sheet.RenderTransform is ScaleTransform scale)
+        {
+            var grow = new System.Windows.Media.Animation.DoubleAnimation(0.98, 1, quick) { EasingFunction = ease };
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+        }
+    }
+
+    static readonly System.Net.Http.HttpClient http = new() { Timeout = TimeSpan.FromSeconds(4) };
+    readonly EngineSuggester suggester = new(http);
+    CancellationTokenSource? asking;
+
+    /// <summary>Words from the engine, a moment after the last key, added under the rows already shown.</summary>
+    async void AskEngine(string typed, ListBox list, List<Suggestion> offers, Action show)
+    {
+        asking?.Cancel();
+        if (!engineSuggests || string.IsNullOrWhiteSpace(typed) || Address.Url(typed) is not null) return;
+        var cancel = (asking = new CancellationTokenSource()).Token;
+        try
+        {
+            await Task.Delay(120, cancel);
+            var words = await suggester.Suggest(engine, typed, cancel);
+            if (cancel.IsCancellationRequested || words.Count == 0) return;
+            var picked = list.SelectedIndex;
+            list.ItemsSource = Omnibox.WithEngine(offers, typed, words, engine);
+            list.SelectedIndex = picked;
+            show();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e) { App.Log(e); }
     }
 
     void BlankField_PreviewKeyDown(object sender, KeyEventArgs e) => FieldKeys(BlankField, BlankOffers, e, () =>
@@ -357,8 +437,15 @@ public partial class MainWindow : Window
     void ShowCompletion(TextBox field, List<Suggestion> offers)
     {
         if (typedBeforeCompletion is not null) return;
-        var typed = field.Text;
-        if (field.CaretIndex != typed.Length) return;
+        var typed = field.SelectionLength > 0 ? field.Text[..field.SelectionStart] : field.Text;
+        if (field.SelectionStart + field.SelectionLength != field.Text.Length) return;
+        if (lastTyped.TryGetValue(field, out var before) && before.StartsWith(typed, StringComparison.Ordinal) && before.Length > typed.Length)
+        {
+            // Deleting never brings the completion back: you are taking letters away.
+            lastTyped[field] = typed;
+            return;
+        }
+        lastTyped[field] = typed;
         if (History.Completion(typed, offers) is not { } rest) return;
         typedBeforeCompletion = typed;
         field.Text = typed + rest;
@@ -446,24 +533,55 @@ public partial class MainWindow : Window
     void EndEditing(bool commit)
     {
         InlinePopup.IsOpen = false;
+        asking?.Cancel();
         foreach (var t in Ordered()) t.Editing = false;
         inlineField = null;
+        renaming = null;
+    }
+
+    Tab? renaming;
+
+    /// <summary>Rename: the row's title becomes a field holding the name; Enter keeps it, an empty name goes back to the page's title.</summary>
+    void BeginRenaming(Tab t)
+    {
+        if (t.IsPin) return;
+        EndEditing(false);
+        t.Editing = true;
+        renaming = t;
+        Dispatcher.BeginInvoke(() =>
+        {
+            var row = Container(t);
+            inlineField = row is null ? null : FindChild<TextBox>(row, "Field");
+            if (inlineField is null) { t.Editing = false; renaming = null; return; }
+            inlineField.Text = t.Label;
+            inlineField.Focus();
+            Keyboard.Focus(inlineField);
+            inlineField.SelectAll();
+        }, DispatcherPriority.Loaded);
     }
 
     void InlineField_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (sender is not TextBox field || !field.IsKeyboardFocused) return;
-        var offers = Offers(field.Text);
-        InlineOffers.ItemsSource = offers;
-        InlineOffers.SelectedIndex = -1;
+        if (sender is not TextBox field || !field.IsKeyboardFocused || renaming is not null) return;
+        if (typedBeforeCompletion is not null) return;
+        var typed = field.SelectionLength > 0 ? field.Text[..field.SelectionStart] : field.Text;
+        var offers = Offers(typed);
+        ShowOffers(InlineOffers, offers);
         InlinePopup.IsOpen = offers.Count > 0;
         ShowCompletion(field, offers);
+        AskEngine(typed, InlineOffers, offers, () => InlinePopup.IsOpen = true);
     }
 
     void InlineField_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (sender is TextBox field)
-            FieldKeys(field, InlineOffers, e, () => { EndEditing(false); live?.View?.Focus(); });
+        if (sender is not TextBox field) return;
+        if (renaming is { } tab)
+        {
+            if (e.Key == Key.Enter) { tab.Name = string.IsNullOrWhiteSpace(field.Text) || field.Text == tab.Title ? null : field.Text.Trim(); EndEditing(true); SaveSoon(); e.Handled = true; }
+            else if (e.Key == Key.Escape) { EndEditing(false); e.Handled = true; }
+            return;
+        }
+        FieldKeys(field, InlineOffers, e, () => { EndEditing(false); live?.View?.Focus(); });
     }
 
     void InlineField_LostFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -512,25 +630,46 @@ public partial class MainWindow : Window
             m.Click += (_, _) => act();
             return m;
         }
-        if (!t.IsBlank)
+        // The same items, in the same order, as the Mac's TabMenu (TabBar.swift).
+        if (t.IsPin)
         {
-            menu.Items.Add(Item(t.IsPin ? "Unpin" : "Pin", () => { if (t.IsPin) Unpin(t); else Pin(t); }));
-            if (t.IsPin && t.Home is { } home && t.Url != home)
-                menu.Items.Add(Item("Go back to pinned page", () => { Select(t); Navigate(home); }));
-            menu.Items.Add(Item("Duplicate", () => Duplicate(t)));
-            menu.Items.Add(Item("Copy Address", () => Clipboard.SetText(t.Url)));
-            menu.Items.Add(Item("Copy Address as Markdown", () => Clipboard.SetText($"[{t.Label}]({t.Url})")));
-            menu.Items.Add(Item("Reload", () => t.View?.CoreWebView2?.Reload(), enabled: t.View?.CoreWebView2 is not null));
-            menu.Items.Add(new Separator());
+            if (t.Home is { } home && History.Identity(t.Url) != History.Identity(home))
+            {
+                menu.Items.Add(Item("Back to Pinned Page", () => { Select(t); Navigate(home); }));
+                menu.Items.Add(Item("Replace Pinned Page with Current URL", () => { t.Home = t.Url; SaveSoon(); }));
+            }
+            menu.Items.Add(Item("Unpin", () => Unpin(t), "Ctrl+Shift+D"));
         }
+        else
+        {
+            menu.Items.Add(Item("Pin", () => Pin(t), "Ctrl+Shift+D", enabled: !t.IsBlank));
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Item("Rename", () => BeginRenaming(t)));
+        }
+        menu.Items.Add(Item("Duplicate", () => Duplicate(t), enabled: !t.IsBlank));
+        menu.Items.Add(Item("Copy Address", () => Clipboard.SetText(t.Url), "Ctrl+Shift+C", enabled: !t.IsBlank));
+        menu.Items.Add(Item("Copy as Markdown Link", () => Clipboard.SetText($"[{t.Label}]({t.Url})"), enabled: !t.IsBlank));
+        menu.Items.Add(Item("Put to Sleep", () => Sleep(t), enabled: !t.Asleep && t != live));
+        menu.Items.Add(new Separator());
         menu.Items.Add(Item("Close Tab", () => Close(t), "Ctrl+W"));
-        if (!t.IsPin)
-            menu.Items.Add(Item("Close Tabs Below", () => { foreach (var b in tabs.Skip(tabs.IndexOf(t) + 1).ToList()) Close(b); },
-                enabled: tabs.IndexOf(t) < tabs.Count - 1));
-        menu.Items.Add(Item("Reopen Closed Tab", Reopen, "Ctrl+Shift+T", enabled: closed.Count > 0));
+        menu.Items.Add(Item("Close Other Tabs", () => { foreach (var o in tabs.Where(o => o != t).ToList()) Close(o); },
+            enabled: tabs.Any(o => o != t)));
     }
 
-    // Dragging a row to put it somewhere else in the column, or onto the pins.
+    /// <summary>The page is let go of, its memory with it; the row stays and loads again when shown.</summary>
+    void Sleep(Tab t)
+    {
+        if (t.View is null || t == live) return;
+        Stage.Children.Remove(t.View);
+        t.View.Dispose();
+        t.View = null;
+        t.Loading = false;
+    }
+
+    // Dragging a row: the rows make room as it passes over them, and the
+    // pins take it when it is let go over them (or the drop zone, with no pins yet).
+    Tab? dragging;
+
     void StartDrag(FrameworkElement source, MouseButtonEventArgs e)
     {
         void Move(object s, MouseEventArgs m)
@@ -539,22 +678,54 @@ public partial class MainWindow : Window
             var d = m.GetPosition(this) - pressAt;
             if (Math.Abs(d.Y) < 4 && Math.Abs(d.X) < 4) return;
             source.PreviewMouseMove -= Move;
-            if (source.DataContext is Tab t) DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move);
+            if (source.DataContext is not Tab t) return;
+            dragging = t;
+            PinDrop.Visibility = pins.Count == 0 && !t.IsPin && !t.IsBlank ? Visibility.Visible : Visibility.Collapsed;
+            source.Opacity = 0.55;
+            try { DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move); }
+            finally
+            {
+                source.Opacity = 1;
+                dragging = null;
+                PinDrop.Visibility = Visibility.Collapsed;
+                SaveSoon();
+            }
         }
         source.PreviewMouseMove += Move;
     }
 
+    void Row_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+        if (dragging is not { } moving || (sender as FrameworkElement)?.DataContext is not Tab target || moving == target) return;
+        // Within one list, the row moves as you go, so you see where it will land.
+        if (moving.IsPin == target.IsPin)
+        {
+            var list = moving.IsPin ? pins : tabs;
+            int from = list.IndexOf(moving), to = list.IndexOf(target);
+            if (from >= 0 && to >= 0 && from != to) list.Move(from, to);
+        }
+    }
+
     void Row_Drop(object sender, DragEventArgs e)
     {
+        e.Handled = true;
         if (e.Data.GetData(typeof(Tab)) is not Tab moving || (sender as FrameworkElement)?.DataContext is not Tab target || moving == target) return;
-        var from = moving.IsPin ? pins : tabs;
+        if (moving.IsPin == target.IsPin) return; // already moved while dragging
+        if (target.IsPin && moving.IsBlank) return;
+        (moving.IsPin ? pins : tabs).Remove(moving);
+        if (target.IsPin) { moving.PinId = Guid.NewGuid(); moving.Home = moving.Url; }
+        else { moving.PinId = null; moving.Home = null; }
         var to = target.IsPin ? pins : tabs;
-        if (to == pins && moving.IsBlank) return;
-        from.Remove(moving);
-        if (to == pins && !moving.IsPin) { moving.PinId = Guid.NewGuid(); moving.Home = moving.Url; }
-        if (to == tabs && moving.IsPin) { moving.PinId = null; moving.Home = null; }
         to.Insert(Math.Max(0, to.IndexOf(target)), moving);
-        SaveSoon();
+    }
+
+    void PinDrop_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Handled || e.Data.GetData(typeof(Tab)) is not Tab moving || moving.IsPin) return;
+        e.Handled = true;
+        Pin(moving);
     }
 
     FrameworkElement? Container(Tab t)

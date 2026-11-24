@@ -27,6 +27,10 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 WizardStyle=modern
+VersionInfoVersion={#AppVersion}
+; An update run by Search itself (/VERYSILENT) closes the running copy first.
+CloseApplications=force
+RestartApplications=no
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
@@ -57,3 +61,5 @@ Root: HKCU; Subkey: "Software\Classes\SearchHTML\shell\open\command"; ValueType:
 
 [Run]
 Filename: "{app}\Search.exe"; Description: "Open Search"; Flags: nowait postinstall skipifsilent
+; After an in-app update, Search opens again by itself.
+Filename: "{app}\Search.exe"; Flags: nowait runasoriginaluser; Check: WizardSilent

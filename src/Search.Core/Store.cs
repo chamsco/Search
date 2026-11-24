@@ -10,8 +10,10 @@ namespace Search.Core;
 /// </summary>
 public static class Store
 {
-    public static string Root { get; set; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Search");
+    /// <summary>SEARCH_DATA points a test run somewhere else, so it starts from nothing and leaves your own data alone.</summary>
+    public static string Root { get; set; } =
+        Environment.GetEnvironmentVariable("SEARCH_DATA") is { Length: > 0 } custom ? custom :
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Search");
 
     public static string File(string name)
     {
