@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         windowId = window ?? Guid.Empty;
         profileId = profile ?? Spaces.PersonalId;
         InitializeComponent();
+        PreviewDragOver += (_, e) => App.Trace($"drag preview {e.OriginalSource?.GetType().Name} at {e.GetPosition(this)}");
         InitSpaces();
         InitPages();
         RegisterWindow();
