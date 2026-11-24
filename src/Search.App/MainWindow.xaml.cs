@@ -788,6 +788,7 @@ public partial class MainWindow : Window
             dragging = t; App.Trace($"drag start {t.Title}");
             PinDrop.Visibility = pins.Count == 0 && !t.IsPin && !t.IsBlank ? Visibility.Visible : Visibility.Collapsed;
             source.Opacity = 0.55;
+            source.QueryContinueDrag += (_, q) => { if (q.Action != DragAction.Continue || q.EscapePressed) App.Trace($"drag query {q.Action} esc={q.EscapePressed} keys={q.KeyStates} loaded={source.IsLoaded} inTree={PresentationSource.FromVisual(source) is not null}"); };
             try { var fx = DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move); App.Trace($"drag ended {fx}"); }
             finally
             {
