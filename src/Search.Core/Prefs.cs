@@ -26,6 +26,12 @@ public sealed class PrefsData
     public TabsLayout Layout { get; set; } = TabsLayout.Sidebar;
     /// <summary>Settings › Tabs › Pins as rows instead of squares.</summary>
     public bool PinsAsRows { get; set; }
+    /// <summary>Settings › Tabs › Close tabs left alone: days unattended before Search closes a tab and archives it; 0 never.</summary>
+    public int CloseIdleDays { get; set; }
+    /// <summary>Settings › General › Little windows: a link from another app opens in a small window.</summary>
+    public bool LittleLinks { get; set; }
+    /// <summary>Settings › Keyboard &amp; Mouse › Peek: Shift+click a link to see its page over this one.</summary>
+    public bool Peek { get; set; } = true;
 }
 
 public sealed class Prefs
