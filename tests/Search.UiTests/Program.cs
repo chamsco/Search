@@ -55,15 +55,12 @@ using var automation = new UIA3Automation();
 var app = Launch();
 Window? window = null;
 // Text drawn in the app's popups (find count, bookmark card): the app's other top-level windows.
-string PopupText()
+string PopupText(string automationId)
 {
     try
     {
-        var task = Task.Run(() => string.Join(" · ", app.GetAllTopLevelWindows(automation)
-            .Where(w => w.Title != window!.Title)
-            .SelectMany(w => w.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)).Select(t => t.Name))
-            .Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().Take(12)));
-        return task.Wait(TimeSpan.FromSeconds(12)) ? task.Result : "(timed out reading popups)";
+        var task = Task.Run(() => automation.GetDesktop().FindFirstDescendant(cf => cf.ByAutomationId(automationId))?.Name ?? "");
+        return task.Wait(TimeSpan.FromSeconds(15)) ? task.Result : "(timed out)";
     }
     catch (Exception e) { return "(" + e.Message + ")"; }
 }
@@ -129,17 +126,17 @@ try
 
     // ---- wave 2 ----
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F);
-    Keyboard.Type("git");
-    Thread.Sleep(1200);
-    var findText = PopupText();
-    Step("Ctrl+F, type git: matches are highlighted on the page and counted", findText.Contains(" of ") || findText.Contains("No matches"), $"popup says: {findText.Replace("|", "\\|")} · " + Shot("find"));
+    Keyboard.Type("domain");
+    Thread.Sleep(1500);
+    var findText = PopupText("FindCount");
+    Step("Ctrl+F, type domain: matches are highlighted on the page and counted", findText.Contains(" of "), $"popup says: {findText.Replace("|", "\\|")} · " + Shot("find"));
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(600);
     Keyboard.Press(VirtualKeyShort.ESCAPE);
     Thread.Sleep(500);
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_B);
-    Step("Ctrl+Shift+B: a card to name the bookmark opens, and the page is saved", DataText("bookmarks.json").Contains("\"Url\"") || DataText("bookmarks.json").Contains("\"url\""), $"card says: {PopupText().Replace("|", "\\|")} · " + Shot("bookmark-card"));
+    Step("Ctrl+Shift+B: a card to name the bookmark opens, and the page is saved", DataText("bookmarks.json").Contains("\"Url\"") || DataText("bookmarks.json").Contains("\"url\""), $"card says: {PopupText("MarkTitle")} · " + Shot("bookmark-card"));
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(600);
 
@@ -191,7 +188,7 @@ try
     Thread.Sleep(4000);
     var windows = app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
     Step("Ctrl+N: a second window opens", windows >= 2, $"{windows} windows · " + Shot("new-window"));
-    Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
+    foreach (var w in app.GetAllTopLevelWindows(automation).Where(w => !string.IsNullOrEmpty(w.Title) && w.Properties.NativeWindowHandle.Value != window!.Properties.NativeWindowHandle.Value)) { try { w.Close(); } catch { } }
     Thread.Sleep(1500);
     Step("Close the second window: the first stays", !app.HasExited, Shot("back-to-first"));
 
@@ -201,7 +198,7 @@ try
     Step("Start Search again with a link: the running one opens it, no second copy stays", second.HasExited && SessionText().Contains("example.org"), Shot("one-copy"));
 
     Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
-    app.WaitWhileMainHandleIsMissing(TimeSpan.FromSeconds(2));
+    try { app.WaitWhileMainHandleIsMissing(TimeSpan.FromSeconds(2)); } catch { }
     Thread.Sleep(2000);
     var saved = File.Exists(Path.Combine(data, "session.json"));
     var sessionText = saved ? File.ReadAllText(Path.Combine(data, "session.json")) : "no session.json";

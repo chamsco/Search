@@ -362,9 +362,21 @@ public partial class MainWindow
         if (live?.View?.CoreWebView2 is null || live.IsBlank) return;
         PlaceTopRight(FindPopup);
         FindPopup.IsOpen = true;
-        FindBox.Focus();
-        FindBox.SelectAll();
+        FocusPopup(FindPopup, FindBox);
         if (FindBox.Text.Length > 0) _ = Find(0);
+    }
+
+    /// <summary>A popup is a window of its own; the page's window keeps the keyboard until the popup is brought forward.</summary>
+    void FocusPopup(System.Windows.Controls.Primitives.Popup popup, TextBox box)
+    {
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+        {
+            if (popup.Child is { } child && PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
+                Native.SetForegroundWindow(source.Handle);
+            box.Focus();
+            Keyboard.Focus(box);
+            box.SelectAll();
+        });
     }
 
     void CloseFind()
@@ -466,8 +478,7 @@ public partial class MainWindow
         MarkFolder.SelectedItem = ((IEnumerable<BookmarkFolder>)MarkFolder.ItemsSource).FirstOrDefault(f => f.Id == (marked.Folder ?? Guid.Empty)) ?? NoFolder;
         PlaceTopRight(MarkPopup);
         MarkPopup.IsOpen = true;
-        MarkName.Focus();
-        MarkName.SelectAll();
+        FocusPopup(MarkPopup, MarkName);
     }
 
     void MarkDone_Click(object sender, RoutedEventArgs e)
