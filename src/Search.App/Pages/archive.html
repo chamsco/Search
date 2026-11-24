@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Archived Tabs</title><link rel="stylesheet" href="common.css"></head>
+<body><div class="page">
+  <h1>Archived Tabs</h1><p class="sub" id="note"></p>
+  <div class="toolbar"><input id="q" class="grow" type="search" placeholder="Search archived tabs" autocomplete="off"><button id="clear" class="danger">Clear archive</button></div>
+  <div id="list"></div>
+</div>
+<script src="bridge.js"></script>
+<script>
+let items = [], filter = '';
+const list = document.getElementById('list');
+document.getElementById('q').addEventListener('input', e => { filter = e.target.value.toLowerCase(); draw(); });
+document.getElementById('clear').onclick = () => host.send('archive.clear');
+host.on('archive', m => {
+  items = m.items;
+  document.getElementById('note').textContent = m.days > 0
+    ? `Tabs Search closed after ${m.days === 1 ? 'a day' : m.days + ' days'} unattended, kept for 30 days. Click one to open it again.`
+    : 'Nothing is closed for you right now. Turn on Close tabs left alone in Settings › Tabs to keep an archive.';
+  draw();
+});
+function draw() {
+  const shown = items.filter(i => !filter || (i.title + ' ' + hostOf(i.url)).toLowerCase().includes(filter));
+  if (!shown.length) { list.innerHTML = `<div class="empty">${filter ? 'Nothing matches.' : 'No archived tabs.'}</div>`; return; }
+  list.innerHTML = shown.map(i => `<div class="row" data-id="${i.id}"><span class="mark">${esc(letter(i.url))}</span>
+    <a class="main" href="#"><span class="t">${esc(i.title || hostOf(i.url))}</span><span class="u">${esc(hostOf(i.url))}</span></a>
+    <span class="when">${new Date(i.closed).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
+    <span class="acts"><button class="icon" title="Remove" data-del="1">&#xE711;</button></span></div>`).join('');
+}
+list.addEventListener('click', e => {
+  const row = e.target.closest('.row'); if (!row) return;
+  if (e.target.closest('[data-del]')) host.send('archive.remove', { id: row.dataset.id });
+  else { e.preventDefault(); host.send('archive.open', { id: row.dataset.id }); }
+});
+host.send('archive.get');
+</script></body></html>

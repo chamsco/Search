@@ -82,6 +82,7 @@ public partial class MainWindow
         SaveNow();
         history.Save();
         Process.Start(new ProcessStartInfo(installer, "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RELAUNCH=1") { UseShellExecute = true });
+        App.Quitting = true;
         Application.Current.Shutdown();
     }
 
@@ -99,6 +100,7 @@ public partial class MainWindow
         AppendMenu(menu, 0, CheckUpdatesId, "Check for Updates…");
         AppendMenu(menu, 0, AboutId, "About Search");
         HwndSource.FromHwnd(hwnd)?.AddHook(SystemMenuHook);
+        HwndSource.FromHwnd(hwnd)?.AddHook(SnapHook);
     }
 
     IntPtr SystemMenuHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

@@ -8,6 +8,9 @@ static class Shared
     public static readonly SpaceBook Book = SpaceBook.Load();
     static readonly Dictionary<Guid, History> histories = [];
     static readonly Dictionary<Guid, Bookmarks> bookmarks = [];
+    static readonly Dictionary<Guid, Archive> archives = [];
+    public static Archive ArchiveOf(Guid profile) =>
+        archives.TryGetValue(profile, out var a) ? a : archives[profile] = Archive.Load(Archive.FileFor(profile));
 
     /// <summary>A profile's own history and bookmarks; Personal's are the files there have always been.</summary>
     public static History HistoryOf(Guid profile) =>

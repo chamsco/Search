@@ -114,7 +114,7 @@
 
     <!-- A tab's row in the column (Side.swift TabRow): 28 tall, corners of 9. -->
     <DataTemplate x:Key="TabRow" DataType="{x:Type local:Tab}">
-      <Border x:Name="Row" Height="28" CornerRadius="9" Background="Transparent" Margin="0,0,0,2"
+      <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Height="28" CornerRadius="9" Background="Transparent" Margin="0,0,0,2"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
               AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
         <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
@@ -157,6 +157,10 @@
           <Setter TargetName="Close" Property="Visibility" Value="Visible" />
           <Setter TargetName="Ring" Property="Visibility" Value="Collapsed" />
         </Trigger>
+        <DataTrigger Binding="{Binding InSplit}" Value="True">
+          <Setter TargetName="Row" Property="BorderThickness" Value="1" />
+          <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Row.Wash}" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding Live}" Value="True">
           <Setter TargetName="Row" Property="Background" Value="{DynamicResource Row.Wash}" />
           <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource Ink}" />
@@ -171,7 +175,7 @@
 
     <!-- The same row, laid along the top strip (Settings › Tabs › Layout: Top). -->
     <DataTemplate x:Key="TabChip" DataType="{x:Type local:Tab}">
-      <Border x:Name="Row" Width="172" Height="30" CornerRadius="9" Background="Transparent" Margin="0,0,2,0" WindowChrome.IsHitTestVisibleInChrome="True"
+      <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Width="172" Height="30" CornerRadius="9" Background="Transparent" Margin="0,0,2,0" WindowChrome.IsHitTestVisibleInChrome="True"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
               AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
         <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
@@ -214,6 +218,10 @@
           <Setter TargetName="Close" Property="Visibility" Value="Visible" />
           <Setter TargetName="Ring" Property="Visibility" Value="Collapsed" />
         </Trigger>
+        <DataTrigger Binding="{Binding InSplit}" Value="True">
+          <Setter TargetName="Row" Property="BorderThickness" Value="1" />
+          <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Row.Wash}" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding Live}" Value="True">
           <Setter TargetName="Row" Property="Background" Value="{DynamicResource Row.Wash}" />
           <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource Ink}" />
@@ -333,7 +341,7 @@
       <StackPanel Orientation="Horizontal" Margin="10,0,8,0" VerticalAlignment="Center">
         <Button Style="{StaticResource CloseDoor}" Content="&#xE8BB;" FontSize="9" Click="CloseWindow_Click" ToolTip="Close" />
         <Button Style="{StaticResource Door}" Content="&#xE921;" FontSize="9" Click="Minimize_Click" ToolTip="Minimize" />
-        <Button Style="{StaticResource Door}" Content="&#xE922;" FontSize="9" Click="Maximize_Click" ToolTip="Maximize" />
+        <Button Style="{StaticResource Door}" x:Name="TopMaxDoor" Content="&#xE922;" FontSize="9" Click="Maximize_Click" ToolTip="Maximize" />
         <Border Width="8" />
         <Button Style="{StaticResource Door}" x:Name="TopBackDoor" Content="&#xE76B;" Click="Back_Click" ToolTip="Back (Alt+Left)" />
         <Button Style="{StaticResource Door}" x:Name="TopForwardDoor" Content="&#xE76C;" Click="Forward_Click" ToolTip="Forward (Alt+Right)" />

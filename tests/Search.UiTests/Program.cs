@@ -44,10 +44,12 @@ Application Launch()
     var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
     psi.Environment["SEARCH_DATA"] = data;
     psi.Environment["SEARCH_NO_UPDATES"] = "1";
+    psi.Environment["SEARCH_SNAP"] = "1";
     return Application.Launch(psi);
 }
 
 
+[System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr SendMessageW(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 string SessionText() { try { return File.ReadAllText(Path.Combine(data, "session.json")); } catch { return ""; } }
 string SessionOf(Guid space) { try { return File.ReadAllText(Path.Combine(data, "session-" + space.ToString("N") + ".json")); } catch { return ""; } }
 string DataText(string name) { try { return File.ReadAllText(Path.Combine(data, name)); } catch { return ""; } }
@@ -276,6 +278,184 @@ try
     Thread.Sleep(5000);
     var windowsNow = app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
     Step("Choose Studio: it opens in a window of its own with its own spaces", windowsNow >= 2, $"{windowsNow} windows · " + Shot("profile-window"));
+
+    // ---- wave 4: archive, split view, peek, little windows, snap, windows restored ----
+    void Quit()
+    {
+        try { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_Q); } catch { }
+        try { Process.GetProcessById(app.ProcessId).WaitForExit(10000); } catch { }
+        try { if (!app.HasExited) app.Kill(); } catch { }
+        Thread.Sleep(2000);
+    }
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w4-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"closeIdleDays\":1,\"altSplit\":true,\"littleLinks\":true}");
+    File.WriteAllText(Path.Combine(data, "session.json"),
+        "{\"tabs\":[{\"url\":\"https://example.net/\",\"title\":\"Old page\",\"lastSeen\":\"2020-01-01T00:00:00Z\"},{\"url\":\"https://example.org/\",\"title\":\"Example Domain\"}],\"active\":1,\"splits\":[]}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(7000);
+    Step("A tab left alone for years, with Close tabs left alone set to a day: it is closed into the archive, the other stays",
+        DataText("archive.json").Contains("example.net") && !SessionText().Contains("example.net") && SessionText().Contains("example.org"),
+        "archive.json holds: " + (DataText("archive.json").Contains("example.net") ? "example.net" : "nothing") + " · " + Shot("archived-on-start"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type("search://archive");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(3500);
+    Step("search://archive: the Archived Tabs page lists it, with Open and Remove", SessionText().Contains("search://archive"), Shot("archive-page"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+    Thread.Sleep(1500);
+
+    int[] SplitCounts()
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(SessionText());
+            return doc.RootElement.GetProperty("splits").EnumerateArray().Select(x => x.GetProperty("tabs").GetArrayLength()).ToArray();
+        }
+        catch { return []; }
+    }
+    double[] FirstSizes()
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(SessionText());
+            return doc.RootElement.GetProperty("splits")[0].GetProperty("sizes").EnumerateArray().Select(x => x.GetDouble()).ToArray();
+        }
+        catch { return []; }
+    }
+    Point CentreOf(AutomationElement e) { var r = e.BoundingRectangle; return new Point(r.Left + r.Width / 2, r.Top + r.Height / 2); }
+    List<AutomationElement> Rows() => window!.FindAllDescendants(cf => cf.ByName("Example Domain")).OrderBy(x => x.BoundingRectangle.Top).ThenBy(x => x.BoundingRectangle.Left).ToList();
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+    Thread.Sleep(1500);
+    Keyboard.Type("example.com");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(6000);
+    Step("Ctrl+Alt+N on a lone page: an empty page opens beside it, the address field ready; example.com loads in it", SplitCounts().SequenceEqual([2]), $"splits: [{string.Join(",", SplitCounts())}] · " + Shot("split-two"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.LEFT);
+    Thread.Sleep(1500);
+    Step("Ctrl+Alt+Left: the left page takes the focus ring", !app.HasExited, Shot("split-focus-left"));
+
+    var line = window.FindFirstDescendant(cf => cf.ByAutomationId("SplitLine0"));
+    var before = FirstSizes();
+    if (line is not null) { var c = CentreOf(line); Mouse.Drag(c, new Point(c.X - 200, c.Y)); }
+    Thread.Sleep(3500);
+    var after = FirstSizes();
+    Step("Drag the line between the pages: the left one gets narrower, the right one wider", line is not null && after.Length == 2 && before.Length == 2 && after[0] < before[0] - 0.05,
+        $"before {string.Join("/", before.Select(x => x.ToString("0.00")))}, after {string.Join("/", after.Select(x => x.ToString("0.00")))} · " + Shot("split-resized"));
+
+    for (var n = 0; n < 2; n++)
+    {
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+        Keyboard.Type("example.org/?p" + n);
+        Keyboard.Press(VirtualKeyShort.RETURN);
+        Thread.Sleep(4500);
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1);
+        Thread.Sleep(1200);
+        var row = Rows().LastOrDefault();
+        if (row is not null)
+        {
+            Keyboard.Press(VirtualKeyShort.ALT);
+            Mouse.Click(CentreOf(row));
+            Keyboard.Release(VirtualKeyShort.ALT);
+        }
+        Thread.Sleep(5000);
+    }
+    Step("Alt+click two more tabs: they join the split; four pages share the room", SplitCounts().SequenceEqual([4]), $"splits: [{string.Join(",", SplitCounts())}] · " + Shot("split-four"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+    Thread.Sleep(2000);
+    Step("Ctrl+Alt+N inside a split: the pages come apart and stay as tabs", SplitCounts().Length == 0 && !app.HasExited, Shot("split-separated"));
+
+    // Peek: a page with a link, Shift+click on it.
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_L);
+    Keyboard.Type("example.org");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(5000);
+    // The screen is small and the page tall: zoom out so the link is well above the taskbar (a click down there starts the browser pinned to it).
+    for (var z = 0; z < 4; z++) Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SUBTRACT);
+    Thread.Sleep(1500);
+    AutomationElement? OnScreenLink()
+    {
+        var l = window!.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Hyperlink));
+        return l is not null && CentreOf(l).Y < 650 && CentreOf(l).Y > 60 ? l : null;
+    }
+    var link = OnScreenLink();
+    // Owned windows hang off their owner in the UI tree, so they are looked for by what is on them.
+    bool Shows(string name) { try { var t = Task.Run(() => automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(name)) is not null); return t.Wait(TimeSpan.FromSeconds(15)) && t.Result; } catch { return false; } }
+    var windowsBefore = 0;
+    if (link is not null)
+    {
+        Keyboard.Press(VirtualKeyShort.SHIFT);
+        Mouse.Click(CentreOf(link));
+        Keyboard.Release(VirtualKeyShort.SHIFT);
+    }
+    Thread.Sleep(6000);
+    string EdgeLaunch()
+    {
+        try
+        {
+            var ps = Process.Start(new ProcessStartInfo("powershell", "-NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\"Name='msedge.exe'\\\" | Where-Object { $_.CommandLine -notmatch 'webview2|--type=' } | ForEach-Object { $_.ProcessId.ToString() + ' parent ' + $_.ParentProcessId + ' ' + $_.CommandLine } | Select-Object -First 3\"") { RedirectStandardOutput = true, UseShellExecute = false })!;
+            var o = ps.StandardOutput.ReadToEnd(); ps.WaitForExit(15000);
+            return o.Replace("|", "/").ReplaceLineEndings(" ");
+        }
+        catch (Exception e) { return e.Message; }
+    }
+    var edgeNote = EdgeLaunch();
+    Step("Shift+click a link: its page opens over this one in a panel, the page behind dimmed", link is not null && Shows("Open as tab"), $"link found: {link is not null}, panel with Open as tab: {Shows("Open as tab")}, browser started: {edgeNote} · " + Shot("peek"));
+    Keyboard.Press(VirtualKeyShort.ESCAPE);
+    Thread.Sleep(1500);
+    Step("Esc: the peek goes away", !Shows("Open as tab"), Shot("peek-closed"));
+
+    var splitsBefore = SplitCounts().Length;
+    link = OnScreenLink();
+    if (link is not null)
+    {
+        Keyboard.Press(VirtualKeyShort.ALT);
+        Mouse.Click(CentreOf(link));
+        Keyboard.Release(VirtualKeyShort.ALT);
+    }
+    Thread.Sleep(7000);
+    Step("Alt+click a link (Settings › Alt+click opens in Split View): the link loads beside the page", SplitCounts().SequenceEqual([2]), $"splits: [{string.Join(",", SplitCounts())}] · " + Shot("split-link"));
+
+    // A link handed in from another app, with little windows on.
+    var little = Process.Start(new ProcessStartInfo(exe, "https://example.com/?little") { UseShellExecute = false, Environment = { ["SEARCH_DATA"] = data, ["SEARCH_NO_UPDATES"] = "1" } })!;
+    little.WaitForExit(8000);
+    Thread.Sleep(6000);
+    Step("A link from another app, with Little windows on: it opens in a small window, not a tab", little.HasExited && Shows("Open in Search") && !SessionText().Contains("?little"), $"small window with Open in Search: {Shows("Open in Search")} · " + Shot("little-window"));
+    try { automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("\u2715"))?.AsButton().Invoke(); } catch { }
+    Thread.Sleep(1500);
+    try { window.Focus(); } catch { }
+    Thread.Sleep(500);
+
+    // Snap layouts: the system asks the window what is under the pointer; over the maximise button the answer is HTMAXBUTTON.
+    var max = window.FindFirstDescendant(cf => cf.ByAutomationId("MaxDoor"));
+    if (max is not null)
+    {
+        var c = CentreOf(max);
+        var answer = SendMessageW(new IntPtr(window.Properties.NativeWindowHandle.Value), 0x0084, IntPtr.Zero, (IntPtr)((c.Y << 16) | (c.X & 0xFFFF))).ToInt64();
+        var elsewhere = SendMessageW(new IntPtr(window.Properties.NativeWindowHandle.Value), 0x0084, IntPtr.Zero, (IntPtr)(((c.Y + 400) << 16) | ((c.X - 100) & 0xFFFF))).ToInt64();
+        Step("Snap layouts: asked what is under the pointer over the maximise button, the window says HTMAXBUTTON (9)", answer == 9 && elsewhere != 9, $"over the button: {answer}, elsewhere: {elsewhere}");
+    }
+    else Step("Snap layouts: the maximise button is found", false, "MaxDoor not found");
+
+    // Several windows, quit, open again.
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_N);
+    Thread.Sleep(4000);
+    Keyboard.Type("example.com/?second-window");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(6000);
+    Quit();
+    var listed = DataText("windows.json").Contains("\"id\"");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    Thread.Sleep(9000);
+    var back = app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
+    Step("Quit with two windows (Ctrl+Shift+Q), open Search again: both windows come back, each with its own tabs", listed && back >= 2 && Directory.GetFiles(data, "session-w*.json").Length >= 1, $"windows.json lists one: {listed}, windows open: {back}, window session files: {Directory.GetFiles(data, "session-w*.json").Length} · " + Shot("windows-restored"));
 }
 catch (Exception e)
 {
@@ -285,6 +465,7 @@ catch (Exception e)
 finally
 {
     try { if (!app.HasExited) app.Close(); } catch { }
+    try { var tr = Path.Combine(data, "trace.log"); if (File.Exists(tr)) File.Copy(tr, Path.Combine(outDir, "trace.log"), true); } catch { }
     var crash = Path.Combine(data, "crash.log");
     if (File.Exists(crash))
     {

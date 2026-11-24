@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset="utf-8"><title>History</title><link rel="stylesheet" href="common.css"></head>
 <body><div class="page">
   <h1>History</h1><p class="sub">Where you have been. Kept on this PC only.</p>
-  <div class="toolbar"><input id="q" class="grow" type="search" placeholder="Search history" autocomplete="off"><button id="clear" class="danger">Clear browsing data…</button></div>
+  <div class="toolbar"><input id="q" class="grow" type="search" placeholder="Search history" autocomplete="off"><button id="archived" class="quiet">Archived tabs</button><button id="clear" class="danger">Clear browsing data…</button></div>
   <div id="list"></div>
 </div>
 <script src="bridge.js"></script>
@@ -9,6 +9,7 @@
 const list = document.getElementById('list'), q = document.getElementById('q');
 let timer;
 q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(ask, 120); });
+document.getElementById('archived').onclick = () => host.send('navigate', { url: 'search://archive' });
 document.getElementById('clear').onclick = () => host.send('navigate', { url: 'search://settings/privacy' });
 function ask() { host.send('history.query', { q: q.value }); }
 host.on('history.items', m => {

@@ -30,6 +30,8 @@ public partial class MainWindow : Window
     History history => Shared.HistoryOf(profileId);
     Bookmarks Marks => Shared.BookmarksOf(profileId);
     readonly bool persistent;
+    /// <summary>Guid.Empty for the first window, whose files are the ones there have always been; any other has its own.</summary>
+    readonly Guid windowId;
     readonly DispatcherTimer saveSoon;
     Engine engine => Shared.Prefs.Data.Engine;
     string customEngine => Shared.Prefs.Data.CustomEngine;
@@ -40,20 +42,24 @@ public partial class MainWindow : Window
     readonly Dictionary<TextBox, string> lastTyped = [];
     bool restoring;
 
-    public MainWindow(string? open = null, bool persistent = true, Guid? profile = null)
+    public MainWindow(string? open = null, bool persistent = true, Guid? profile = null, Guid? window = null)
     {
         this.persistent = persistent;
+        windowId = window ?? Guid.Empty;
         profileId = profile ?? Spaces.PersonalId;
         InitializeComponent();
         InitSpaces();
         InitPages();
+        RegisterWindow();
+        StartIdleSweep();
+        SourceInitialized += (_, _) => RestorePlacement();
         saveSoon = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         saveSoon.Tick += (_, _) => { saveSoon.Stop(); SaveNow(); };
 
         SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
         Loaded += async (_, _) => await StartAsync(open);
-        Closing += (_, _) => { SaveAllSpaces(); history.Save(); };
+        Closing += (_, _) => { SaveAllSpaces(); history.Save(); Windows_Closing(); };
         Shared.Prefs.Changed += ApplyPrefs;
         Marks.Changed += OnBookmarksChanged;
         Shared.Downloads.Changed += OnDownloadsChanged;
@@ -61,6 +67,7 @@ public partial class MainWindow : Window
         PreviewKeyDown += Window_PreviewKeyDown;
         PreviewMouseDown += Window_PreviewMouseDown;
         Stage.SizeChanged += (_, _) => RoundLiveView();
+        InitLittle();
         LocationChanged += (_, _) => InlinePopup.IsOpen = false;
         Deactivated += (_, _) => InlinePopup.IsOpen = false;
     }
@@ -86,7 +93,7 @@ public partial class MainWindow : Window
 
         ApplyPrefs();
         restoring = true;
-        var shape = persistent ? Session.Load(space.Id) : null;
+        var shape = persistent ? Session.Load(space.Id, windowId) : null;
         if (shape is not null)
         {
             if (shape.SideWidth is double w) SideColumn.Width = new GridLength(Math.Clamp(w, SideMin, SideMax));
@@ -100,6 +107,7 @@ public partial class MainWindow : Window
             }
         }
         restoring = false;
+        if (shape is not null && !Shared.Prefs.Data.StartFresh) RestoreSplits(StateOf(space), shape);
         wasTop = false; // the saved column width must not undo a top layout
         ApplyTabsLayout();
         ApplyLayout();
@@ -111,7 +119,8 @@ public partial class MainWindow : Window
         }
         else if (all.Count == 0) NewTab();
         else Select(all[Math.Clamp(shape?.Active ?? 0, 0, all.Count - 1)]);
-        if (persistent) StartUpdates();
+        if (persistent && windowId == Guid.Empty) StartUpdates();
+        SweepIdle();
     }
 
     IEnumerable<Tab> Ordered() => pins.Concat(tabs);
@@ -150,17 +159,26 @@ public partial class MainWindow : Window
     {
         EndEditing(commit: false);
         if (t != live) CloseFind();
-        if (live is not null) { live.Live = false; if (live.View is not null) live.View.Visibility = Visibility.Hidden; }
+        if (live is not null) live.Live = false;
         live = t;
+        if (SplitOf(t) is { } own) own.Focused = t.Id;
         t.Live = true;
+        t.LastSeen = DateTime.UtcNow;
+        PeekFollows();
         ShowLive();
         SaveSoon();
     }
+
+    DateTime settled = DateTime.MinValue;
 
     void ShowLive()
     {
         if (live is null) return;
         Title = live.IsBlank ? "Search" : $"{live.Label} - Search";
+        settled = DateTime.UtcNow;
+        var keep = new HashSet<Tab>();
+        if (!live.IsBlank) { keep.Add(live); if (SplitOf(live) is { } own) foreach (var id in own.Tabs) if (TabById(id) is { } m) keep.Add(m); }
+        foreach (var o in Ordered()) if (o.View is { } ov && !keep.Contains(o)) ov.Visibility = Visibility.Hidden;
         if (live.IsBlank)
         {
             if (live.View is not null) live.View.Visibility = Visibility.Hidden;
@@ -174,6 +192,7 @@ public partial class MainWindow : Window
             BlankOffersSheet.Visibility = Visibility.Collapsed;
             var view = Wake(live);
             view.Visibility = Visibility.Visible;
+            LayoutStage();
             RoundLiveView();
             Dispatcher.BeginInvoke(() => view.Focus(), DispatcherPriority.Input);
         }
@@ -208,6 +227,9 @@ public partial class MainWindow : Window
             await view.EnsureCoreWebView2Async(environment, options);
         }
         var core = view.CoreWebView2;
+        void Focused(object? _, RoutedEventArgs __) { if ((DateTime.UtcNow - settled).TotalMilliseconds < 500) return; if (t != live && t.View == view && SplitOf(t) is { } own && live is not null && own.Holds(live.Id)) Select(t); }
+        view.GotFocus += Focused;
+        view.GotKeyboardFocus += (a, b) => Focused(a, b);
         core.Settings.IsStatusBarEnabled = true;
         core.Settings.AreDevToolsEnabled = true;
         ApplyColorScheme(core);
@@ -229,8 +251,10 @@ public partial class MainWindow : Window
             UpdateDoors();
             SaveSoon();
         };
+        _ = InstallLinkScript(t, core);
         core.NavigationStarting += (_, e) =>
         {
+            if (PeekInstead(t, core, e)) return;
             t.Loading = true;
             TryUpgrade(t, core, e);
         };
@@ -346,6 +370,7 @@ public partial class MainWindow : Window
         var index = list.IndexOf(t);
         if (index < 0) return;
         if (!t.IsBlank) closed.Push(t.ToEntry(), index);
+        LeaveSplit(t, relayout: false);
         list.RemoveAt(index);
         if (t.View is not null) { Stage.Children.Remove(t.View); t.View.Dispose(); t.View = null; }
         if (t == live)
@@ -417,6 +442,7 @@ public partial class MainWindow : Window
 
     void RoundLiveView()
     {
+        if (live is not null && SplitOf(live) is not null && Stage.ActualWidth > 50) { LayoutStage(); return; }
         if (live?.View is not { } view) return;
         var source = PresentationSource.FromVisual(this);
         var scale = source?.CompositionTarget?.TransformToDevice.M11 ?? 1;
@@ -660,7 +686,8 @@ public partial class MainWindow : Window
         pressAt = e.GetPosition(this);
         if ((sender as FrameworkElement)?.DataContext is Tab t && e.ClickCount == 1)
         {
-            if (t != live) Select(t);
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && SplitOn && !t.IsBlank) OpenInSplit(t);
+            else if (t != live) Select(t);
             e.Handled = true;
         }
         if (sender is FrameworkElement f && e.ClickCount == 1) StartDrag(f, e);
@@ -707,6 +734,8 @@ public partial class MainWindow : Window
             menu.Items.Add(Item("Rename", () => BeginRenaming(t)));
         }
         menu.Items.Add(Item("Duplicate", () => Duplicate(t), enabled: !t.IsBlank));
+        if (Shared.Prefs.Data.LittleLinks && !t.IsPin)
+            menu.Items.Add(Item("Open in Small Window", () => { var url = t.Url; Close(t); OpenLittle(url); }, enabled: !t.IsBlank && !t.IsInternal));
         menu.Items.Add(Item("Copy Address", () => Clipboard.SetText(t.Url), "Ctrl+Shift+C", enabled: !t.IsBlank));
         menu.Items.Add(Item("Copy as Markdown Link", () => Clipboard.SetText($"[{t.Label}]({t.Url})"), enabled: !t.IsBlank));
         var others = Shared.Book.In(profileId).Where(s => s.Id != space.Id).ToList();
@@ -716,7 +745,8 @@ public partial class MainWindow : Window
             foreach (var s in others) { var target = s; var sub = new MenuItem { Header = s.Name }; sub.Click += (_, _) => MoveToSpace(t, target); move.Items.Add(sub); }
             menu.Items.Add(move);
         }
-        menu.Items.Add(Item("Put to Sleep", () => Sleep(t), enabled: !t.Asleep && t != live));
+        AddSplitItems(menu, t, (h, a, on) => Item(h, a, null, on));
+        menu.Items.Add(Item("Put to Sleep", () => Sleep(t), enabled: !t.Asleep && t != live && !(live is not null && SplitOf(live)?.Holds(t.Id) == true)));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item("Close Tab", () => Close(t), "Ctrl+W"));
         menu.Items.Add(Item("Close Other Tabs", () => { foreach (var o in tabs.Where(o => o != t).ToList()) Close(o); },
@@ -826,6 +856,10 @@ public partial class MainWindow : Window
         if (ctrl && !alt && key == Key.T && shift) Reopen();
         else if (ctrl && !alt && key == Key.T) NewTab();
         else if (ctrl && !alt && !shift && key == Key.N) NewWindow();
+        else if (ctrl && alt && !shift && key == Key.N) SplitKey();
+        else if (ctrl && alt && !shift && key == Key.Left) FocusPane(-1);
+        else if (ctrl && alt && !shift && key == Key.Right) FocusPane(1);
+        else if (ctrl && shift && !alt && key == Key.Q) { App.Quitting = true; Application.Current.Shutdown(); }
         else if (ctrl && !alt && key == Key.F) OpenFind();
         else if (ctrl && !alt && key == Key.G) FindStep(shift ? -1 : 1);
         else if (ctrl && !alt && key == Key.P) Print();
