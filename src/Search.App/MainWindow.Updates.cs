@@ -69,7 +69,7 @@ public partial class MainWindow
 
     void ShowUpdateState()
     {
-        UpdatePill.Visibility = stage == UpdateStage.Ready ? Visibility.Visible : Visibility.Collapsed;
+        UpdatePill.Visibility = TopUpdateDoor.Visibility = stage == UpdateStage.Ready ? Visibility.Visible : Visibility.Collapsed;
         if (found is not null) UpdatePill.ToolTip = $"Search {found.Version} is ready";
     }
 

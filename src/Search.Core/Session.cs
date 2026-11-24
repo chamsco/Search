@@ -34,9 +34,10 @@ public sealed class WindowPlacement
 
 public static class Session
 {
-    const string FileName = "session.json";
-    public static SessionShape? Load() => Store.Read<SessionShape>(FileName);
-    public static void Save(SessionShape shape) => Store.Write(FileName, shape);
+    /// <summary>The first space of the first profile keeps the file there has always been; every other space has its own.</summary>
+    public static string FileFor(Guid? space) => space is null || space == Spaces.FirstId ? "session.json" : $"session-{space:N}.json";
+    public static SessionShape? Load(Guid? space = null) => Store.Read<SessionShape>(FileFor(space));
+    public static void Save(SessionShape shape, Guid? space = null) => Store.Write(FileFor(space), shape);
 }
 
 /// <summary>Tabs closed, newest last, for Ctrl+Shift+T.</summary>

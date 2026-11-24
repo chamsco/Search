@@ -15,6 +15,7 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
 <nav id="nav"><h2>Settings</h2>
   <a href="#general" data-s="general"><i>&#xE713;</i>General</a>
   <a href="#appearance" data-s="appearance"><i>&#xE790;</i>Appearance</a>
+  <a href="#tabs" data-s="tabs"><i>&#xE8A9;</i>Tabs</a>
   <a href="#privacy" data-s="privacy"><i>&#xE72E;</i>Privacy</a>
   <a href="#keyboard" data-s="keyboard"><i>&#xE765;</i>Keyboard &amp; Mouse</a>
   <a href="#about" data-s="about"><i>&#xE946;</i>About</a></nav>
@@ -34,6 +35,18 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
 <section id="appearance"><h1>Appearance</h1><p class="sub">Light, dark, or whatever Windows is doing.</p>
   <div class="group"><div class="line"><div class="label">Look</div><div class="seg" id="look"><button data-v="Light">Light</button><button data-v="Dark">Dark</button><button data-v="System">System</button></div></div>
   <div class="line"><div class="label">Show the bookmarks bar<small>Ctrl+Alt+B toggles it too</small></div><div class="switch" id="bookmarksBar"></div></div></div>
+</section>
+<section id="tabs"><h1>Tabs</h1><p class="sub">How the tabs are laid out, and how many rows of them you keep.</p>
+  <div class="group">
+    <div class="line"><div class="label">Layout<small>The column of tabs at the side, or a strip along the top</small></div><div class="seg" id="layout"><button data-v="Sidebar">Sidebar</button><button data-v="Top">Top</button></div></div>
+    <div class="line"><div class="label">Pins as rows<small>Instead of squares, four to a line</small></div><div class="switch" id="pinsAsRows"></div></div>
+    <div class="line"><div class="label">Spaces<small>Separate rows of tabs in one window, each with sign-ins of its own if you like (Ctrl+Alt+1 to 9)</small></div><div class="switch" id="spacesOn"></div></div>
+  </div>
+  <div id="spacesBox"><h2 class="h2">Spaces</h2><div class="group" id="spaceList"></div>
+    <div class="group"><div class="line"><div class="label">New space</div><button id="addSpace">Add a space</button></div></div></div>
+  <h2 class="h2">Profiles</h2><p class="sub">A profile has a window of its own, with its own history, bookmarks and spaces.</p>
+  <div class="group" id="profileList"></div>
+  <div class="group"><div class="line"><div class="label">New profile</div><button id="addProfile">Add a profile</button></div></div>
 </section>
 <section id="privacy"><h1>Privacy</h1><p class="sub">What Search keeps, and what it forgets.</p>
   <div class="group"><div class="line"><div class="label">Upgrade http:// pages to HTTPS<small>Where the site has it; otherwise the page loads as it was</small></div><div class="switch" id="httpsUpgrade"></div></div></div>
@@ -63,11 +76,11 @@ const KEYS = [['New tab','Ctrl+T'],['New window','Ctrl+N'],['Reopen closed tab',
  ['Add this page to bookmarks','Ctrl+Shift+B'],['Show the bookmarks bar','Ctrl+Alt+B'],['History','Ctrl+Y'],['Downloads','Ctrl+Shift+J'],['Clear browsing data','Ctrl+Shift+Delete'],['Settings','Ctrl+,'],['Developer tools','F12 / Ctrl+Alt+I']];
 document.getElementById('keys').innerHTML = KEYS.map(([a, k]) => `<tr><td>${a}</td><td><kbd>${k}</kbd></td></tr>`).join('');
 document.getElementById('engine').innerHTML = ENGINES.map((e, i) => `<option value="${e}">${NAMES[i]}</option>`).join('');
-function show(id) { id = ['general','appearance','privacy','keyboard','about'].includes(id) ? id : 'general';
+function show(id) { id = ['general','appearance','tabs','privacy','keyboard','about'].includes(id) ? id : 'general';
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.s === id)); }
 window.addEventListener('hashchange', () => show(location.hash.slice(1))); show(location.hash.slice(1));
 const set = (key, value) => host.send('settings.set', { key, value });
-for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
+for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
 document.getElementById('engine').onchange = e => { set('engine', e.target.value); document.getElementById('customLine').style.display = e.target.value === 'Custom' ? '' : 'none'; };
 let customTimer; document.getElementById('custom').oninput = e => { clearTimeout(customTimer); customTimer = setTimeout(() => set('customEngine', e.target.value), 300); };
 document.querySelectorAll('#look button').forEach(b => b.onclick = () => { set('look', b.dataset.v); mark(b.dataset.v); });
@@ -79,10 +92,44 @@ document.getElementById('check').onclick = () => { document.getElementById('upda
 document.getElementById('clearNow').onclick = () => {
   const kinds = ['history','downloads','cookies','cache','permissions'].filter(k => document.getElementById('k-' + k).checked);
   if (!kinds.length) return; host.send('settings.clear', { range: document.getElementById('range').value, kinds }); };
+
+document.querySelectorAll('#layout button').forEach(b => b.onclick = () => { set('layout', b.dataset.v); markLayout(b.dataset.v); });
+function markLayout(v) { document.querySelectorAll('#layout button').forEach(x => x.classList.toggle('on', x.dataset.v === v)); }
+let S = null;
+const send = (type, o = {}) => host.send(type, o);
+document.getElementById('addSpace').onclick = () => send('space.add', { name: 'New Space', profile: S.currentProfile });
+document.getElementById('addProfile').onclick = () => send('profile.add', { name: 'New Profile' });
+function drawSpaces(m) {
+  S = m;
+  document.getElementById('spacesBox').style.display = m.spacesOn ? '' : 'none';
+  const mine = m.spaces.filter(s => s.profile === m.currentProfile);
+  document.getElementById('spaceList').innerHTML = mine.map((s, i) => `<div class="line" data-id="${s.id}" style="flex-wrap:wrap;gap:8px">
+    <div class="label" style="flex:1;min-width:140px"><input type="text" class="sn" value="${esc(s.name)}" style="width:100%"><small>${s.first ? 'Holds the profile\'s sign-ins' : (s.shares ? 'Signed in wherever the first space is' : 'Signed in on its own')}</small></div>
+    <div class="dots">${m.colourNames.map((n, c) => `<i class="dot${s.colour === c ? ' on' : ''}" data-c="${c}" title="${n}" style="background:${['#737885','#4285f5','#33a873','#f59e33','#e65466','#9e66e6'][c]}"></i>`).join('')}</div>
+    <select class="ss"><option value="Subtle"${s.strength==='Subtle'?' selected':''}>Subtle</option><option value="Medium"${s.strength==='Medium'?' selected':''}>Medium</option><option value="Strong"${s.strength==='Strong'?' selected':''}>Strong</option></select>
+    <select class="si">${m.iconNames.map((n, k) => `<option value="${k}"${s.icon===k?' selected':''}>${n}</option>`).join('')}</select>
+    <button class="icon up" title="Move up"${i === 0 ? ' disabled' : ''}>&#xE70E;</button><button class="icon down" title="Move down"${i === mine.length - 1 ? ' disabled' : ''}>&#xE70D;</button>
+    ${(s.first || i === 0) ? '' : '<button class="icon del" title="Delete space">&#xE74D;</button>'}</div>`).join('');
+  document.getElementById('profileList').innerHTML = m.profiles.map(p => `<div class="line" data-id="${p.id}"><div class="label"><input type="text" class="pn" value="${esc(p.name)}"${p.personal ? ' disabled' : ''}><small>${p.id === m.currentProfile ? 'This window' : ''}</small></div>
+    <button class="popen">Open window</button>${p.personal ? '' : '<button class="icon pdel" title="Delete profile">&#xE74D;</button>'}</div>`).join('');
+}
+document.getElementById('spaceList').addEventListener('change', e => { const id = e.target.closest('.line').dataset.id;
+  if (e.target.classList.contains('sn')) send('space.update', { id, name: e.target.value });
+  else if (e.target.classList.contains('ss')) send('space.update', { id, strength: e.target.value });
+  else if (e.target.classList.contains('si')) send('space.update', { id, icon: +e.target.value }); });
+document.getElementById('spaceList').addEventListener('click', e => { const line = e.target.closest('.line'); if (!line) return; const id = line.dataset.id;
+  if (e.target.classList.contains('dot')) send('space.update', { id, colour: +e.target.dataset.c });
+  else if (e.target.classList.contains('up')) send('space.move', { id, by: -1 });
+  else if (e.target.classList.contains('down')) send('space.move', { id, by: 1 });
+  else if (e.target.classList.contains('del') && confirm('Delete this space and close its tabs?')) send('space.delete', { id }); });
+document.getElementById('profileList').addEventListener('change', e => { if (e.target.classList.contains('pn')) send('profile.rename', { id: e.target.closest('.line').dataset.id, name: e.target.value }); });
+document.getElementById('profileList').addEventListener('click', e => { const id = e.target.closest('.line')?.dataset.id; if (!id) return;
+  if (e.target.classList.contains('popen')) send('profile.open', { id }); else if (e.target.classList.contains('pdel') && confirm('Delete this profile with its spaces, history and bookmarks?')) send('profile.delete', { id }); });
 host.on('cleared', m => { document.getElementById('cleared').textContent = m.text; toast(m.text); });
 host.on('update', m => document.getElementById('updateText').textContent = m.text);
 host.on('settings', m => {
-  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade']) document.getElementById(id).classList.toggle('on', !!m[id]);
+  markLayout(m.layout); drawSpaces(m);
+  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn']) document.getElementById(id).classList.toggle('on', !!m[id]);
   document.getElementById('engine').value = m.engine; document.getElementById('custom').value = m.customEngine || '';
   document.getElementById('customLine').style.display = m.engine === 'Custom' ? '' : 'none';
   document.getElementById('dlpath').textContent = m.downloadFolder; mark(m.look);

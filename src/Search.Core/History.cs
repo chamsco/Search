@@ -23,7 +23,7 @@ public sealed class Visit
 public sealed class History
 {
     public const int Cap = 20_000;
-    const string FileName = "history.json";
+    string FileName = "history.json";
     readonly Dictionary<string, Visit> visits = new();
     readonly Func<DateTime> now;
 
@@ -31,10 +31,10 @@ public sealed class History
 
     public IReadOnlyCollection<Visit> All => visits.Values;
 
-    public static History Load()
+    public static History Load(string fileName = "history.json")
     {
-        var h = new History();
-        foreach (var v in Store.Read<List<Visit>>(FileName) ?? []) h.visits[Identity(v.Url)] = v;
+        var h = new History { FileName = fileName };
+        foreach (var v in Store.Read<List<Visit>>(fileName) ?? []) h.visits[Identity(v.Url)] = v;
         return h;
     }
 

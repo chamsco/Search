@@ -23,10 +23,12 @@ public partial class MainWindow : Window
 {
     const double SideMin = 176, SideMax = 440, CardRadius = 10;
 
-    readonly ObservableCollection<Tab> pins = [];
-    readonly ObservableCollection<Tab> tabs = [];
+    ObservableCollection<Tab> pins = [];
+    ObservableCollection<Tab> tabs = [];
+    readonly Guid profileId;
     readonly ClosedTabs closed = new();
-    History history => Shared.History;
+    History history => Shared.HistoryOf(profileId);
+    Bookmarks Marks => Shared.BookmarksOf(profileId);
     readonly bool persistent;
     readonly DispatcherTimer saveSoon;
     Engine engine => Shared.Prefs.Data.Engine;
@@ -38,24 +40,24 @@ public partial class MainWindow : Window
     readonly Dictionary<TextBox, string> lastTyped = [];
     bool restoring;
 
-    public MainWindow(string? open = null, bool persistent = true)
+    public MainWindow(string? open = null, bool persistent = true, Guid? profile = null)
     {
         this.persistent = persistent;
+        profileId = profile ?? Spaces.PersonalId;
         InitializeComponent();
-        PinGrid.ItemsSource = pins;
+        InitSpaces();
         InitPages();
-        TabList.ItemsSource = tabs;
         saveSoon = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         saveSoon.Tick += (_, _) => { saveSoon.Stop(); SaveNow(); };
 
         SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
         Loaded += async (_, _) => await StartAsync(open);
-        Closing += (_, _) => { SaveNow(); history.Save(); };
+        Closing += (_, _) => { SaveAllSpaces(); history.Save(); };
         Shared.Prefs.Changed += ApplyPrefs;
-        Shared.Bookmarks.Changed += OnBookmarksChanged;
+        Marks.Changed += OnBookmarksChanged;
         Shared.Downloads.Changed += OnDownloadsChanged;
-        Closed += (_, _) => { Shared.Prefs.Changed -= ApplyPrefs; Shared.Bookmarks.Changed -= OnBookmarksChanged; Shared.Downloads.Changed -= OnDownloadsChanged; };
+        Closed += (_, _) => { Shared.Prefs.Changed -= ApplyPrefs; Marks.Changed -= OnBookmarksChanged; Shared.Downloads.Changed -= OnDownloadsChanged; };
         PreviewKeyDown += Window_PreviewKeyDown;
         PreviewMouseDown += Window_PreviewMouseDown;
         Stage.SizeChanged += (_, _) => RoundLiveView();
@@ -84,7 +86,7 @@ public partial class MainWindow : Window
 
         ApplyPrefs();
         restoring = true;
-        var shape = persistent ? Session.Load() : null;
+        var shape = persistent ? Session.Load(space.Id) : null;
         if (shape is not null)
         {
             if (shape.SideWidth is double w) SideColumn.Width = new GridLength(Math.Clamp(w, SideMin, SideMax));
@@ -98,6 +100,9 @@ public partial class MainWindow : Window
             }
         }
         restoring = false;
+        wasTop = false; // the saved column width must not undo a top layout
+        ApplyTabsLayout();
+        ApplyLayout();
 
         var all = Ordered().ToList();
         if (open is not null)
@@ -117,12 +122,7 @@ public partial class MainWindow : Window
     {
         if (!persistent) return;
         var all = Ordered().ToList();
-        Session.Save(new SessionShape
-        {
-            Tabs = all.Select(t => t.ToEntry()).ToList(),
-            Active = live is null ? 0 : Math.Max(0, all.IndexOf(live)),
-            SideWidth = SideColumn.Width.Value,
-        });
+        SaveSpace(space, pins, tabs, live);
     }
 
     // MARK: - tabs
@@ -199,7 +199,14 @@ public partial class MainWindow : Window
 
     async Task Attach(Tab t, WebView2 view, bool navigate)
     {
-        await view.EnsureCoreWebView2Async(environment);
+        var storeName = StoreNameOf(t);
+        if (storeName is null) await view.EnsureCoreWebView2Async(environment);
+        else
+        {
+            var options = environment!.CreateCoreWebView2ControllerOptions();
+            options.ProfileName = storeName;
+            await view.EnsureCoreWebView2Async(environment, options);
+        }
         var core = view.CoreWebView2;
         core.Settings.IsStatusBarEnabled = true;
         core.Settings.AreDevToolsEnabled = true;
@@ -401,9 +408,9 @@ public partial class MainWindow : Window
     void UpdateDoors()
     {
         var core = live?.View?.CoreWebView2;
-        BackDoor.IsEnabled = core?.CanGoBack ?? false;
-        ForwardDoor.IsEnabled = core?.CanGoForward ?? false;
-        ReloadDoor.IsEnabled = core is not null && live is { IsBlank: false };
+        BackDoor.IsEnabled = TopBackDoor.IsEnabled = core?.CanGoBack ?? false;
+        ForwardDoor.IsEnabled = TopForwardDoor.IsEnabled = core?.CanGoForward ?? false;
+        ReloadDoor.IsEnabled = TopReloadDoor.IsEnabled = core is not null && live is { IsBlank: false };
     }
 
     // MARK: - the page's corners
@@ -484,7 +491,7 @@ public partial class MainWindow : Window
     });
 
     List<Suggestion> Offers(string typed) =>
-        Omnibox.Offers(typed, history, engine, Ordered().Where(t => t != live && !t.IsBlank).Select(t => (t.Id, t.Url, t.Label)), bookmarks: Shared.Bookmarks, custom: customEngine);
+        Omnibox.Offers(typed, history, engine, Ordered().Where(t => t != live && !t.IsBlank).Select(t => (t.Id, t.Url, t.Label)), bookmarks: Marks, custom: customEngine);
 
     /// <summary>The rest of the best match, written after the caret and selected, so typing on replaces it (History.completion).</summary>
     void ShowCompletion(TextBox field, List<Suggestion> offers)
@@ -702,6 +709,13 @@ public partial class MainWindow : Window
         menu.Items.Add(Item("Duplicate", () => Duplicate(t), enabled: !t.IsBlank));
         menu.Items.Add(Item("Copy Address", () => Clipboard.SetText(t.Url), "Ctrl+Shift+C", enabled: !t.IsBlank));
         menu.Items.Add(Item("Copy as Markdown Link", () => Clipboard.SetText($"[{t.Label}]({t.Url})"), enabled: !t.IsBlank));
+        var others = Shared.Book.In(profileId).Where(s => s.Id != space.Id).ToList();
+        if (SpacesOn && others.Count > 0)
+        {
+            var move = new MenuItem { Header = "Move to Space" };
+            foreach (var s in others) { var target = s; var sub = new MenuItem { Header = s.Name }; sub.Click += (_, _) => MoveToSpace(t, target); move.Items.Add(sub); }
+            menu.Items.Add(move);
+        }
         menu.Items.Add(Item("Put to Sleep", () => Sleep(t), enabled: !t.Asleep && t != live));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item("Close Tab", () => Close(t), "Ctrl+W"));
@@ -842,6 +856,7 @@ public partial class MainWindow : Window
         else if (ctrl && key == Key.Tab) Cycle(shift ? -1 : 1);
         else if (ctrl && key is Key.PageDown) Cycle(1);
         else if (ctrl && key is Key.PageUp) Cycle(-1);
+        else if (ctrl && alt && key >= Key.D1 && key <= Key.D9) SwitchSpaceBy(key - Key.D1);
         else if (ctrl && key >= Key.D1 && key <= Key.D9) Jump(key - Key.D1);
         else if (ctrl && shift && !alt && key == Key.D && live is not null) { if (live.IsPin) Unpin(live); else Pin(live); }
         else if (ctrl && shift && key == Key.C && live is { IsBlank: false }) Clipboard.SetText(live.Url);
@@ -888,6 +903,7 @@ public partial class MainWindow : Window
     double sideBefore = 232;
     void ToggleSide()
     {
+        if (TopLayout) return;
         if (Side.Visibility == Visibility.Visible)
         {
             sideBefore = SideColumn.ActualWidth;
@@ -902,13 +918,44 @@ public partial class MainWindow : Window
         ApplyLayout();
     }
 
+    bool TopLayout => Shared.Prefs.Data.Layout == TabsLayout.Top;
+    bool wasTop;
+
+    /// <summary>The tabs go along the top or down the side; the pins are squares or rows (Settings › Tabs).</summary>
+    void ApplyTabsLayout()
+    {
+        var top = TopLayout && !fullScreen;
+        if (top != wasTop)
+        {
+            if (top) { if (Side.Visibility == Visibility.Visible) sideBefore = SideColumn.ActualWidth > 0 ? SideColumn.ActualWidth : sideBefore; Side.Visibility = Visibility.Collapsed; SideColumn.Width = new GridLength(0); }
+            else if (!fullScreen) { Side.Visibility = Visibility.Visible; SideColumn.Width = new GridLength(sideBefore > 0 ? sideBefore : 232); }
+            wasTop = top;
+        }
+        TopBar.Visibility = top ? Visibility.Visible : Visibility.Collapsed;
+        var rows = Shared.Prefs.Data.PinsAsRows;
+        PinGrid.ItemTemplate = (DataTemplate)FindResource(rows ? "TabRow" : "PinTile");
+        PinGrid.ItemsPanel = rows
+            ? new ItemsPanelTemplate(new FrameworkElementFactory(typeof(StackPanel)))
+            : (ItemsPanelTemplate)PinGridPanel;
+    }
+
+    ItemsPanelTemplate? pinGridPanel;
+    ItemsPanelTemplate PinGridPanel => pinGridPanel ??= TileGridPanel();
+    static ItemsPanelTemplate TileGridPanel()
+    {
+        var f = new FrameworkElementFactory(typeof(UniformGrid));
+        f.SetValue(UniformGrid.ColumnsProperty, 4);
+        return new ItemsPanelTemplate(f);
+    }
+
     /// <summary>The card's margins: 8 around, none on the column's side while it is there; a bookmarks bar above takes its place.</summary>
     void ApplyLayout()
     {
         var side = Side.Visibility == Visibility.Visible;
         var bar = BarHost.Visibility == Visibility.Visible;
-        Card.Margin = fullScreen ? new Thickness(0) : new Thickness(side ? 0 : 8, bar ? 4 : 8, 8, 8);
-        BarHost.Margin = new Thickness(side ? 0 : 8, 8, 8, 0);
+        var strip = TopBar.Visibility == Visibility.Visible;
+        Card.Margin = fullScreen ? new Thickness(0) : new Thickness(side ? 0 : 8, bar ? 4 : strip ? 0 : 8, 8, 8);
+        BarHost.Margin = new Thickness(side ? 0 : 8, strip ? 0 : 8, 8, 0);
         RoundLiveView();
     }
 

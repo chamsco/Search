@@ -13,14 +13,15 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Hide column (Ctrl+Shift+S) | ✅ | Mac: ⌘S. Hover-to-reveal ⬜ |
 | Light / dark following the system | ✅ | Settings › Appearance: Light, Dark, System |
 | Pins as squares | ✅ | Pin from the tab's menu or Ctrl+Shift+D, or drag onto a pin |
-| Pins as rows, pin folders | ⬜ | |
+| Pins as rows | ✅ | Settings › Tabs. Pin folders ⬜ (wave 4, with tab groups) |
 | Tab rows: icon or letter, title, close, loading ring | ✅ | |
 | Middle-click closes a tab | ✅ | |
 | Drag to reorder tabs and pins | ✅ | Rows make room as you drag; drop on the pins (or "Drop here to pin") to pin |
+| Layout: sidebar or top strip | ✅ | Settings › Tabs |
 | Tab context menu | 🟡 | In Search's own style. Pin/Unpin, Back to Pinned Page, Replace Pinned Page, Rename, Duplicate, Copy Address, Copy as Markdown Link, Put to Sleep, Close Tab, Close Other Tabs. Groups, spaces, split, folders, Copy Clean Link, Site Information, Side Panel ⬜ (each waits on its feature) |
 | Tabs sleep until shown | ✅ | Restored tabs load on first view |
-| Spaces, space colours, swipe | ⬜ | |
-| Profiles | ⬜ | Will map to WebView2 profiles |
+| Spaces, colours, icons, strength, gradient | ✅ | Settings › Tabs turns them on; strip above the footer; Ctrl+Alt+1–9; own sign-ins or shared; Move to Space in the tab menu. Swipe gesture ⬜ (touchpad has no equivalent; animation in wave 4) |
+| Profiles | ✅ | A window each, own history, bookmarks, spaces and sign-ins (WebView2 profiles); footer door once there are two |
 | Split View (up to 4) | ⬜ | |
 | Little windows, Peek | ⬜ | |
 | Archive of auto-closed tabs | ⬜ | |
@@ -97,7 +98,7 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Installer, per user | ✅ | Inno Setup |
 | Default browser registration | ✅ | Settings › Apps › Default apps |
 | Open links / files passed on the command line | ✅ | |
-| Single instance (links open in the running window) | ⬜ | |
+| Single instance (links open in the running window) | ✅ | |
 | Rounded window corners on Windows 11 | ✅ | |
 | Snap layouts on the maximise button | ⬜ | |
 | Mouse back / forward buttons | ✅ | |

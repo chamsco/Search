@@ -63,3 +63,7 @@ a.link:hover { text-decoration: underline; }
 kbd { font: 12px "Segoe UI Variable Text","Segoe UI"; padding: 1px 6px; border: 1px solid var(--hairline); border-radius: 5px; color: var(--muted); }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--ground); padding: 8px 16px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.show { opacity: 1; }
+
+.h2 { font-size: 15px; font-weight: 600; margin: 26px 0 10px; }
+.dots { display: flex; gap: 6px; } .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: default; display: inline-block; } .dot.on { border-color: var(--ink); }
+.sn, .pn { font-size: 13px; }

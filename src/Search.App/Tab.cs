@@ -14,6 +14,8 @@ namespace Search.App;
 public sealed class Tab : INotifyPropertyChanged
 {
     public Guid Id { get; } = Guid.NewGuid();
+    /// <summary>The space whose row it is in; the engine's store for its pages follows.</summary>
+    public Guid SpaceId { get; set; }
 
     string url = "";
     public string Url { get => url; set { if (Set(ref url, value)) { Raise(nameof(IsBlank)); Raise(nameof(Label)); Raise(nameof(Monogram)); Raise(nameof(Glyph)); Raise(nameof(IsInternal)); Raise(nameof(HasGlyph)); Raise(nameof(ShowsLetter)); } } }
