@@ -543,7 +543,8 @@ try
         Mouse.Up(MouseButton.Left);
     }
     Thread.Sleep(3000);
-    Step("Drag a loose tab onto the Research heading: it joins the group", Members() == 3, $"members: {Members()} · " + Shot("group-drop"));
+    string DragTrace() { try { return string.Join(" / ", File.ReadAllLines(Path.Combine(data, "trace.log")).Where(l => l.Contains("drag") || l.Contains("drop")).TakeLast(6)); } catch (Exception e) { return "no trace: " + e.Message; } }
+    Step("Drag a loose tab onto the Research heading: it joins the group", Members() == 3, $"members: {Members()} · trace: {DragTrace()} · " + Shot("group-drop"));
 
     // Pin a tab, then folders: pinned rows are on, so the pin is a row.
     Choose(RowPoints()[0], "Pin");
