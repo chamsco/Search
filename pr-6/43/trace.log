@@ -1,0 +1,62 @@
+[20:57:04.306] row press 1 at 117,79
+[20:57:04.705] row moved 2,4
+[20:57:04.706] drag start Example Domain
+[20:57:04.853] drag hits 85 TextBlock:T@71 Border:T@65 Border:T@65 Border:T@65
+[20:57:04.855] drag over row rows=[T0,H,T1,T2,T3] at=17,65 h=28 local=103,20 ctx=Tab idx=0 drag=0 grp=
+[20:57:04.978] drag hits 85 
+[20:57:05.025] drag hits 88 
+[20:57:05.090] drag hits 88 
+[20:57:05.151] drag hits 88 
+[20:57:05.201] drag hits 90 
+[20:57:05.259] drag hits 90 
+[20:57:05.324] drag hits 90 
+[20:57:05.361] drag hits 92 
+[20:57:05.418] drag hits 92 
+[20:57:05.481] drag hits 92 
+[20:57:06.587] drag hits 108 Border:T@107 Border:T@107 Border:T@107
+[20:57:06.587] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=113,1 ctx=Tab idx=0 drag=0 grp=
+[20:57:06.652] drag hits 108 Border:T@107 Border:T@107 Border:T@107
+[20:57:06.652] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=113,1 ctx=Tab idx=0 drag=0 grp=
+[20:57:06.712] drag hits 108 Border:T@107 Border:T@107 Border:T@107
+[20:57:06.712] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=113,1 ctx=Tab idx=0 drag=0 grp=
+[20:57:06.775] drag hits 108 Border:T@107 Border:T@107 Border:T@107
+[20:57:06.775] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=113,1 ctx=Tab idx=0 drag=0 grp=
+[20:57:06.787] drag hits 109 Border:T@107 Border:T@107 Border:T@107
+[20:57:06.787] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:57:06.840] drag hits 109 Border:T@107 Border:T@107 Border:T@107
+[20:57:06.840] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:57:06.902] drag hits 109 Border:T@107 Border:T@107 Border:T@107
+[20:57:06.903] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:57:06.963] drag hits 109 Border:T@107 Border:T@107 Border:T@107
+[20:57:06.963] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.027] drag hits 109 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.027] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=114,2 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.043] drag hits 110 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.043] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.106] drag hits 110 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.107] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.167] drag hits 110 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.168] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.232] drag hits 110 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.232] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.293] drag hits 110 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.294] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=115,3 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.300] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.300] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.353] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.353] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.418] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.418] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.478] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.478] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.542] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.542] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.607] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.607] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.668] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.668] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.732] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.732] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.790] drag hits 111 Border:T@107 Border:T@107 Border:T@107
+[20:57:07.791] drag over row rows=[T0,H,T1,T2,T3] at=17,107 h=28 local=116,4 ctx=Tab idx=0 drag=0 grp=
+[20:57:07.838] drag ended Move
