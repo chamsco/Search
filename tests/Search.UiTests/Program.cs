@@ -540,7 +540,12 @@ try
         var from = looseRows[0]; var to = CentreOf(head); Console.WriteLine($"drag from {from} to {to}");
         Mouse.MoveTo(from); Thread.Sleep(300);
         Mouse.Down(MouseButton.Left); Thread.Sleep(200);
-        for (var k = 1; k <= 12; k++) { Mouse.MoveTo(new Point(from.X + (to.X - from.X) * k / 12, from.Y + (to.Y - from.Y) * k / 12)); Thread.Sleep(60); }
+        // Once the drag is on, a 'Drop here to pin' strip slides in above and pushes the column down: aim where the heading is now.
+        for (var k = 1; k <= 6; k++) { Mouse.MoveTo(new Point(from.X + k, from.Y + k * 2)); Thread.Sleep(80); }
+        Thread.Sleep(700);
+        var nowHead = Heading("Research"); if (nowHead is not null) to = CentreOf(nowHead);
+        var here = new Point(from.X + 6, from.Y + 12);
+        for (var k = 1; k <= 10; k++) { Mouse.MoveTo(new Point(here.X + (to.X - here.X) * k / 10, here.Y + (to.Y - here.Y) * k / 10)); Thread.Sleep(80); }
         for (var k = 0; k < 4; k++) { Mouse.MoveTo(new Point(to.X + k, to.Y + 2 + k)); Thread.Sleep(150); }
         Thread.Sleep(300);
         midShot = Shot("group-dragging");
