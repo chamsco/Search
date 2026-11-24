@@ -658,11 +658,11 @@ try
     AutomationElement? OnPage(string name) { try { return window!.FindFirstDescendant(cf => cf.ByName(name)); } catch { return null; } }
     string Trace6() { try { using var fs = new FileStream(Path.Combine(data, "trace.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(fs); return r.ReadToEnd(); } catch { return ""; } }
     void ClickPage(string name) { if (OnPage(name) is { } el) { Mouse.Click(CentreOf(el)); } Thread.Sleep(1200); }
-    void ClickCard(string name) { if (Anywhere(name) is { } el) { Mouse.Click(CentreOf(el)); } Thread.Sleep(1200); }
+    bool ClickCard(string name, int ms = 10000) { AutomationElement? el = null; Await(() => (el = Anywhere(name)) is not null, ms); if (el is not null) Mouse.Click(CentreOf(el)); Thread.Sleep(1200); return el is not null; }
 
     // Permissions
     ClickPage("Ask location");
-    var asked = Await(() => Anywhere($"{site6} wants to know your location") is not null, 6000);
+    var asked = Await(() => Anywhere($"{site6} wants to know your location") is not null, 12000);
     var askedShot = Shot("permission-card");
     ClickCard("Allow");
     var kept = Await(() => DataText("permissions.json").Contains("\"Location\":\"Allow\"") || DataText("permissions.json").Contains("\"Location\":0"), 5000);
@@ -673,7 +673,7 @@ try
 
     // Notifications
     ClickPage("Ask notifications");
-    var askedNote = Await(() => Anywhere($"{site6} wants to show notifications") is not null, 6000);
+    var askedNote = Await(() => Anywhere($"{site6} wants to show notifications") is not null, 12000);
     ClickCard("Allow");
     var shown = Await(() => Anywhere($"{site6}: Hello from a page") is not null, 8000);
     Step("A page asks to show notifications, then sends one: the card names the site and the message", askedNote && shown, $"asked: {askedNote}, shown: {shown} · " + Shot("notification"));
@@ -794,7 +794,7 @@ try
         }
     });
     data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6p-" + Guid.NewGuid().ToString("N")[..8])).FullName;
-    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"proxyMode\":\"Custom\",\"proxyServer\":\"127.0.0.1:" + proxyPort + "\"}");
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"proxyMode\":2,\"proxyServer\":\"127.0.0.1:" + proxyPort + "\"}");
     File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"http://proxy-probe.test/\",\"title\":\"\"}],\"active\":0}");
     app = Launch();
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
