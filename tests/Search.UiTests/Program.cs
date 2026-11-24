@@ -535,7 +535,7 @@ try
     if (looseRows.Count > 0 && head is not null)
     {
         // A drag the system will take as one: press, move a little at a time, release.
-        var from = looseRows[^1]; var to = CentreOf(head);
+        var from = looseRows[^1]; var to = CentreOf(head); Console.WriteLine($"drag from {from} to {to}");
         Mouse.MoveTo(from); Thread.Sleep(300);
         Mouse.Down(MouseButton.Left); Thread.Sleep(200);
         for (var k = 1; k <= 12; k++) { Mouse.MoveTo(new Point(from.X + (to.X - from.X) * k / 12, from.Y + (to.Y - from.Y) * k / 12)); Thread.Sleep(60); }
@@ -543,8 +543,8 @@ try
         Mouse.Up(MouseButton.Left);
     }
     Thread.Sleep(3000);
-    string DragTrace() { try { return string.Join(" / ", File.ReadAllLines(Path.Combine(data, "trace.log")).Where(l => l.Contains("drag") || l.Contains("drop")).TakeLast(6)); } catch (Exception e) { return "no trace: " + e.Message; } }
-    Step("Drag a loose tab onto the Research heading: it joins the group", Members() == 3, $"members: {Members()} · trace: {DragTrace()} · " + Shot("group-drop"));
+    string DragTrace() { try { return string.Join(" / ", File.ReadAllLines(Path.Combine(data, "trace.log")).Where(l => l.Contains("drag") || l.Contains("drop") || l.Contains("row ")).TakeLast(8)); } catch (Exception e) { return "no trace: " + e.Message; } }
+    Step("Drag a loose tab onto the Research heading: it joins the group", Members() == 3, $"members: {Members()} · from {looseRows.LastOrDefault()} to {(head is null ? "none" : CentreOf(head).ToString())} trace: {DragTrace()} · " + Shot("group-drop"));
 
     // Pin a tab, then folders: pinned rows are on, so the pin is a row.
     Choose(RowPoints()[0], "Pin");

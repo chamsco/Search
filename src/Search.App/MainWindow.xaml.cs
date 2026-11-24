@@ -691,7 +691,7 @@ public partial class MainWindow : Window
 
     void Row_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        pressAt = e.GetPosition(this);
+        pressAt = e.GetPosition(this); App.Trace($"row press {e.ClickCount} at {pressAt}");
         if ((sender as FrameworkElement)?.DataContext is Tab t && e.ClickCount == 1)
         {
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && SplitOn && !t.IsBlank) OpenInSplit(t);
@@ -781,7 +781,7 @@ public partial class MainWindow : Window
         void Move(object s, MouseEventArgs m)
         {
             if (m.LeftButton != MouseButtonState.Pressed) { source.PreviewMouseMove -= Move; return; }
-            var d = m.GetPosition(this) - pressAt;
+            var d = m.GetPosition(this) - pressAt; if (Math.Abs(d.Y) >= 4 || Math.Abs(d.X) >= 4) App.Trace("row moved " + d);
             if (Math.Abs(d.Y) < 4 && Math.Abs(d.X) < 4) return;
             source.PreviewMouseMove -= Move;
             if (source.DataContext is not Tab t) return;
