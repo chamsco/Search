@@ -21,6 +21,8 @@ public sealed class SessionEntry
     public string? Home { get; set; }
     public string? Name { get; set; }
     public bool Muted { get; set; }
+    /// <summary>When it was last looked at, for Settings › Tabs › Close tabs left alone.</summary>
+    public DateTime? LastSeen { get; set; }
 }
 
 public sealed class SessionShape

@@ -79,7 +79,7 @@ public partial class MainWindow
             Tabs = all.Select(t => t.ToEntry()).ToList(),
             Active = liveTab is null ? 0 : Math.Max(0, all.IndexOf(liveTab)),
             SideWidth = SideColumn.Width.Value,
-        }, s.Id);
+        }, s.Id, windowId);
     }
 
     void SaveAllSpaces()
@@ -111,7 +111,7 @@ public partial class MainWindow
         {
             st.Restored = true;
             restoring = true;
-            var shape = persistent ? Session.Load(target.Id) : null;
+            var shape = persistent ? Session.Load(target.Id, windowId) : null;
             foreach (var e in shape?.Tabs ?? [])
             {
                 var t = Tab.From(e);
@@ -148,7 +148,7 @@ public partial class MainWindow
                 if (gone == space.Id) SwitchSpace(Shared.Book.HomeOf(profileId));
                 foreach (var t in st.Pins.Concat(st.Tabs)) { if (t.View is { } v) { Stage.Children.Remove(v); v.Dispose(); t.View = null; } }
                 states.Remove(gone);
-                try { File.Delete(Store.File(Session.FileFor(gone))); } catch { }
+                try { File.Delete(Store.File(Session.FileFor(gone, windowId))); } catch { }
             }
             if (Shared.Book.Spaces.FirstOrDefault(s => s.Id == space.Id) is { } fresh && !ReferenceEquals(fresh, space)) space = fresh;
             ApplyWash();
@@ -279,7 +279,7 @@ public partial class MainWindow
         (t.IsPin ? pins : tabs).Remove(t);
         t.Live = false;
         StateOf(target).Tabs.Add(t);
-        if (!StateOf(target).Restored) { /* its session will be read on first visit; save this tab into it now */ var shape = Session.Load(target.Id) ?? new SessionShape(); shape.Tabs.Add(t.ToEntry()); StateOf(target).Tabs.Remove(t); Session.Save(shape, target.Id); }
+        if (!StateOf(target).Restored) { /* its session will be read on first visit; save this tab into it now */ var shape = Session.Load(target.Id, windowId) ?? new SessionShape(); shape.Tabs.Add(t.ToEntry()); StateOf(target).Tabs.Remove(t); Session.Save(shape, target.Id, windowId); }
         if (wasLive) { var next = tabs.LastOrDefault() ?? pins.LastOrDefault(); if (next is null) NewTab(); else Select(next); }
         SaveSoon();
     }
@@ -308,7 +308,7 @@ public partial class MainWindow
     {
         var open = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault(w => w.profileId == id);
         if (open is not null) { if (open.WindowState == WindowState.Minimized) open.WindowState = WindowState.Normal; open.Activate(); return; }
-        new MainWindow(null, persistent: true, profile: id).Show();
+        new MainWindow(null, persistent: true, profile: id, window: Guid.NewGuid()).Show();
     }
 
     // MARK: - the colour behind the tabs

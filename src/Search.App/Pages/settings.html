@@ -25,6 +25,8 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
     <div class="line"><div class="label">Search engine<small>Used when you type words in the address field</small></div><select id="engine"></select></div>
     <div class="line" id="customLine" style="display:none"><div class="label">Custom address<small>Put %s or {searchTerms} where the words go</small></div><input type="text" id="custom" style="width:300px" placeholder="example.com/search?q=%s"></div>
     <div class="line"><div class="label">Suggestions from your search engine<small>Sent as you type; never for an address, never from a private tab</small></div><div class="switch" id="engineSuggests"></div></div>
+    <div class="line"><div class="label">Little windows<small>A link from another app opens in a small window with an Open in Search button</small></div><div class="switch" id="littleLinks"></div></div>
+    <div class="line"><div class="label">Peek<small>Shift+click a link to see its page over this one</small></div><div class="switch" id="peek"></div></div>
     <div class="line"><div class="label">Start with a fresh window<small>Instead of last time's tabs (pinned pages stay)</small></div><div class="switch" id="startFresh"></div></div>
   </div>
   <div class="group">
@@ -40,6 +42,7 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
   <div class="group">
     <div class="line"><div class="label">Layout<small>The column of tabs at the side, or a strip along the top</small></div><div class="seg" id="layout"><button data-v="Sidebar">Sidebar</button><button data-v="Top">Top</button></div></div>
     <div class="line"><div class="label">Pins as rows<small>Instead of squares, four to a line</small></div><div class="switch" id="pinsAsRows"></div></div>
+    <div class="line"><div class="label">Close tabs left alone<small>Tabs nobody has looked at for this long close themselves and wait in History › Archived Tabs</small></div><select id="closeIdleDays"><option value="0">Never</option><option value="1">After a day</option><option value="7">After a week</option><option value="30">After a month</option></select></div>
     <div class="line"><div class="label">Spaces<small>Separate rows of tabs in one window, each with sign-ins of its own if you like (Ctrl+Alt+1 to 9)</small></div><div class="switch" id="spacesOn"></div></div>
   </div>
   <div id="spacesBox"><h2 class="h2">Spaces</h2><div class="group" id="spaceList"></div>
@@ -80,7 +83,7 @@ function show(id) { id = ['general','appearance','tabs','privacy','keyboard','ab
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.s === id)); }
 window.addEventListener('hashchange', () => show(location.hash.slice(1))); show(location.hash.slice(1));
 const set = (key, value) => host.send('settings.set', { key, value });
-for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
+for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn','littleLinks','peek']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
 document.getElementById('engine').onchange = e => { set('engine', e.target.value); document.getElementById('customLine').style.display = e.target.value === 'Custom' ? '' : 'none'; };
 let customTimer; document.getElementById('custom').oninput = e => { clearTimeout(customTimer); customTimer = setTimeout(() => set('customEngine', e.target.value), 300); };
 document.querySelectorAll('#look button').forEach(b => b.onclick = () => { set('look', b.dataset.v); mark(b.dataset.v); });
@@ -93,6 +96,7 @@ document.getElementById('clearNow').onclick = () => {
   const kinds = ['history','downloads','cookies','cache','permissions'].filter(k => document.getElementById('k-' + k).checked);
   if (!kinds.length) return; host.send('settings.clear', { range: document.getElementById('range').value, kinds }); };
 
+document.getElementById('closeIdleDays').onchange = e => set('closeIdleDays', +e.target.value);
 document.querySelectorAll('#layout button').forEach(b => b.onclick = () => { set('layout', b.dataset.v); markLayout(b.dataset.v); });
 function markLayout(v) { document.querySelectorAll('#layout button').forEach(x => x.classList.toggle('on', x.dataset.v === v)); }
 let S = null;
@@ -128,8 +132,8 @@ document.getElementById('profileList').addEventListener('click', e => { const id
 host.on('cleared', m => { document.getElementById('cleared').textContent = m.text; toast(m.text); });
 host.on('update', m => document.getElementById('updateText').textContent = m.text);
 host.on('settings', m => {
-  markLayout(m.layout); drawSpaces(m);
-  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn']) document.getElementById(id).classList.toggle('on', !!m[id]);
+  markLayout(m.layout); drawSpaces(m); document.getElementById('closeIdleDays').value = String(m.closeIdleDays);
+  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn','littleLinks','peek']) document.getElementById(id).classList.toggle('on', !!m[id]);
   document.getElementById('engine').value = m.engine; document.getElementById('custom').value = m.customEngine || '';
   document.getElementById('customLine').style.display = m.engine === 'Custom' ? '' : 'none';
   document.getElementById('dlpath').textContent = m.downloadFolder; mark(m.look);

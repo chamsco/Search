@@ -107,6 +107,10 @@ public partial class MainWindow
                     }
                     break;
 
+                case "archive.get": Send(core, ArchiveMessage()); break;
+                case "archive.open": if (G("id") is Guid ao && Shared.ArchiveOf(profileId).Items.FirstOrDefault(i => i.Id == ao) is { } kept) { Open(kept.Url); Shared.ArchiveOf(profileId).Remove(ao); } break;
+                case "archive.remove": if (G("id") is Guid ar) Shared.ArchiveOf(profileId).Remove(ar); break;
+                case "archive.clear": Shared.ArchiveOf(profileId).Clear(); break;
                 case "downloads.get": Send(core, DownloadsMessage()); break;
                 case "downloads.openFolder": OpenFolder(Shared.Prefs.EffectiveDownloadFolder); break;
                 case "downloads.clear": Shared.Downloads.ClearFinished(); break;
@@ -167,6 +171,13 @@ public partial class MainWindow
         folders = Marks.Folders.Select(f => new { id = f.Id, name = f.Name }),
     };
 
+    object ArchiveMessage() => new
+    {
+        type = "archive",
+        days = Shared.Prefs.Data.CloseIdleDays,
+        items = Shared.ArchiveOf(profileId).Items.Select(i => new { id = i.Id, url = i.Url, title = i.Title, closed = i.Closed.ToUniversalTime().ToString("o") }),
+    };
+
     object DownloadsMessage() => new
     {
         type = "downloads",
@@ -187,7 +198,7 @@ public partial class MainWindow
         {
             type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
             engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
-            spacesOn = d.SpacesOn, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
+            spacesOn = d.SpacesOn, closeIdleDays = d.CloseIdleDays, littleLinks = d.LittleLinks, peek = d.Peek, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
             spaces = Shared.Book.Spaces.Select(sp => new { id = sp.Id, name = sp.Name, colour = sp.Colour, colour2 = sp.Colour2, strength = sp.Strength.ToString(), icon = sp.IconIndex, shares = sp.SharesSignIns, profile = sp.ProfileId, first = sp.IsFirst }),
             profiles = Shared.Book.Profiles.Select(pf => new { id = pf.Id, name = pf.Name, personal = pf.IsPersonal }),
             iconGlyphs = Spaces.Icons, iconNames = Spaces.IconNames, colourNames = Spaces.ColourNames,
@@ -208,6 +219,9 @@ public partial class MainWindow
                 case "bookmarksBar": d.BookmarksBar = B(); break;
                 case "spacesOn": d.SpacesOn = B(); break;
                 case "pinsAsRows": d.PinsAsRows = B(); break;
+                case "closeIdleDays": d.CloseIdleDays = value.ValueKind == JsonValueKind.Number ? Math.Max(0, value.GetInt32()) : 0; break;
+                case "littleLinks": d.LittleLinks = B(); break;
+                case "peek": d.Peek = B(); break;
                 case "layout": if (Enum.TryParse<TabsLayout>(S(), out var lay)) d.Layout = lay; break;
                 case "httpsUpgrade": d.HttpsUpgrade = B(); break;
                 case "engine": if (Enum.TryParse<Engine>(S(), out var en)) d.Engine = en; break;
@@ -621,8 +635,7 @@ public partial class MainWindow
 
     void NewWindow()
     {
-        var w = new MainWindow(null, persistent: false);
-        w.Show();
+        new MainWindow(null, persistent: true, profile: profileId, window: Guid.NewGuid()).Show();
     }
 
     /// <summary>A link handed to a running Search (default browser, a second launch).</summary>

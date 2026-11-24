@@ -22,6 +22,7 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, a) => Log(a.ExceptionObject as Exception);
 
         base.OnStartup(e);
+        SessionEnding += (_, _) => Quitting = true;
 
         // One Search per data folder: a second launch (a link from another app, the Start menu) hands its address to the first.
         var id = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Store.File("x").ToLowerInvariant())))[..16];
@@ -53,9 +54,14 @@ public partial class App : Application
         var window = new MainWindow(first);
         MainWindow = window;
         window.Show();
+        // The other windows that were open last time.
+        foreach (var saved in Search.App.MainWindow.Remembered)
+            new MainWindow(null, true, saved.Profile, saved.Id).Show();
     }
 
     static Mutex? instance;
+    /// <summary>Set when the whole app is going away (an update, the system closing): windows keep their tabs for next time.</summary>
+    public static bool Quitting { get; set; }
 
     async Task Listen(string name)
     {

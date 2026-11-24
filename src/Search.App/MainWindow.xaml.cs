@@ -30,6 +30,8 @@ public partial class MainWindow : Window
     History history => Shared.HistoryOf(profileId);
     Bookmarks Marks => Shared.BookmarksOf(profileId);
     readonly bool persistent;
+    /// <summary>Guid.Empty for the first window, whose files are the ones there have always been; any other has its own.</summary>
+    readonly Guid windowId;
     readonly DispatcherTimer saveSoon;
     Engine engine => Shared.Prefs.Data.Engine;
     string customEngine => Shared.Prefs.Data.CustomEngine;
@@ -40,20 +42,24 @@ public partial class MainWindow : Window
     readonly Dictionary<TextBox, string> lastTyped = [];
     bool restoring;
 
-    public MainWindow(string? open = null, bool persistent = true, Guid? profile = null)
+    public MainWindow(string? open = null, bool persistent = true, Guid? profile = null, Guid? window = null)
     {
         this.persistent = persistent;
+        windowId = window ?? Guid.Empty;
         profileId = profile ?? Spaces.PersonalId;
         InitializeComponent();
         InitSpaces();
         InitPages();
+        RegisterWindow();
+        StartIdleSweep();
+        SourceInitialized += (_, _) => RestorePlacement();
         saveSoon = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         saveSoon.Tick += (_, _) => { saveSoon.Stop(); SaveNow(); };
 
         SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
         Loaded += async (_, _) => await StartAsync(open);
-        Closing += (_, _) => { SaveAllSpaces(); history.Save(); };
+        Closing += (_, _) => { SaveAllSpaces(); history.Save(); Windows_Closing(); };
         Shared.Prefs.Changed += ApplyPrefs;
         Marks.Changed += OnBookmarksChanged;
         Shared.Downloads.Changed += OnDownloadsChanged;
@@ -86,7 +92,7 @@ public partial class MainWindow : Window
 
         ApplyPrefs();
         restoring = true;
-        var shape = persistent ? Session.Load(space.Id) : null;
+        var shape = persistent ? Session.Load(space.Id, windowId) : null;
         if (shape is not null)
         {
             if (shape.SideWidth is double w) SideColumn.Width = new GridLength(Math.Clamp(w, SideMin, SideMax));
@@ -111,7 +117,8 @@ public partial class MainWindow : Window
         }
         else if (all.Count == 0) NewTab();
         else Select(all[Math.Clamp(shape?.Active ?? 0, 0, all.Count - 1)]);
-        if (persistent) StartUpdates();
+        if (persistent && windowId == Guid.Empty) StartUpdates();
+        SweepIdle();
     }
 
     IEnumerable<Tab> Ordered() => pins.Concat(tabs);
@@ -153,6 +160,7 @@ public partial class MainWindow : Window
         if (live is not null) { live.Live = false; if (live.View is not null) live.View.Visibility = Visibility.Hidden; }
         live = t;
         t.Live = true;
+        t.LastSeen = DateTime.UtcNow;
         ShowLive();
         SaveSoon();
     }

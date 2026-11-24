@@ -82,6 +82,7 @@ public partial class MainWindow
         SaveNow();
         history.Save();
         Process.Start(new ProcessStartInfo(installer, "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RELAUNCH=1") { UseShellExecute = true });
+        App.Quitting = true;
         Application.Current.Shutdown();
     }
 
