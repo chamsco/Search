@@ -332,7 +332,7 @@ try
     List<Point> RowPoints()
     {
         var left = window!.BoundingRectangle.Left;
-        var ys = window.FindAllDescendants(cf => cf.ByName("Example Domain")).Where(e => e.BoundingRectangle.Left < left + 260)
+        var ys = window.FindAllDescendants(cf => cf.ByName("Example Domain")).Where(e => e.BoundingRectangle.Right < left + 300)
             .Select(e => e.BoundingRectangle.Top + e.BoundingRectangle.Height / 2.0).OrderBy(y => y).ToList();
         var lines = new List<double>();
         foreach (var y in ys) if (lines.Count == 0 || y - lines[^1] > 12) lines.Add(y);
