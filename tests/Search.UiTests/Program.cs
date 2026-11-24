@@ -540,6 +540,7 @@ try
         Mouse.MoveTo(from); Thread.Sleep(300);
         Mouse.Down(MouseButton.Left); Thread.Sleep(200);
         for (var k = 1; k <= 12; k++) { Mouse.MoveTo(new Point(from.X + (to.X - from.X) * k / 12, from.Y + (to.Y - from.Y) * k / 12)); Thread.Sleep(60); }
+        for (var k = 0; k < 4; k++) { Mouse.MoveTo(new Point(to.X + k, to.Y + 2 + k)); Thread.Sleep(150); }
         Thread.Sleep(300);
         Mouse.Up(MouseButton.Left);
     }
