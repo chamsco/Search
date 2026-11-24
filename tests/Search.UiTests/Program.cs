@@ -328,6 +328,16 @@ try
     }
     Point CentreOf(AutomationElement e) { var r = e.BoundingRectangle; return new Point(r.Left + r.Width / 2, r.Top + r.Height / 2); }
     List<AutomationElement> Rows() => window!.FindAllDescendants(cf => cf.ByName("Example Domain")).Where(e => e.BoundingRectangle.Left < window!.BoundingRectangle.Left + 260).OrderBy(x => x.BoundingRectangle.Top).ThenBy(x => x.BoundingRectangle.Left).ToList();
+    // One point a line, in the column: the row's border and its text both answer to the name, so lines are told apart by height.
+    List<Point> RowPoints()
+    {
+        var left = window!.BoundingRectangle.Left;
+        var ys = window.FindAllDescendants(cf => cf.ByName("Example Domain")).Where(e => e.BoundingRectangle.Left < left + 260)
+            .Select(e => e.BoundingRectangle.Top + e.BoundingRectangle.Height / 2.0).OrderBy(y => y).ToList();
+        var lines = new List<double>();
+        foreach (var y in ys) if (lines.Count == 0 || y - lines[^1] > 12) lines.Add(y);
+        return lines.Select(y => new Point(left + 7 + 110, (int)y)).ToList();
+    }
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
     Thread.Sleep(1500);
@@ -482,9 +492,9 @@ try
         catch { return null; }
     }
     AutomationElement? Heading(string name) => window!.FindAllDescendants(cf => cf.ByName(name)).FirstOrDefault(e => e.ControlType != FlaUI.Core.Definitions.ControlType.MenuItem);
-    void Choose(AutomationElement row, params string[] path)
+    void Choose(Point at, params string[] path)
     {
-        Mouse.Click(CentreOf(row), MouseButton.Right);
+        Mouse.Click(at, MouseButton.Right);
         Thread.Sleep(900);
         foreach (var name in path)
         {
@@ -494,7 +504,7 @@ try
         }
     }
 
-    Choose(Rows()[1], "Add to Group", "New Group");
+    Choose(RowPoints()[1], "Add to Group", "New Group");
     Keyboard.Type("Research");
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(2500);
@@ -502,7 +512,7 @@ try
     Step("Tab menu › Add to Group › New Group, type Research: a heading appears above the tab, the group is saved",
         GroupsNote().Contains("Research") && Heading("Research") is not null, $"groups: {GroupsNote()} · " + Shot("group-new"));
 
-    Choose(Rows()[2], "Add to Group", "Research");
+    Choose(RowPoints()[2], "Add to Group", "Research");
     Thread.Sleep(2000);
     int Members() { try { var root = Session5(); var gid = root.GetProperty("groups")[0].GetProperty("id").GetString(); return root.GetProperty("tabs").EnumerateArray().Count(t => t.TryGetProperty("group", out var g) && g.GetString() == gid); } catch { return -1; } }
     Step("Add the third tab to Research from its menu: two tabs sit under the heading", Members() == 2, $"members: {Members()} · " + Shot("group-two"));
@@ -520,12 +530,12 @@ try
     Keyboard.Type("example.org/?loose");
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(5000);
-    var loose = Rows().LastOrDefault();
+    var looseRows = RowPoints();
     head = Heading("Research");
-    if (loose is not null && head is not null)
+    if (looseRows.Count > 0 && head is not null)
     {
         // A drag the system will take as one: press, move a little at a time, release.
-        var from = CentreOf(loose); var to = CentreOf(head);
+        var from = looseRows[^1]; var to = CentreOf(head);
         Mouse.MoveTo(from); Thread.Sleep(300);
         Mouse.Down(MouseButton.Left); Thread.Sleep(200);
         for (var k = 1; k <= 12; k++) { Mouse.MoveTo(new Point(from.X + (to.X - from.X) * k / 12, from.Y + (to.Y - from.Y) * k / 12)); Thread.Sleep(60); }
@@ -536,9 +546,9 @@ try
     Step("Drag a loose tab onto the Research heading: it joins the group", Members() == 3, $"members: {Members()} · " + Shot("group-drop"));
 
     // Pin a tab, then folders: pinned rows are on, so the pin is a row.
-    Choose(Rows()[0], "Pin");
+    Choose(RowPoints()[0], "Pin");
     Thread.Sleep(2000);
-    Choose(Rows()[0], "Move to Folder", "New Folder");
+    Choose(RowPoints()[0], "Move to Folder", "New Folder");
     Keyboard.Type("Work");
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(2500);
