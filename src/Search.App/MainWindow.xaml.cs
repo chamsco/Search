@@ -805,7 +805,7 @@ public partial class MainWindow : Window
 
     void Row_DragOver(object sender, DragEventArgs e)
     {
-        App.Trace("drag over row " + ((sender as FrameworkElement)?.DataContext as Tab)?.Title);
+        App.Trace($"drag over row ctx={(sender as FrameworkElement)?.DataContext?.GetType().Name} idx={((sender as FrameworkElement)?.DataContext is Tab tt ? tabs.IndexOf(tt) : -9)} drag={(dragging is null ? -1 : tabs.IndexOf(dragging))} grp={(sender as FrameworkElement)?.DataContext is Tab q ? q.GroupId : null}");
         e.Effects = DragDropEffects.Move;
         e.Handled = true;
         if (dragging is not { } moving || (sender as FrameworkElement)?.DataContext is not Tab target || moving == target) return;
