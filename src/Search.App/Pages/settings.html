@@ -26,7 +26,12 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
     <div class="line" id="customLine" style="display:none"><div class="label">Custom address<small>Put %s or {searchTerms} where the words go</small></div><input type="text" id="custom" style="width:300px" placeholder="example.com/search?q=%s"></div>
     <div class="line"><div class="label">Suggestions from your search engine<small>Sent as you type; never for an address, never from a private tab</small></div><div class="switch" id="engineSuggests"></div></div>
     <div class="line"><div class="label">Little windows<small>A link from another app opens in a small window with an Open in Search button</small></div><div class="switch" id="littleLinks"></div></div>
-    <div class="line"><div class="label">Peek<small>Shift+click a link to see its page over this one</small></div><div class="switch" id="peek"></div></div>
+    <div class="line"><div class="label">Peek<small>Click a link with a key held to see its page over this one</small></div><div class="switch" id="peek"></div></div>
+    <div class="line"><div class="label">Peek click<small>The keys held while clicking</small></div><select id="peekClick"><option value="shift">Shift+click</option><option value="altShift">Alt+Shift+click</option><option value="altCtrl">Alt+Ctrl+click</option></select></div>
+    <div class="line"><div class="label">A peek stays with its tab<small>Another tab hides it; coming back shows it</small></div><div class="switch" id="peekStays"></div></div>
+    <div class="line"><div class="label">Pins keep their site<small>A link from a pinned tab to another site opens in a peek</small></div><div class="switch" id="pinsPeek"></div></div>
+    <div class="line"><div class="label">Split View<small>Tabs side by side, up to four (Ctrl+Alt+N)</small></div><div class="switch" id="splitView"></div></div>
+    <div class="line"><div class="label">Alt+click a link opens it in Split View<small>Beside the page you are reading</small></div><div class="switch" id="altSplit"></div></div>
     <div class="line"><div class="label">Start with a fresh window<small>Instead of last time's tabs (pinned pages stay)</small></div><div class="switch" id="startFresh"></div></div>
   </div>
   <div class="group">
@@ -83,7 +88,8 @@ function show(id) { id = ['general','appearance','tabs','privacy','keyboard','ab
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.s === id)); }
 window.addEventListener('hashchange', () => show(location.hash.slice(1))); show(location.hash.slice(1));
 const set = (key, value) => host.send('settings.set', { key, value });
-for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn','littleLinks','peek']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
+for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn','littleLinks','peek','peekStays','pinsPeek','splitView','altSplit']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
+document.getElementById('peekClick').onchange = e => set('peekClick', e.target.value);
 document.getElementById('engine').onchange = e => { set('engine', e.target.value); document.getElementById('customLine').style.display = e.target.value === 'Custom' ? '' : 'none'; };
 let customTimer; document.getElementById('custom').oninput = e => { clearTimeout(customTimer); customTimer = setTimeout(() => set('customEngine', e.target.value), 300); };
 document.querySelectorAll('#look button').forEach(b => b.onclick = () => { set('look', b.dataset.v); mark(b.dataset.v); });
@@ -133,7 +139,8 @@ host.on('cleared', m => { document.getElementById('cleared').textContent = m.tex
 host.on('update', m => document.getElementById('updateText').textContent = m.text);
 host.on('settings', m => {
   markLayout(m.layout); drawSpaces(m); document.getElementById('closeIdleDays').value = String(m.closeIdleDays);
-  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn','littleLinks','peek']) document.getElementById(id).classList.toggle('on', !!m[id]);
+  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','pinsAsRows','spacesOn','littleLinks','peek','peekStays','pinsPeek','splitView','altSplit']) document.getElementById(id).classList.toggle('on', !!m[id]);
+  document.getElementById('peekClick').value = m.peekClick;
   document.getElementById('engine').value = m.engine; document.getElementById('custom').value = m.customEngine || '';
   document.getElementById('customLine').style.display = m.engine === 'Custom' ? '' : 'none';
   document.getElementById('dlpath').textContent = m.downloadFolder; mark(m.look);

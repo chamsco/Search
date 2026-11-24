@@ -28,7 +28,7 @@ public partial class MainWindow
         var closedNow = 0;
         foreach (var st in states.Values.ToList())
         {
-            var candidates = st.Tabs.Select(t => (t.Id, t.LastSeen, Closable: t != live && !t.IsPin && !t.IsBlank && !t.IsInternal && Archive.Keeps(t.Url) && !t.Loading)).ToList();
+            var candidates = st.Tabs.Select(t => (t.Id, t.LastSeen, Closable: t != live && !st.Splits.Any(x => x.Holds(t.Id)) && !t.IsPin && !t.IsBlank && !t.IsInternal && Archive.Keeps(t.Url) && !t.Loading)).ToList();
             foreach (var id in IdleTabs.Due(candidates, days, now ?? DateTime.UtcNow))
             {
                 var t = st.Tabs.First(x => x.Id == id);

@@ -32,6 +32,16 @@ public sealed class PrefsData
     public bool LittleLinks { get; set; }
     /// <summary>Settings › Keyboard &amp; Mouse › Peek: Shift+click a link to see its page over this one.</summary>
     public bool Peek { get; set; } = true;
+    /// <summary>Settings › Keyboard &amp; Mouse › Split View: tabs side by side, up to four.</summary>
+    public bool SplitView { get; set; } = true;
+    /// <summary>The click that peeks: "shift", "altShift" or "altCtrl".</summary>
+    public string PeekClick { get; set; } = "shift";
+    /// <summary>A peek stays with the tab it came from: another tab hides it, and coming back shows it.</summary>
+    public bool PeekStays { get; set; }
+    /// <summary>A link from a pinned tab to another site opens in a peek, so the pin stays on its page.</summary>
+    public bool PinsPeek { get; set; } = true;
+    /// <summary>Alt+click on a link opens it beside the page, in Split View.</summary>
+    public bool AltSplit { get; set; }
 }
 
 public sealed class Prefs

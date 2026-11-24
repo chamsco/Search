@@ -55,6 +55,10 @@ public sealed class Tab : INotifyPropertyChanged
     public WebView2? View { get; set; }
     public bool Asleep => View is null;
 
+    bool inSplit;
+    /// <summary>Shown beside others in Split View.</summary>
+    public bool InSplit { get => inSplit; set => Set(ref inSplit, value); }
+
     public bool IsBlank => string.IsNullOrEmpty(url);
 
     /// <summary>One of Search's own pages (search://settings and the like), which wears a glyph instead of a site's icon.</summary>

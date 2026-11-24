@@ -13,7 +13,7 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Hide column (Ctrl+Shift+S) | ✅ | Mac: ⌘S. Hover-to-reveal ⬜ |
 | Light / dark following the system | ✅ | Settings › Appearance: Light, Dark, System |
 | Pins as squares | ✅ | Pin from the tab's menu or Ctrl+Shift+D, or drag onto a pin |
-| Pins as rows | ✅ | Settings › Tabs. Pin folders ⬜ (wave 4, with tab groups) |
+| Pins as rows | ✅ | Settings › Tabs. Pin folders ⬜ (wave 5, with tab groups) |
 | Tab rows: icon or letter, title, close, loading ring | ✅ | |
 | Middle-click closes a tab | ✅ | |
 | Drag to reorder tabs and pins | ✅ | Rows make room as you drag; drop on the pins (or "Drop here to pin") to pin |
@@ -22,10 +22,10 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Tabs sleep until shown | ✅ | Restored tabs load on first view |
 | Spaces, colours, icons, strength, gradient | ✅ | Settings › Tabs turns them on; strip above the footer; Ctrl+Alt+1–9; own sign-ins or shared; Move to Space in the tab menu. Swipe gesture ⬜ (touchpad has no equivalent; animation in wave 4) |
 | Profiles | ✅ | A window each, own history, bookmarks, spaces and sign-ins (WebView2 profiles); footer door once there are two |
-| Split View (up to 4) | ⬜ | |
-| Little windows, Peek | ⬜ | |
-| Archive of auto-closed tabs | ⬜ | |
-| Multiple windows (Ctrl+N) | 🟡 | Ctrl+N opens a window; a second launch or a link hands over to the running Search. Only the first window's tabs are restored next time ⬜ |
+| Split View (up to 4) | ✅ | Ctrl+Alt+N, Alt+click a tab, tab menu (Open in Split View, Swap Pages, Stack Pages Vertically, Remove from Split View, Separate, Close Both). Lines between pages drag; double-click evens them. Ctrl+Alt+Left/Right moves focus. Alt+click a link opens it beside (Settings). Saved and restored with the session |
+| Little windows, Peek | ✅ | Little windows: a link from another app (Settings › Little windows) or tab menu › Open in Small Window; Open in Search brings it into the row. Peek: Shift+click (or Alt+Shift, Alt+Ctrl) a link; Open as tab, Esc; stays with its tab (Settings); pins keep their site |
+| Archive of auto-closed tabs | ✅ | Settings › Close tabs left alone; search://archive and a button on History |
+| Multiple windows (Ctrl+N) | ✅ | Every window, with its place and tabs, comes back next time. Close one on purpose and it is forgotten; Ctrl+Shift+Q quits and keeps them all |
 | Bookmarks bar, bookmarks, folders | ✅ | Ctrl+Shift+B card, Ctrl+Alt+B bar, folders, drag to order on the Bookmarks page |
 | Footer (home, downloads, bookmarks) | ✅ | |
 
@@ -100,7 +100,7 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Open links / files passed on the command line | ✅ | |
 | Single instance (links open in the running window) | ✅ | |
 | Rounded window corners on Windows 11 | ✅ | |
-| Snap layouts on the maximise button | ⬜ | |
+| Snap layouts on the maximise button | ✅ | Windows 11 flyout over the maximise button (both layouts) |
 | Mouse back / forward buttons | ✅ | |
 | Notifications from sites | 🟡 | WebView2's own |
 | Updater | ✅ | Checks GitHub releases at launch and hourly, downloads quietly, "Restart to Update" in the column; Alt+Space › Check for Updates… |

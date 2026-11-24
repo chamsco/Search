@@ -67,6 +67,7 @@ public partial class MainWindow
 
     void OnPageMessage(Tab tab, CoreWebView2 core, CoreWebView2WebMessageReceivedEventArgs e)
     {
+        if (LinkMessage(tab, e)) return;
         // Any web page can post a message; only our own pages are listened to.
         if (PageUrl(e.Source) is null || PageUrl(core.Source) is null) return;
         try
@@ -198,7 +199,7 @@ public partial class MainWindow
         {
             type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
             engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
-            spacesOn = d.SpacesOn, closeIdleDays = d.CloseIdleDays, littleLinks = d.LittleLinks, peek = d.Peek, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
+            spacesOn = d.SpacesOn, closeIdleDays = d.CloseIdleDays, littleLinks = d.LittleLinks, peek = d.Peek, splitView = d.SplitView, altSplit = d.AltSplit, peekClick = d.PeekClick, peekStays = d.PeekStays, pinsPeek = d.PinsPeek, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
             spaces = Shared.Book.Spaces.Select(sp => new { id = sp.Id, name = sp.Name, colour = sp.Colour, colour2 = sp.Colour2, strength = sp.Strength.ToString(), icon = sp.IconIndex, shares = sp.SharesSignIns, profile = sp.ProfileId, first = sp.IsFirst }),
             profiles = Shared.Book.Profiles.Select(pf => new { id = pf.Id, name = pf.Name, personal = pf.IsPersonal }),
             iconGlyphs = Spaces.Icons, iconNames = Spaces.IconNames, colourNames = Spaces.ColourNames,
@@ -222,6 +223,11 @@ public partial class MainWindow
                 case "closeIdleDays": d.CloseIdleDays = value.ValueKind == JsonValueKind.Number ? Math.Max(0, value.GetInt32()) : 0; break;
                 case "littleLinks": d.LittleLinks = B(); break;
                 case "peek": d.Peek = B(); break;
+                case "splitView": d.SplitView = B(); break;
+                case "altSplit": d.AltSplit = B(); break;
+                case "peekStays": d.PeekStays = B(); break;
+                case "pinsPeek": d.PinsPeek = B(); break;
+                case "peekClick": if (S() is "shift" or "altShift" or "altCtrl") d.PeekClick = S(); break;
                 case "layout": if (Enum.TryParse<TabsLayout>(S(), out var lay)) d.Layout = lay; break;
                 case "httpsUpgrade": d.HttpsUpgrade = B(); break;
                 case "engine": if (Enum.TryParse<Engine>(S(), out var en)) d.Engine = en; break;
@@ -273,7 +279,7 @@ public partial class MainWindow
     {
         var look = Shared.Prefs.Data.Look switch { LookChoice.Light => Palette.Look.Light, LookChoice.Dark => Palette.Look.Dark, _ => Palette.Look.System };
         if (App.Look != look) { App.Look = look; Palette.Apply(Application.Current.Resources, look); }
-        foreach (var t in Ordered()) if (t.View?.CoreWebView2 is { } c) ApplyColorScheme(c);
+        foreach (var t in Ordered()) if (t.View?.CoreWebView2 is { } c) { ApplyColorScheme(c); _ = InstallLinkScript(t, c); }
         BarHost.Visibility = Shared.Prefs.Data.BookmarksBar && !fullScreen ? Visibility.Visible : Visibility.Collapsed;
         BuildBar();
         ApplyTabsLayout();
@@ -642,8 +648,9 @@ public partial class MainWindow
     public void OpenExternal(string url)
     {
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
-        Activate();
         var target = File.Exists(url) ? new Uri(Path.GetFullPath(url)).AbsoluteUri : Omnibox.Resolve(url, engine, customEngine);
+        if (Shared.Prefs.Data.LittleLinks && target.StartsWith("http", StringComparison.OrdinalIgnoreCase)) { OpenLittle(target); return; }
+        Activate();
         Open(target);
     }
 

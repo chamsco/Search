@@ -23,6 +23,7 @@ public partial class MainWindow
         public required Space Space { get; init; }
         public ObservableCollection<Tab> Pins { get; } = [];
         public ObservableCollection<Tab> Tabs { get; } = [];
+        public List<TabSplit> Splits { get; } = [];
         public Tab? Live { get; set; }
         public bool Restored { get; set; }
     }
@@ -79,6 +80,8 @@ public partial class MainWindow
             Tabs = all.Select(t => t.ToEntry()).ToList(),
             Active = liveTab is null ? 0 : Math.Max(0, all.IndexOf(liveTab)),
             SideWidth = SideColumn.Width.Value,
+            Splits = StateOf(s).Splits.Where(x => x.IsValid && x.Tabs.All(id => all.Any(t => t.Id == id)))
+                .Select(x => x.ToEntry(id => all.FindIndex(t => t.Id == id))).ToList(),
         }, s.Id, windowId);
     }
 
@@ -119,6 +122,7 @@ public partial class MainWindow
                 (t.IsPin ? pins : tabs).Add(t);
             }
             restoring = false;
+            if (shape is not null) RestoreSplits(st, shape);
             if (shape is not null && Ordered().ElementAtOrDefault(shape.Active) is { } was) st.Live = was;
         }
 
