@@ -327,7 +327,7 @@ try
         catch { return []; }
     }
     Point CentreOf(AutomationElement e) { var r = e.BoundingRectangle; return new Point(r.Left + r.Width / 2, r.Top + r.Height / 2); }
-    List<AutomationElement> Rows() => window!.FindAllDescendants(cf => cf.ByName("Example Domain")).OrderBy(x => x.BoundingRectangle.Top).ThenBy(x => x.BoundingRectangle.Left).ToList();
+    List<AutomationElement> Rows() => window!.FindAllDescendants(cf => cf.ByName("Example Domain")).Where(e => e.BoundingRectangle.Left < window!.BoundingRectangle.Left + 260).OrderBy(x => x.BoundingRectangle.Top).ThenBy(x => x.BoundingRectangle.Left).ToList();
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
     Thread.Sleep(1500);
@@ -522,7 +522,16 @@ try
     Thread.Sleep(5000);
     var loose = Rows().LastOrDefault();
     head = Heading("Research");
-    if (loose is not null && head is not null) Mouse.Drag(CentreOf(loose), CentreOf(head));
+    if (loose is not null && head is not null)
+    {
+        // A drag the system will take as one: press, move a little at a time, release.
+        var from = CentreOf(loose); var to = CentreOf(head);
+        Mouse.MoveTo(from); Thread.Sleep(300);
+        Mouse.Down(MouseButton.Left); Thread.Sleep(200);
+        for (var k = 1; k <= 12; k++) { Mouse.MoveTo(new Point(from.X + (to.X - from.X) * k / 12, from.Y + (to.Y - from.Y) * k / 12)); Thread.Sleep(60); }
+        Thread.Sleep(300);
+        Mouse.Up(MouseButton.Left);
+    }
     Thread.Sleep(3000);
     Step("Drag a loose tab onto the Research heading: it joins the group", Members() == 3, $"members: {Members()} · " + Shot("group-drop"));
 
