@@ -69,9 +69,11 @@ public partial class MainWindow : Window
         Loaded += async (_, _) => await StartAsync(open);
         Closing += (_, _) => { SaveAllSpaces(); history.Save(); Windows_Closing(); };
         Shared.Prefs.Changed += ApplyPrefs;
+        Shared.Perms.Changed += OnPermsChanged;
+        Shared.Styles.Changed += OnStylesChanged;
         Marks.Changed += OnBookmarksChanged;
         Shared.Downloads.Changed += OnDownloadsChanged;
-        Closed += (_, _) => { Shared.Prefs.Changed -= ApplyPrefs; Marks.Changed -= OnBookmarksChanged; Shared.Downloads.Changed -= OnDownloadsChanged; };
+        Closed += (_, _) => { Shared.Prefs.Changed -= ApplyPrefs; Shared.Perms.Changed -= OnPermsChanged; Shared.Styles.Changed -= OnStylesChanged; Marks.Changed -= OnBookmarksChanged; Shared.Downloads.Changed -= OnDownloadsChanged; };
         PreviewKeyDown += Window_PreviewKeyDown;
         PreviewMouseDown += Window_PreviewMouseDown;
         Stage.SizeChanged += (_, _) => RoundLiveView();
@@ -88,7 +90,7 @@ public partial class MainWindow : Window
         try
         {
             environment = await CoreWebView2Environment.CreateAsync(null, data,
-                new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true });
+                new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true, AdditionalBrowserArguments = Proxy.Argument(Shared.Prefs.Data.ProxyMode, Shared.Prefs.Data.ProxyServer) });
         }
         catch (WebView2RuntimeNotFoundException)
         {
@@ -250,6 +252,11 @@ public partial class MainWindow : Window
         core.SetVirtualHostNameToFolderMapping(PagesHost, PagesDir, CoreWebView2HostResourceAccessKind.Allow);
         core.WebMessageReceived += (_, e) => OnPageMessage(t, core, e);
         core.DownloadStarting += OnDownloadStarting;
+        core.PermissionRequested += (_, e) => OnPermission(e);
+        core.NotificationReceived += (_, e) => OnNotification(t, e);
+        core.ClientCertificateRequested += (_, e) => OnClientCertificate(e);
+        WatchTrackers(t, core);
+        WatchStyles(t, core);
 
         core.DocumentTitleChanged += (_, _) =>
         {
@@ -510,7 +517,7 @@ public partial class MainWindow : Window
     async void AskEngine(string typed, ListBox list, List<Suggestion> offers, Action show)
     {
         asking?.Cancel();
-        if (!engineSuggests || string.IsNullOrWhiteSpace(typed) || Address.Url(typed) is not null) return;
+        if (!engineSuggests || siteMode is not null || string.IsNullOrWhiteSpace(typed) || Address.Url(typed) is not null) return;
         var cancel = (asking = new CancellationTokenSource()).Token;
         try
         {
@@ -533,7 +540,7 @@ public partial class MainWindow : Window
     });
 
     List<Suggestion> Offers(string typed) =>
-        Omnibox.Offers(typed, history, engine, Ordered().Where(t => t != live && !t.IsBlank).Select(t => (t.Id, t.Url, t.Label)), bookmarks: Marks, custom: customEngine);
+        siteMode is not null && typed.StartsWith(SitePrefix, StringComparison.Ordinal) ? [] : Omnibox.Offers(typed, history, engine, Ordered().Where(t => t != live && !t.IsBlank).Select(t => (t.Id, t.Url, t.Label)), bookmarks: Marks, custom: customEngine);
 
     /// <summary>The rest of the best match, written after the caret and selected, so typing on replaces it (History.completion).</summary>
     void ShowCompletion(TextBox field, List<Suggestion> offers)
@@ -555,11 +562,41 @@ public partial class MainWindow : Window
         typedBeforeCompletion = null;
     }
 
+    // Site search: "youtube", Tab, then the words go to YouTube's own search.
+    SiteSearch.Site? siteMode;
+    string SitePrefix => siteMode is null ? "" : $"{siteMode.Name} \u203A ";
+
     void FieldKeys(TextBox field, ListBox list, KeyEventArgs e, Action escape)
     {
         var items = list.ItemsSource as List<Suggestion>;
+        if (siteMode is not null && !field.Text.StartsWith(SitePrefix, StringComparison.Ordinal)) siteMode = null;
         switch (e.Key)
         {
+            case Key.Tab when siteMode is null && Shared.Prefs.Data.SiteSearch && Keyboard.Modifiers == ModifierKeys.None
+                              && SiteSearch.Match(field.SelectionLength > 0 ? field.Text[..field.SelectionStart] : field.Text) is { } site:
+                siteMode = site;
+                typedBeforeCompletion = "";
+                field.Text = SitePrefix;
+                field.CaretIndex = field.Text.Length;
+                typedBeforeCompletion = null;
+                list.ItemsSource = null;
+                e.Handled = true;
+                return;
+            case Key.Back when siteMode is not null && field.SelectionLength == 0 && field.CaretIndex <= SitePrefix.Length:
+                siteMode = null;
+                field.Text = "";
+                e.Handled = true;
+                return;
+            case Key.Enter when siteMode is not null:
+                e.Handled = true;
+                var words = field.Text[SitePrefix.Length..].Trim();
+                var chosen = siteMode;
+                siteMode = null;
+                if (words.Length == 0) return;
+                InlinePopup.IsOpen = false;
+                EndEditing(commit: false);
+                Navigate(SiteSearch.UrlFor(chosen, words));
+                return;
             case Key.Down when items is { Count: > 0 }:
                 list.SelectedIndex = Math.Min(list.SelectedIndex + 1, items.Count - 1);
                 e.Handled = true;
@@ -755,6 +792,8 @@ public partial class MainWindow : Window
             menu.Items.Add(Item("Open in Small Window", () => { var url = t.Url; Close(t); OpenLittle(url); }, enabled: !t.IsBlank && !t.IsInternal));
         menu.Items.Add(Item("Copy Address", () => Clipboard.SetText(t.Url), "Ctrl+Shift+C", enabled: !t.IsBlank));
         menu.Items.Add(Item("Copy as Markdown Link", () => Clipboard.SetText($"[{t.Label}]({t.Url})"), enabled: !t.IsBlank));
+        menu.Items.Add(Item("Copy Clean Link", () => CopyCleanLink(t), "Ctrl+Alt+Shift+C", enabled: !t.IsBlank));
+        menu.Items.Add(Item("Site Information", () => ShowSiteInfo(t), enabled: !t.IsBlank));
         var others = Shared.Book.In(profileId).Where(s => s.Id != space.Id).ToList();
         if (SpacesOn && others.Count > 0)
         {
@@ -915,7 +954,10 @@ public partial class MainWindow : Window
         else if (ctrl && alt && key >= Key.D1 && key <= Key.D9) SwitchSpaceBy(key - Key.D1);
         else if (ctrl && key >= Key.D1 && key <= Key.D9) Jump(key - Key.D1);
         else if (ctrl && shift && !alt && key == Key.D && live is not null) { if (live.IsPin) Unpin(live); else Pin(live); }
-        else if (ctrl && shift && key == Key.C && live is { IsBlank: false }) Clipboard.SetText(live.Url);
+        else if (ctrl && shift && alt && key == Key.C) CopyCleanLink();
+        else if (ctrl && shift && alt && key == Key.R) ToggleReader();
+        else if (ctrl && shift && !alt && key == Key.P) PictureInPicture();
+        else if (ctrl && shift && !alt && key == Key.C && live is { IsBlank: false }) Clipboard.SetText(live.Url);
         else if (ctrl && key == Key.S && shift) ToggleSide();
         else if (key == Key.F11) ToggleFullScreen();
         else if (key == Key.Escape && FindPopup.IsOpen) CloseFind();

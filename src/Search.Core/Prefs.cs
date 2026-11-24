@@ -49,6 +49,8 @@ public sealed class PrefsData
     public string ProxyServer { get; set; } = "";
     /// <summary>Settings › Keyboard &amp; Mouse › Type a site's name, press Tab, and search that site.</summary>
     public bool SiteSearch { get; set; } = true;
+    /// <summary>Settings › Sites › Your own style for a site: off until turned on, as on the Mac.</summary>
+    public bool SiteStylesOn { get; set; }
 }
 
 public sealed class Prefs

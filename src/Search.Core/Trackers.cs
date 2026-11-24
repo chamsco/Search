@@ -15,6 +15,8 @@ public static class Trackers
         "analytics.tiktok.com", "snap.licdn.com", "sentry-cdn.com", "optimizely.com", "heapanalytics.com", "intercom.io",
     };
 
+    public static IEnumerable<string> All => Hosts;
+
     /// <summary>Is this address one of them? Matches the host or any parent of it ("a.b.doubleclick.net" → "doubleclick.net").</summary>
     public static bool IsTracker(string url)
     {
