@@ -788,7 +788,7 @@ public partial class MainWindow : Window
             dragging = t; App.Trace($"drag start {t.Title}");
             PinDrop.Visibility = pins.Count == 0 && !t.IsPin && !t.IsBlank ? Visibility.Visible : Visibility.Collapsed;
             source.Opacity = 0.55;
-            try { DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move); }
+            try { var fx = DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move); App.Trace($"drag ended {fx}"); }
             finally
             {
                 source.Opacity = 1;
@@ -803,6 +803,7 @@ public partial class MainWindow : Window
 
     void Row_DragOver(object sender, DragEventArgs e)
     {
+        App.Trace("drag over row " + ((sender as FrameworkElement)?.DataContext as Tab)?.Title);
         e.Effects = DragDropEffects.Move;
         e.Handled = true;
         if (dragging is not { } moving || (sender as FrameworkElement)?.DataContext is not Tab target || moving == target) return;
