@@ -376,7 +376,15 @@ try
     Keyboard.Type("example.org");
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(5000);
-    var link = window.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Hyperlink));
+    // The screen is small and the page tall: zoom out so the link is well above the taskbar (a click down there starts the browser pinned to it).
+    for (var z = 0; z < 4; z++) Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SUBTRACT);
+    Thread.Sleep(1500);
+    AutomationElement? OnScreenLink()
+    {
+        var l = window!.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Hyperlink));
+        return l is not null && CentreOf(l).Y < 650 && CentreOf(l).Y > 60 ? l : null;
+    }
+    var link = OnScreenLink();
     var titled = () => app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
     var windowsBefore = titled();
     if (link is not null)
@@ -403,7 +411,7 @@ try
     Step("Esc: the peek goes away", titled() == windowsBefore, $"windows {titled()} · " + Shot("peek-closed"));
 
     var splitsBefore = SplitCounts().Length;
-    link = window.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Hyperlink));
+    link = OnScreenLink();
     if (link is not null)
     {
         Keyboard.Press(VirtualKeyShort.ALT);
