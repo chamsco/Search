@@ -169,11 +169,11 @@ try
     Step("Type http://example.com: it loads over https://", SessionText().Contains("https://example.com"), Shot("https-upgrade"));
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
-    Keyboard.Type("http://neverssl.com");
+    Keyboard.Type("http://httpforever.com");
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(15000);
-    var urls = System.Text.RegularExpressions.Regex.Matches(SessionText(), "\"url\":\"([^\"]*neverssl[^\"]*)\"").Select(m => m.Groups[1].Value);
-    Step("Type http://neverssl.com (no https there): it still loads, as written", SessionText().Contains("http://neverssl.com") && !app.HasExited, $"tab url: {string.Join(", ", urls)} · " + Shot("https-fallback"));
+    var urls = System.Text.RegularExpressions.Regex.Matches(SessionText(), "\"url\":\"([^\"]*httpforever[^\"]*)\"").Select(m => m.Groups[1].Value);
+    Step("Type http://httpforever.com (no https there): it still loads, as written", SessionText().Contains("http://httpforever.com") && !app.HasExited, $"tab url: {string.Join(", ", urls)} · " + Shot("https-fallback"));
 
     var dl = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
