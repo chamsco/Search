@@ -1,0 +1,93 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Settings</title><link rel="stylesheet" href="common.css">
+<style>
+.shell { display: grid; grid-template-columns: 200px 1fr; min-height: 100%; }
+nav { padding: 56px 12px; border-right: 1px solid var(--hairline); } nav h2 { font-size: 22px; font-weight: 600; margin: 0 8px 18px; }
+nav a { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 9px; color: var(--muted); }
+nav a:hover { background: var(--hover); color: var(--ink); } nav a.on { background: var(--wash); color: var(--ink); }
+nav a i { font: normal 12px "Segoe Fluent Icons","Segoe MDL2 Assets"; width: 16px; text-align: center; }
+main { padding: 56px 40px 80px; max-width: 720px; } section { display: none; } section.on { display: block; }
+h3 { font-size: 13px; font-weight: 600; margin: 24px 0 8px 2px; color: var(--muted); }
+table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border-top: 1px solid var(--hairline); } tr:first-child td { border-top: 0; } td:last-child { text-align: right; white-space: nowrap; }
+.path { color: var(--muted); font-size: 12px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.checks label { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+</style></head>
+<body><div class="shell">
+<nav id="nav"><h2>Settings</h2>
+  <a href="#general" data-s="general"><i>&#xE713;</i>General</a>
+  <a href="#appearance" data-s="appearance"><i>&#xE790;</i>Appearance</a>
+  <a href="#privacy" data-s="privacy"><i>&#xE72E;</i>Privacy</a>
+  <a href="#keyboard" data-s="keyboard"><i>&#xE765;</i>Keyboard &amp; Mouse</a>
+  <a href="#about" data-s="about"><i>&#xE946;</i>About</a></nav>
+<main>
+<section id="general"><h1>General</h1><p class="sub">How Search starts and where it looks.</p>
+  <div class="group">
+    <div class="line"><div class="label">Search engine<small>Used when you type words in the address field</small></div><select id="engine"></select></div>
+    <div class="line" id="customLine" style="display:none"><div class="label">Custom address<small>Put %s or {searchTerms} where the words go</small></div><input type="text" id="custom" style="width:300px" placeholder="example.com/search?q=%s"></div>
+    <div class="line"><div class="label">Suggestions from your search engine<small>Sent as you type; never for an address, never from a private tab</small></div><div class="switch" id="engineSuggests"></div></div>
+    <div class="line"><div class="label">Start with a fresh window<small>Instead of last time's tabs (pinned pages stay)</small></div><div class="switch" id="startFresh"></div></div>
+  </div>
+  <div class="group">
+    <div class="line"><div class="label">Downloads<small class="path" id="dlpath"></small></div><button id="chooseFolder">Change…</button></div>
+    <div class="line"><div class="label">Default browser<small>Windows decides: choose Search under Default apps</small></div><button id="defaultBrowser">Open Default apps</button></div>
+  </div>
+</section>
+<section id="appearance"><h1>Appearance</h1><p class="sub">Light, dark, or whatever Windows is doing.</p>
+  <div class="group"><div class="line"><div class="label">Look</div><div class="seg" id="look"><button data-v="Light">Light</button><button data-v="Dark">Dark</button><button data-v="System">System</button></div></div>
+  <div class="line"><div class="label">Show the bookmarks bar<small>Ctrl+Alt+B toggles it too</small></div><div class="switch" id="bookmarksBar"></div></div></div>
+</section>
+<section id="privacy"><h1>Privacy</h1><p class="sub">What Search keeps, and what it forgets.</p>
+  <div class="group"><div class="line"><div class="label">Upgrade http:// pages to HTTPS<small>Where the site has it; otherwise the page loads as it was</small></div><div class="switch" id="httpsUpgrade"></div></div></div>
+  <h3>Clear browsing data</h3>
+  <div class="group"><div class="line"><div class="label">Time range</div><select id="range"><option value="hour">Last hour</option><option value="day">Last 24 hours</option><option value="week">Last 7 days</option><option value="all" selected>All time</option></select></div>
+    <div class="line checks" style="display:block"><label><input type="checkbox" id="k-history" checked> Browsing history</label><label><input type="checkbox" id="k-downloads" checked> Download list</label>
+      <label><input type="checkbox" id="k-cookies"> Cookies and other site data (signs you out of sites)</label><label><input type="checkbox" id="k-cache"> Cached images and files</label>
+      <label><input type="checkbox" id="k-permissions"> Site permissions you have answered (camera, microphone, location)</label></div>
+    <div class="line"><div class="label" id="cleared" style="color:var(--muted)"></div><button class="danger" id="clearNow">Clear data</button></div></div>
+</section>
+<section id="keyboard"><h1>Keyboard &amp; Mouse</h1><p class="sub">The Mac's shortcuts with Ctrl in place of ⌘, and Windows' own where a Mac key is Windows' too.</p>
+  <div class="group"><table id="keys"></table></div>
+  <div class="group"><table><tr><td>Back / forward</td><td><kbd>Mouse back</kbd> <kbd>Mouse forward</kbd></td></tr><tr><td>Close a tab</td><td><kbd>Middle click</kbd></td></tr><tr><td>Zoom</td><td><kbd>Ctrl + wheel</kbd></td></tr></table></div>
+</section>
+<section id="about"><h1>About</h1><p class="sub" id="aboutLine"></p>
+  <div class="group"><div class="line"><div class="label" id="updateText">Search checks for a newer version at launch and every hour.</div><button id="check">Check for updates</button></div>
+  <div class="line"><div class="label">Your data<small class="path" id="dataPath"></small></div><button id="openData">Show in Explorer</button></div></div>
+  <p class="sub">A Windows port of Search by Office Commun, released under the MIT license. Pages render with Microsoft Edge WebView2, the Chromium that comes with Windows.</p>
+</section>
+</main></div>
+<script src="bridge.js"></script>
+<script>
+const ENGINES = ['Google','DuckDuckGo','Bing','Ecosia','Startpage','Kagi','Brave','Qwant','Custom'], NAMES = ['Google','DuckDuckGo','Bing','Ecosia','Startpage','Kagi','Brave Search','Qwant','Custom…'];
+const KEYS = [['New tab','Ctrl+T'],['New window','Ctrl+N'],['Reopen closed tab','Ctrl+Shift+T'],['Close tab','Ctrl+W'],['Close window','Ctrl+Shift+W'],['Open address','Ctrl+L'],['Open file','Ctrl+O'],['Reload','Ctrl+R'],['Reload from origin','Ctrl+Alt+R'],
+ ['Back / forward','Alt+← / Alt+→'],['Next / previous tab','Ctrl+Tab / Ctrl+Shift+Tab'],['Tab 1 to 9','Ctrl+1 … Ctrl+9'],['Find on page','Ctrl+F'],['Find next / previous','Ctrl+G / Ctrl+Shift+G'],['Print','Ctrl+P'],
+ ['Zoom in / out / actual size','Ctrl+= / Ctrl+- / Ctrl+0'],['Hide or show the sidebar','Ctrl+Shift+S'],['Full screen','F11'],['Duplicate tab','Ctrl+D'],['Pin or unpin tab','Ctrl+Shift+D'],['Copy address','Ctrl+Shift+C'],['Paste and go','Ctrl+Shift+V'],
+ ['Add this page to bookmarks','Ctrl+Shift+B'],['Show the bookmarks bar','Ctrl+Alt+B'],['History','Ctrl+Y'],['Downloads','Ctrl+Shift+J'],['Clear browsing data','Ctrl+Shift+Delete'],['Settings','Ctrl+,'],['Developer tools','F12 / Ctrl+Alt+I']];
+document.getElementById('keys').innerHTML = KEYS.map(([a, k]) => `<tr><td>${a}</td><td><kbd>${k}</kbd></td></tr>`).join('');
+document.getElementById('engine').innerHTML = ENGINES.map((e, i) => `<option value="${e}">${NAMES[i]}</option>`).join('');
+function show(id) { id = ['general','appearance','privacy','keyboard','about'].includes(id) ? id : 'general';
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.s === id)); }
+window.addEventListener('hashchange', () => show(location.hash.slice(1))); show(location.hash.slice(1));
+const set = (key, value) => host.send('settings.set', { key, value });
+for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
+document.getElementById('engine').onchange = e => { set('engine', e.target.value); document.getElementById('customLine').style.display = e.target.value === 'Custom' ? '' : 'none'; };
+let customTimer; document.getElementById('custom').oninput = e => { clearTimeout(customTimer); customTimer = setTimeout(() => set('customEngine', e.target.value), 300); };
+document.querySelectorAll('#look button').forEach(b => b.onclick = () => { set('look', b.dataset.v); mark(b.dataset.v); });
+function mark(v) { document.querySelectorAll('#look button').forEach(x => x.classList.toggle('on', x.dataset.v === v)); }
+document.getElementById('chooseFolder').onclick = () => host.send('settings.chooseFolder');
+document.getElementById('defaultBrowser').onclick = () => host.send('settings.defaultBrowser');
+document.getElementById('openData').onclick = () => host.send('settings.openData');
+document.getElementById('check').onclick = () => { document.getElementById('updateText').textContent = 'Checking…'; host.send('settings.checkUpdates'); };
+document.getElementById('clearNow').onclick = () => {
+  const kinds = ['history','downloads','cookies','cache','permissions'].filter(k => document.getElementById('k-' + k).checked);
+  if (!kinds.length) return; host.send('settings.clear', { range: document.getElementById('range').value, kinds }); };
+host.on('cleared', m => { document.getElementById('cleared').textContent = m.text; toast(m.text); });
+host.on('update', m => document.getElementById('updateText').textContent = m.text);
+host.on('settings', m => {
+  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade']) document.getElementById(id).classList.toggle('on', !!m[id]);
+  document.getElementById('engine').value = m.engine; document.getElementById('custom').value = m.customEngine || '';
+  document.getElementById('customLine').style.display = m.engine === 'Custom' ? '' : 'none';
+  document.getElementById('dlpath').textContent = m.downloadFolder; mark(m.look);
+  document.getElementById('aboutLine').textContent = `Search for Windows ${m.version} · Chromium ${m.engineVersion}`;
+  document.getElementById('dataPath').textContent = m.dataFolder; if (m.updateText) document.getElementById('updateText').textContent = m.updateText;
+});
+host.send('settings.get');
+</script></body></html>

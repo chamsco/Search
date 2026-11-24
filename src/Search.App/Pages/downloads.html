@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Downloads</title><link rel="stylesheet" href="common.css"></head>
+<body><div class="page">
+  <h1>Downloads</h1><p class="sub" id="where"></p>
+  <div class="toolbar"><input id="q" class="grow" type="search" placeholder="Search downloads" autocomplete="off"><button id="folder">Show folder</button><button id="clear" class="quiet">Clear list</button></div>
+  <div id="list"></div>
+</div>
+<script src="bridge.js"></script>
+<script>
+let items = [], filter = '', folder = '';
+const list = document.getElementById('list');
+document.getElementById('q').addEventListener('input', e => { filter = e.target.value.toLowerCase(); draw(); });
+document.getElementById('clear').onclick = () => host.send('downloads.clear');
+document.getElementById('folder').onclick = () => host.send('downloads.openFolder');
+const size = n => n > 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : n > 1e3 ? Math.round(n / 1e3) + ' KB' : n + ' B';
+host.on('downloads', m => { items = m.items; folder = m.folder; document.getElementById('where').textContent = 'Saved to ' + folder; draw(); });
+function state(d) {
+  if (d.state === 'progress') return `${size(d.received)}${d.total > 0 ? ' of ' + size(d.total) : ''}${d.paused ? ' · paused' : ''}`;
+  if (d.state === 'done') return d.exists ? size(d.total || d.received) : 'File was moved or deleted';
+  if (d.state === 'cancelled') return 'Cancelled'; return 'Failed';
+}
+function draw() {
+  const shown = items.filter(d => !filter || d.name.toLowerCase().includes(filter));
+  list.innerHTML = shown.map(d => `<div class="row" data-id="${d.id}" style="flex-wrap:wrap;padding-top:6px;padding-bottom:6px">
+    <span class="mark" style="font-family:'Segoe Fluent Icons','Segoe MDL2 Assets';font-size:9px">&#xE896;</span>
+    <div class="main" style="flex-direction:column;gap:0;align-items:stretch"><span class="t" style="${d.state==='done'&&!d.exists?'color:var(--muted)':''}">${esc(d.name)}</span><span class="u">${esc(state(d))}</span>
+      ${d.state === 'progress' && d.total > 0 ? `<div class="bar"><i style="width:${Math.min(100, d.received * 100 / d.total)}%"></i></div>` : ''}</div>
+    <span class="acts" style="display:flex">
+      ${d.state === 'progress' ? `<button class="icon" title="${d.paused ? 'Resume' : 'Pause'}" data-act="${d.paused ? 'resume' : 'pause'}">${d.paused ? '&#xE768;' : '&#xE769;'}</button><button class="icon" title="Cancel" data-act="cancel">&#xE711;</button>` : ''}
+      ${d.state === 'done' && d.exists ? `<button class="icon" title="Open" data-act="open">&#xE8E5;</button><button class="icon" title="Show in folder" data-act="show">&#xE838;</button>` : ''}
+      ${d.state !== 'progress' ? `<button class="icon" title="Remove from list" data-act="remove">&#xE74D;</button>` : ''}</span></div>`).join('')
+    || `<div class="empty">${filter ? 'Nothing matches.' : 'Nothing downloaded yet.'}</div>`;
+}
+list.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) host.send('downloads.' + b.dataset.act, { id: b.closest('.row').dataset.id }); });
+host.send('downloads.get');
+</script></body></html>

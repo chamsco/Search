@@ -213,3 +213,145 @@ public class UpdateTests
     [InlineData("v1.0.19.14", "1.0.19.14")]
     public void ReadsBothTagShapes(string tag, string version) => Assert.Equal(System.Version.Parse(version), Updates.VersionOf(tag));
 }
+
+[Collection("Store")]
+public class BookmarkTests : IDisposable
+{
+    readonly string old = Store.Root;
+    public BookmarkTests() => Store.Root = Path.Combine(Path.GetTempPath(), "search-test-" + Guid.NewGuid().ToString("N"));
+    public void Dispose() { try { Directory.Delete(Store.Root, true); } catch { } Store.Root = old; }
+
+    [Fact]
+    public void AddOnceByIdentity()
+    {
+        var b = Bookmarks.Load();
+        var one = b.Add("https://www.example.com/", "Example");
+        var two = b.Add("http://example.com", "Again");
+        Assert.Equal(one.Id, two.Id);
+        Assert.Single(b.Items);
+        Assert.True(b.Contains("https://example.com/#x"));
+    }
+
+    [Fact]
+    public void KeptBetweenRuns()
+    {
+        var b = Bookmarks.Load();
+        b.Add("https://a.com", "A");
+        Assert.Single(Bookmarks.Load().Items);
+    }
+
+    [Fact]
+    public void RenameMoveReorder()
+    {
+        var b = Bookmarks.Load();
+        var a = b.Add("https://a.com", "A");
+        var c = b.Add("https://c.com", "C");
+        var f = b.AddFolder("Work");
+        b.Move(c.Id, f.Id);
+        b.Rename(a.Id, "  Alpha ");
+        b.Reorder(c.Id, 0);
+        Assert.Equal("Alpha", b.Items.First(x => x.Id == a.Id).Title);
+        Assert.Equal(c.Id, b.Items[0].Id);
+        Assert.Single(b.In(f.Id));
+        b.RemoveFolder(f.Id);
+        Assert.Null(b.Items.First(x => x.Id == c.Id).Folder);
+    }
+
+    [Fact]
+    public void SuggestByNameOrAddress()
+    {
+        var b = Bookmarks.Load();
+        b.Add("https://news.ycombinator.com/", "Hacker News");
+        Assert.Single(b.Suggest("hacker"));
+        Assert.Single(b.Suggest("ycomb"));
+        Assert.Empty(b.Suggest("zzz"));
+    }
+
+    [Fact]
+    public void RemoveByUrl()
+    {
+        var b = Bookmarks.Load();
+        b.Add("https://a.com", "A");
+        b.Remove("https://a.com/");
+        Assert.Empty(b.Items);
+    }
+}
+
+[Collection("Store")]
+public class PrefsTests : IDisposable
+{
+    readonly string old = Store.Root;
+    public PrefsTests() => Store.Root = Path.Combine(Path.GetTempPath(), "search-test-" + Guid.NewGuid().ToString("N"));
+    public void Dispose() { try { Directory.Delete(Store.Root, true); } catch { } Store.Root = old; }
+
+    [Fact]
+    public void DefaultsAndPersistence()
+    {
+        var p = Prefs.Load();
+        Assert.Equal(Engine.Google, p.Data.Engine);
+        Assert.True(p.Data.EngineSuggests);
+        p.Update(d => { d.Engine = Engine.DuckDuckGo; d.Look = LookChoice.Dark; });
+        var again = Prefs.Load();
+        Assert.Equal(Engine.DuckDuckGo, again.Data.Engine);
+        Assert.Equal(LookChoice.Dark, again.Data.Look);
+    }
+
+    [Fact]
+    public void MissingDownloadFolderFallsBack()
+    {
+        var p = Prefs.Load();
+        p.Update(d => d.DownloadFolder = @"Z:\nope\nothing");
+        Assert.EndsWith("Downloads", p.EffectiveDownloadFolder);
+    }
+}
+
+[CollectionDefinition("Store", DisableParallelization = true)]
+public class StoreCollection;
+
+public class InternalPageTests
+{
+    [Theory]
+    [InlineData("search://settings", "settings", null)]
+    [InlineData("search://settings/privacy", "settings", "privacy")]
+    [InlineData("SEARCH://History/", "history", null)]
+    public void Parses(string url, string kind, string? detail) => Assert.Equal((kind, detail), InternalPages.Parse(url));
+
+    [Theory]
+    [InlineData("search://nothing")]
+    [InlineData("https://example.com")]
+    public void NotOurs(string url) => Assert.Null(InternalPages.Parse(url));
+
+    [Fact]
+    public void AddressFieldTakesOurPages() => Assert.Equal("search://history", Address.Url("search://history"));
+
+    [Theory]
+    [InlineData("sett", "search://settings")]
+    [InlineData("dwn", "search://downloads")]
+    [InlineData("hist", "search://history")]
+    public void CommandsInTheField(string typed, string url) =>
+        Assert.Contains(Omnibox.Offers(typed, new History(), Engine.Google), s => s.Kind == SuggestionKind.Command && s.Url == url);
+
+    [Fact]
+    public void HistoryQueryAndClear()
+    {
+        var now = new DateTime(2026, 11, 24, 12, 0, 0);
+        var at = now;
+        var h = new History(() => at);
+        at = now.AddHours(-30); h.Record("https://old.com/", "Old");
+        at = now.AddMinutes(-10); h.Record("https://new.com/", "New one");
+        Assert.Equal("New one", h.Query("").First().Title);
+        Assert.Single(h.Query("old"));
+        Assert.Equal(1, h.ClearSince(now.AddHours(-1)));
+        Assert.Single(h.All);
+        Assert.True(h.Remove("https://old.com"));
+        Assert.Empty(h.All);
+    }
+}
+
+public class LocalTests
+{
+    [Theory]
+    [InlineData("localhost", true)] [InlineData("printer.local", true)] [InlineData("192.168.1.2", true)] [InlineData("8.8.8.8", true)]
+    [InlineData("example.com", false)] [InlineData("10.io", false)]
+    public void IsLocal(string host, bool local) => Assert.Equal(local, Address.IsLocal(host));
+}

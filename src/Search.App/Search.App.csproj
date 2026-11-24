@@ -23,6 +23,10 @@
     <ProjectReference Include="../Search.Core/Search.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Search's own pages (history, bookmarks, downloads, settings), served to the engine from search.internal. -->
+    <Content Include="Pages\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="Assets\Search.png" />
     <Resource Include="Assets\Search.ico" />
   </ItemGroup>

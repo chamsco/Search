@@ -26,20 +26,24 @@ public partial class MainWindow : Window
     readonly ObservableCollection<Tab> pins = [];
     readonly ObservableCollection<Tab> tabs = [];
     readonly ClosedTabs closed = new();
-    readonly History history = History.Load();
+    History history => Shared.History;
+    readonly bool persistent;
     readonly DispatcherTimer saveSoon;
-    Engine engine = Engines.Standard;
-    bool engineSuggests = true;
+    Engine engine => Shared.Prefs.Data.Engine;
+    string customEngine => Shared.Prefs.Data.CustomEngine;
+    bool engineSuggests => Shared.Prefs.Data.EngineSuggests;
     CoreWebView2Environment? environment;
     Tab? live;
     string? typedBeforeCompletion;
     readonly Dictionary<TextBox, string> lastTyped = [];
     bool restoring;
 
-    public MainWindow(string? open = null)
+    public MainWindow(string? open = null, bool persistent = true)
     {
+        this.persistent = persistent;
         InitializeComponent();
         PinGrid.ItemsSource = pins;
+        InitPages();
         TabList.ItemsSource = tabs;
         saveSoon = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         saveSoon.Tick += (_, _) => { saveSoon.Stop(); SaveNow(); };
@@ -48,6 +52,10 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => FitMaximized();
         Loaded += async (_, _) => await StartAsync(open);
         Closing += (_, _) => { SaveNow(); history.Save(); };
+        Shared.Prefs.Changed += ApplyPrefs;
+        Shared.Bookmarks.Changed += OnBookmarksChanged;
+        Shared.Downloads.Changed += OnDownloadsChanged;
+        Closed += (_, _) => { Shared.Prefs.Changed -= ApplyPrefs; Shared.Bookmarks.Changed -= OnBookmarksChanged; Shared.Downloads.Changed -= OnDownloadsChanged; };
         PreviewKeyDown += Window_PreviewKeyDown;
         PreviewMouseDown += Window_PreviewMouseDown;
         Stage.SizeChanged += (_, _) => RoundLiveView();
@@ -74,13 +82,16 @@ public partial class MainWindow : Window
             return;
         }
 
+        ApplyPrefs();
         restoring = true;
-        var shape = Session.Load();
+        var shape = persistent ? Session.Load() : null;
         if (shape is not null)
         {
             if (shape.SideWidth is double w) SideColumn.Width = new GridLength(Math.Clamp(w, SideMin, SideMax));
             foreach (var e in shape.Tabs)
             {
+                // Settings › General › Start with a fresh window: pinned pages stay, the rest of last time doesn't.
+                if (Shared.Prefs.Data.StartFresh && e.PinId is null) continue;
                 var t = Tab.From(e);
                 t.Icon = CachedIcon(t.Url);
                 (t.IsPin ? pins : tabs).Add(t);
@@ -91,11 +102,11 @@ public partial class MainWindow : Window
         var all = Ordered().ToList();
         if (open is not null)
         {
-            Open(File.Exists(open) ? new Uri(Path.GetFullPath(open)).AbsoluteUri : Omnibox.Resolve(open, engine));
+            Open(File.Exists(open) ? new Uri(Path.GetFullPath(open)).AbsoluteUri : Omnibox.Resolve(open, engine, customEngine));
         }
         else if (all.Count == 0) NewTab();
         else Select(all[Math.Clamp(shape?.Active ?? 0, 0, all.Count - 1)]);
-        StartUpdates();
+        if (persistent) StartUpdates();
     }
 
     IEnumerable<Tab> Ordered() => pins.Concat(tabs);
@@ -104,6 +115,7 @@ public partial class MainWindow : Window
 
     void SaveNow()
     {
+        if (!persistent) return;
         var all = Ordered().ToList();
         Session.Save(new SessionShape
         {
@@ -137,6 +149,7 @@ public partial class MainWindow : Window
     void Select(Tab t)
     {
         EndEditing(commit: false);
+        if (t != live) CloseFind();
         if (live is not null) { live.Live = false; if (live.View is not null) live.View.Visibility = Visibility.Hidden; }
         live = t;
         t.Live = true;
@@ -190,7 +203,10 @@ public partial class MainWindow : Window
         var core = view.CoreWebView2;
         core.Settings.IsStatusBarEnabled = true;
         core.Settings.AreDevToolsEnabled = true;
-        core.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Auto;
+        ApplyColorScheme(core);
+        core.SetVirtualHostNameToFolderMapping(PagesHost, PagesDir, CoreWebView2HostResourceAccessKind.Allow);
+        core.WebMessageReceived += (_, e) => OnPageMessage(t, core, e);
+        core.DownloadStarting += OnDownloadStarting;
 
         core.DocumentTitleChanged += (_, _) =>
         {
@@ -201,15 +217,21 @@ public partial class MainWindow : Window
         };
         core.SourceChanged += (_, _) =>
         {
-            if (core.Source != "about:blank") t.Url = core.Source;
+            if (PageUrl(core.Source) is { } own) t.Url = own;
+            else if (core.Source != "about:blank") t.Url = core.Source;
             UpdateDoors();
             SaveSoon();
         };
-        core.NavigationStarting += (_, _) => t.Loading = true;
+        core.NavigationStarting += (_, e) =>
+        {
+            t.Loading = true;
+            TryUpgrade(t, core, e);
+        };
         core.NavigationCompleted += (_, e) =>
         {
             t.Loading = false;
-            if (e.IsSuccess) history.Record(core.Source, core.DocumentTitle);
+            if (e.IsSuccess) { t.UpgradedFrom = null; history.Record(core.Source, core.DocumentTitle); }
+            else FallBackFromHttps(t, core, e);
             UpdateDoors();
         };
         core.HistoryChanged += (_, _) => UpdateDoors();
@@ -230,7 +252,7 @@ public partial class MainWindow : Window
         core.ContainsFullScreenElementChanged += (_, _) => FullScreen(core.ContainsFullScreenElement);
 
         if (t == live) RoundLiveView();
-        if (navigate && !t.IsBlank) core.Navigate(t.Url);
+        if (navigate && !t.IsBlank) core.Navigate(NavTarget(t.Url));
     }
 
     static async Task<ImageSource?> Favicon(CoreWebView2 core)
@@ -372,7 +394,7 @@ public partial class MainWindow : Window
         if (live is null) return;
         live.Url = url;
         var view = Wake(live);
-        if (view.CoreWebView2 is not null) view.CoreWebView2.Navigate(url);
+        if (view.CoreWebView2 is not null) view.CoreWebView2.Navigate(NavTarget(url));
         ShowLive();
     }
 
@@ -447,7 +469,7 @@ public partial class MainWindow : Window
             var words = await suggester.Suggest(engine, typed, cancel);
             if (cancel.IsCancellationRequested || words.Count == 0) return;
             var picked = list.SelectedIndex;
-            list.ItemsSource = Omnibox.WithEngine(offers, typed, words, engine);
+            list.ItemsSource = Omnibox.WithEngine(offers, typed, words, engine, customEngine);
             list.SelectedIndex = picked;
             show();
         }
@@ -462,7 +484,7 @@ public partial class MainWindow : Window
     });
 
     List<Suggestion> Offers(string typed) =>
-        Omnibox.Offers(typed, history, engine, Ordered().Where(t => t != live && !t.IsBlank).Select(t => (t.Id, t.Url, t.Label)));
+        Omnibox.Offers(typed, history, engine, Ordered().Where(t => t != live && !t.IsBlank).Select(t => (t.Id, t.Url, t.Label)), bookmarks: Shared.Bookmarks, custom: customEngine);
 
     /// <summary>The rest of the best match, written after the caret and selected, so typing on replaces it (History.completion).</summary>
     void ShowCompletion(TextBox field, List<Suggestion> offers)
@@ -528,7 +550,7 @@ public partial class MainWindow : Window
             if (empty is not null) Close(empty);
             return;
         }
-        var url = picked?.Url ?? Omnibox.Resolve(text, engine);
+        var url = picked?.Url ?? Omnibox.Resolve(text, engine, customEngine);
         EndEditing(commit: false);
         Navigate(url);
     }
@@ -789,6 +811,25 @@ public partial class MainWindow : Window
 
         if (ctrl && !alt && key == Key.T && shift) Reopen();
         else if (ctrl && !alt && key == Key.T) NewTab();
+        else if (ctrl && !alt && !shift && key == Key.N) NewWindow();
+        else if (ctrl && !alt && key == Key.F) OpenFind();
+        else if (ctrl && !alt && key == Key.G) FindStep(shift ? -1 : 1);
+        else if (ctrl && !alt && key == Key.P) Print();
+        else if (ctrl && !alt && key is Key.OemPlus or Key.Add) Zoom(1);
+        else if (ctrl && !alt && key is Key.OemMinus or Key.Subtract) Zoom(-1);
+        else if (ctrl && !alt && key is Key.D0 or Key.NumPad0) Zoom(0);
+        else if (ctrl && !alt && !shift && key == Key.D && live is not null) DuplicateTab();
+        else if (ctrl && !alt && !shift && key == Key.OemComma) OpenPage("search://settings");
+        else if (ctrl && !alt && !shift && key == Key.Y) OpenPage("search://history");
+        else if (ctrl && shift && !alt && key == Key.J) OpenPage("search://downloads");
+        else if (ctrl && shift && !alt && key == Key.Delete) ClearBrowsingDataPage();
+        else if (ctrl && !alt && !shift && key == Key.O) OpenFile();
+        else if (ctrl && shift && !alt && key == Key.W) Close();
+        else if (ctrl && shift && !alt && key == Key.V) PasteAndGo();
+        else if (ctrl && shift && !alt && key == Key.B) AddBookmark();
+        else if (ctrl && alt && key == Key.B) Shared.Prefs.Update(d => d.BookmarksBar = !d.BookmarksBar);
+        else if (key == Key.F12 || (ctrl && alt && key == Key.I)) ToggleDevTools();
+        else if (ctrl && alt && key == Key.R) core?.CallDevToolsProtocolMethodAsync("Page.reload", "{\"ignoreCache\":true}");
         else if (ctrl && !alt && key is Key.W or Key.F4 && live is not null) Close(live);
         else if ((ctrl && key == Key.L) || (alt && key == Key.D) || key == Key.F6) BeginEditing();
         else if ((ctrl && key == Key.R) || key == Key.F5)
@@ -802,10 +843,12 @@ public partial class MainWindow : Window
         else if (ctrl && key is Key.PageDown) Cycle(1);
         else if (ctrl && key is Key.PageUp) Cycle(-1);
         else if (ctrl && key >= Key.D1 && key <= Key.D9) Jump(key - Key.D1);
-        else if (ctrl && shift && key == Key.D && live is not null) { if (live.IsPin) Unpin(live); else Pin(live); }
+        else if (ctrl && shift && !alt && key == Key.D && live is not null) { if (live.IsPin) Unpin(live); else Pin(live); }
         else if (ctrl && shift && key == Key.C && live is { IsBlank: false }) Clipboard.SetText(live.Url);
         else if (ctrl && key == Key.S && shift) ToggleSide();
         else if (key == Key.F11) ToggleFullScreen();
+        else if (key == Key.Escape && FindPopup.IsOpen) CloseFind();
+        else if (key == Key.Escape && DownloadsPopup.IsOpen) DownloadsPopup.IsOpen = false;
         else if (key == Key.Escape && fullScreen && core?.ContainsFullScreenElement != true) ToggleFullScreen();
         else handled = false;
 
@@ -850,14 +893,23 @@ public partial class MainWindow : Window
             sideBefore = SideColumn.ActualWidth;
             Side.Visibility = Visibility.Collapsed;
             SideColumn.Width = new GridLength(0);
-            Card.Margin = new Thickness(8);
         }
         else
         {
             Side.Visibility = Visibility.Visible;
             SideColumn.Width = new GridLength(sideBefore);
-            Card.Margin = new Thickness(0, 8, 8, 8);
         }
+        ApplyLayout();
+    }
+
+    /// <summary>The card's margins: 8 around, none on the column's side while it is there; a bookmarks bar above takes its place.</summary>
+    void ApplyLayout()
+    {
+        var side = Side.Visibility == Visibility.Visible;
+        var bar = BarHost.Visibility == Visibility.Visible;
+        Card.Margin = fullScreen ? new Thickness(0) : new Thickness(side ? 0 : 8, bar ? 4 : 8, 8, 8);
+        BarHost.Margin = new Thickness(side ? 0 : 8, 8, 8, 0);
+        RoundLiveView();
     }
 
     // MARK: - full screen
@@ -878,9 +930,9 @@ public partial class MainWindow : Window
             stateBefore = WindowState;
             Side.Visibility = Visibility.Collapsed;
             SideColumn.Width = new GridLength(0);
-            Card.Margin = new Thickness(0);
             Card.CornerRadius = new CornerRadius(0);
             CardShadow.Visibility = Visibility.Collapsed;
+            BarHost.Visibility = Visibility.Collapsed;
             WindowState = WindowState.Normal;
             WindowState = WindowState.Maximized;
             Root.Margin = new Thickness(0);
@@ -889,13 +941,13 @@ public partial class MainWindow : Window
         {
             Side.Visibility = Visibility.Visible;
             SideColumn.Width = new GridLength(sideBefore > 0 ? sideBefore : 232);
-            Card.Margin = new Thickness(0, 8, 8, 8);
             Card.CornerRadius = new CornerRadius(CardRadius);
             CardShadow.Visibility = Visibility.Visible;
             WindowState = stateBefore;
         }
         FitMaximized();
-        RoundLiveView();
+        ApplyPrefs();
+        ApplyLayout();
     }
 
     // MARK: - the window's own doors

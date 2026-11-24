@@ -11,7 +11,7 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Back / forward / reload doors | ✅ | |
 | Column width drag (176–440) | ✅ | Remembered |
 | Hide column (Ctrl+Shift+S) | ✅ | Mac: ⌘S. Hover-to-reveal ⬜ |
-| Light / dark following the system | ✅ | Settings › Appearance override ⬜ |
+| Light / dark following the system | ✅ | Settings › Appearance: Light, Dark, System |
 | Pins as squares | ✅ | Pin from the tab's menu or Ctrl+Shift+D, or drag onto a pin |
 | Pins as rows, pin folders | ⬜ | |
 | Tab rows: icon or letter, title, close, loading ring | ✅ | |
@@ -24,9 +24,9 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Split View (up to 4) | ⬜ | |
 | Little windows, Peek | ⬜ | |
 | Archive of auto-closed tabs | ⬜ | |
-| Multiple windows (Ctrl+N) | ⬜ | |
-| Bookmarks bar, bookmarks, folders | ⬜ | |
-| Footer (home, downloads, bookmarks) | ⬜ | Left out until each button works |
+| Multiple windows (Ctrl+N) | 🟡 | Ctrl+N opens a window; a second launch or a link hands over to the running Search. Only the first window's tabs are restored next time ⬜ |
+| Bookmarks bar, bookmarks, folders | ✅ | Ctrl+Shift+B card, Ctrl+Alt+B bar, folders, drag to order on the Bookmarks page |
+| Footer (home, downloads, bookmarks) | ✅ | |
 
 ## Address field
 | Feature | Status | Notes |
@@ -39,10 +39,10 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Popular sites on the first day (History.swift `known`) | ✅ | Same 47 sites |
 | Inline completion | ✅ | |
 | Switch to an open tab | ✅ | |
-| Search engine choice (8 + custom) | 🟡 | Logic done; Settings UI ⬜ |
+| Search engine choice (8 + custom) | ✅ | Settings › General |
 | Engine suggestions as you type | ✅ | All 8 engines; never for an address |
-| Site search with Tab, commands (Arc command bar) | ⬜ | |
-| Bookmarks in suggestions | ⬜ | |
+| Commands (Arc command bar) | ✅ | Type `hist`, `dwn`, `settings`… to get the page. Site search with Tab ⬜ |
+| Bookmarks in suggestions | ✅ | |
 
 ## Pages
 | Feature | Status | Notes |
@@ -53,15 +53,17 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Favicons, titles | ✅ | |
 | Session restore | ✅ | |
 | History file | ✅ | `%LOCALAPPDATA%\Search\history.json` |
-| History page, clear browsing data | ⬜ | |
-| Downloads (pause, resume, panel) | 🟡 | WebView2's own download flyout for now |
-| Find in page | 🟡 | WebView2's own Ctrl+F bar for now |
-| Print | 🟡 | WebView2's own Ctrl+P |
+| History page, clear browsing data | ✅ | Ctrl+Y; Ctrl+Shift+Delete opens Settings › Privacy with time range and kinds |
+| Downloads (pause, resume, panel) | ✅ | Float by the footer door, Downloads page (Ctrl+Shift+J), folder chosen in Settings |
+| Find in page | ✅ | Ctrl+F, Ctrl+G, Shift+Enter; highlights with the page's CSS Custom Highlight API |
+| Print | ✅ | Ctrl+P |
+| Zoom (Ctrl +, −, 0) | ✅ | |
 | Permissions (camera, mic, location) remembered per site | ⬜ | WebView2 asks every time for now |
 | Reading mode, translation | ⬜ | Translation has no built-in Windows API |
 | Site styles, live folders | ⬜ | |
 | Picture in picture | 🟡 | Chromium's own |
-| Tracker protection, HTTPS upgrade | ⬜ | |
+| HTTPS upgrade | ✅ | Falls back to http if the site has no https; Settings › Privacy |
+| Tracker protection | ⬜ | |
 | Proxy | ⬜ | |
 | Client certificates | ⬜ | |
 
