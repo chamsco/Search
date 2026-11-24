@@ -535,7 +535,7 @@ try
     if (looseRows.Count > 0 && head is not null)
     {
         // A drag the system will take as one: press, move a little at a time, release.
-        Keyboard.Release(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Release(VirtualKeyShort.SHIFT); Keyboard.Release(VirtualKeyShort.MENU); Thread.Sleep(200);
+        Keyboard.Release(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Release(VirtualKeyShort.SHIFT); Keyboard.Release(VirtualKeyShort.ALT); Thread.Sleep(200);
         var from = looseRows[^1]; var to = CentreOf(head); Console.WriteLine($"drag from {from} to {to}");
         Mouse.MoveTo(from); Thread.Sleep(300);
         Mouse.Down(MouseButton.Left); Thread.Sleep(200);
