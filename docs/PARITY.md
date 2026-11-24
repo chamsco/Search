@@ -13,15 +13,17 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Hide column (Ctrl+Shift+S) | ✅ | Mac: ⌘S. Hover-to-reveal ⬜ |
 | Light / dark following the system | ✅ | Settings › Appearance: Light, Dark, System |
 | Pins as squares | ✅ | Pin from the tab's menu or Ctrl+Shift+D, or drag onto a pin |
-| Pins as rows | ✅ | Settings › Tabs. Pin folders ⬜ (wave 5, with tab groups) |
+| Pins as rows | ✅ | Settings › Tabs. Pin folders ✅ (below) |
 | Tab rows: icon or letter, title, close, loading ring | ✅ | |
 | Middle-click closes a tab | ✅ | |
 | Drag to reorder tabs and pins | ✅ | Rows make room as you drag; drop on the pins (or "Drop here to pin") to pin |
 | Layout: sidebar or top strip | ✅ | Settings › Tabs |
-| Tab context menu | 🟡 | In Search's own style. Pin/Unpin, Back to Pinned Page, Replace Pinned Page, Rename, Duplicate, Copy Address, Copy as Markdown Link, Put to Sleep, Close Tab, Close Other Tabs. Groups, spaces, split, folders, Copy Clean Link, Site Information, Side Panel ⬜ (each waits on its feature) |
+| Tab context menu | 🟡 | In Search's own style. Pin/Unpin, Back to Pinned Page, Replace Pinned Page, Rename, Duplicate, Copy Address, Copy as Markdown Link, Put to Sleep, Close Tab, Close Other Tabs. Copy Clean Link, Site Information, Side Panel ⬜ (each waits on its feature) |
 | Tabs sleep until shown | ✅ | Restored tabs load on first view |
 | Spaces, colours, icons, strength, gradient | ✅ | Settings › Tabs turns them on; strip above the footer; Ctrl+Alt+1–9; own sign-ins or shared; Move to Space in the tab menu. Swipe gesture ⬜ (touchpad has no equivalent; animation in wave 4) |
 | Profiles | ✅ | A window each, own history, bookmarks, spaces and sign-ins (WebView2 profiles); footer door once there are two |
+| Tab groups | ✅ | Tab menu › Add to Group (New Group, an existing one), Remove from Group; heading click folds, its menu renames, colours, ungroups, closes; drop a tab on a heading to join. Saved per space |
+| Pin folders (pinned rows) | ✅ | Pin menu › Move to Folder; folders hold pins and folders, up to three levels; heading click folds; Delete Folder lifts what it held; drop a tab on a folder to pin it in. Only drawn with Settings › Pins as rows |
 | Split View (up to 4) | ✅ | Ctrl+Alt+N, Alt+click a tab, tab menu (Open in Split View, Swap Pages, Stack Pages Vertically, Remove from Split View, Separate, Close Both). Lines between pages drag; double-click evens them. Ctrl+Alt+Left/Right moves focus. Alt+click a link opens it beside (Settings). Saved and restored with the session |
 | Little windows, Peek | ✅ | Little windows: a link from another app (Settings › Little windows) or tab menu › Open in Small Window; Open in Search brings it into the row. Peek: Shift+click (or Alt+Shift, Alt+Ctrl) a link; Open as tab, Esc; stays with its tab (Settings); pins keep their site |
 | Archive of auto-closed tabs | ✅ | Settings › Close tabs left alone; search://archive and a button on History |
@@ -133,7 +135,7 @@ The Mac app has a full, customisable shortcut list (`Shortcuts.swift`); only the
 | Hover fades | ✅ | Rows and pins |
 | New rows slide in | ✅ | |
 | Suggestion list scales in | ✅ | |
-| Tab switch, column fold, space swipe animations | ⬜ | |
+| Column fold (Ctrl+Shift+S), space swipe, tab switch | ✅ | 200 ms fold of the column; rows slide in from the side the space lies on; the page dips for 170 ms and the row's wash fades. All off when Windows has animations off. A web view cannot fade (it is a window of its own), so the page dips with a pane of its ground over it |
 
 ## Known differences
 

@@ -23,6 +23,10 @@ public sealed class SessionEntry
     public bool Muted { get; set; }
     /// <summary>When it was last looked at, for Settings › Tabs › Close tabs left alone.</summary>
     public DateTime? LastSeen { get; set; }
+    /// <summary>The tab group it is in.</summary>
+    public Guid? Group { get; set; }
+    /// <summary>For a pin, the folder among the pinned rows it is in.</summary>
+    public Guid? Folder { get; set; }
 }
 
 public sealed class SessionShape
@@ -31,6 +35,8 @@ public sealed class SessionShape
     public int Active { get; set; }
     /// <summary>Tabs shown side by side; each refers to its pages by place in <see cref="Tabs"/>.</summary>
     public List<SplitEntry> Splits { get; set; } = [];
+    public List<TabGroup> Groups { get; set; } = [];
+    public List<PinFolder> Folders { get; set; } = [];
     public double? SideWidth { get; set; }
     public WindowPlacement? Placement { get; set; }
 }

@@ -34,16 +34,37 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="MenuItem">
-            <Border x:Name="B" CornerRadius="6" Padding="10,5" Background="Transparent">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding InputGestureText}" Margin="24,0,0,0"
-                           Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" />
-                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
-              </DockPanel>
-            </Border>
+            <Grid>
+              <Border x:Name="B" CornerRadius="6" Padding="10,5" Background="Transparent">
+                <DockPanel>
+                  <TextBlock x:Name="Tick" DockPanel.Dock="Left" Text="&#xE73E;" FontFamily="{StaticResource Glyphs}" FontSize="10" Width="16" Visibility="Collapsed" VerticalAlignment="Center" />
+                  <TextBlock x:Name="Arrow" DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource Glyphs}" FontSize="9" Margin="18,0,0,0" Visibility="Collapsed"
+                             Foreground="{DynamicResource Muted}" VerticalAlignment="Center" />
+                  <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding InputGestureText}" Margin="24,0,0,0"
+                             Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" />
+                  <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
+                </DockPanel>
+              </Border>
+              <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="-12" VerticalOffset="-8" AllowsTransparency="True" Focusable="False"
+                     IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" PopupAnimation="Fade">
+                <Border Margin="10,4,14,18" Padding="5" CornerRadius="10" MinWidth="180"
+                        Background="{DynamicResource Ground}" BorderBrush="{DynamicResource Hairline}" BorderThickness="1">
+                  <Border.Effect>
+                    <DropShadowEffect Color="Black" Opacity="0.10" BlurRadius="18" ShadowDepth="5" Direction="270" />
+                  </Border.Effect>
+                  <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                </Border>
+              </Popup>
+            </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsHighlighted" Value="True">
                 <Setter TargetName="B" Property="Background" Value="{DynamicResource Wash}" />
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+              </Trigger>
+              <Trigger Property="HasItems" Value="True">
+                <Setter TargetName="Arrow" Property="Visibility" Value="Visible" />
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Foreground" Value="{DynamicResource Faint}" />

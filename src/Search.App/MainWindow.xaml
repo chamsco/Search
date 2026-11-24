@@ -71,6 +71,9 @@
 
     <!-- Motion.quick: hovers fade in and out rather than snapping. -->
     <Storyboard x:Key="HoverIn"><DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" /></Storyboard>
+    <!-- The page on screen: its row takes the wash and lets it go over a moment. -->
+    <Storyboard x:Key="WashIn"><DoubleAnimation Storyboard.TargetName="WashLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.16" /></Storyboard>
+    <Storyboard x:Key="WashOut"><DoubleAnimation Storyboard.TargetName="WashLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" /></Storyboard>
     <Storyboard x:Key="HoverOut"><DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18" /></Storyboard>
     <!-- A row arriving (a new tab, a reopened one) slides down into place and fades in. -->
     <Storyboard x:Key="Arrive">
@@ -114,7 +117,7 @@
 
     <!-- A tab's row in the column (Side.swift TabRow): 28 tall, corners of 9. -->
     <DataTemplate x:Key="TabRow" DataType="{x:Type local:Tab}">
-      <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Height="28" CornerRadius="9" Background="Transparent" Margin="0,0,0,2"
+      <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Height="28" CornerRadius="9" Background="Transparent" Margin="{Binding Indent}"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
               AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
         <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
@@ -123,6 +126,7 @@
         </Border.Triggers>
         <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
         <Grid>
+        <Border x:Name="WashLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" Opacity="0" />
         <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Hover}" Opacity="0" />
         <Grid Margin="10,0,7,0">
           <Grid.ColumnDefinitions>
@@ -162,7 +166,8 @@
           <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Row.Wash}" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Live}" Value="True">
-          <Setter TargetName="Row" Property="Background" Value="{DynamicResource Row.Wash}" />
+          <DataTrigger.EnterActions><BeginStoryboard Storyboard="{StaticResource WashIn}" /></DataTrigger.EnterActions>
+          <DataTrigger.ExitActions><BeginStoryboard Storyboard="{StaticResource WashOut}" /></DataTrigger.ExitActions>
           <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource Ink}" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Editing}" Value="True">
@@ -184,6 +189,7 @@
         </Border.Triggers>
         <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
         <Grid>
+        <Border x:Name="WashLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" Opacity="0" />
         <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Hover}" Opacity="0" />
         <Grid Margin="10,0,7,0">
           <Grid.ColumnDefinitions>
@@ -223,7 +229,8 @@
           <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Row.Wash}" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Live}" Value="True">
-          <Setter TargetName="Row" Property="Background" Value="{DynamicResource Row.Wash}" />
+          <DataTrigger.EnterActions><BeginStoryboard Storyboard="{StaticResource WashIn}" /></DataTrigger.EnterActions>
+          <DataTrigger.ExitActions><BeginStoryboard Storyboard="{StaticResource WashOut}" /></DataTrigger.ExitActions>
           <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource Ink}" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Editing}" Value="True">
@@ -260,6 +267,65 @@
         </Trigger>
         <DataTrigger Binding="{Binding Live}" Value="True">
           <Setter TargetName="Tile" Property="Background" Value="{DynamicResource Row.PinLive}" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- A group's name, or a folder among the pinned rows, as a line above what it holds (TabGroups.swift, PinFolderViews.swift). -->
+    <DataTemplate x:Key="HeadingRow" DataType="{x:Type local:RowHeading}">
+      <Border x:Name="Head" AutomationProperties.Name="{Binding Name}" Height="24" CornerRadius="8" Background="Transparent" Margin="{Binding Indent}"
+              MouseLeftButtonDown="Heading_MouseDown" ContextMenuOpening="Heading_ContextMenuOpening" AllowDrop="True" Drop="Heading_Drop" DragOver="Heading_DragOver">
+        <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
+        <Grid Margin="8,0,8,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="{Binding Mark}" FontFamily="{StaticResource Glyphs}" FontSize="8" Foreground="{DynamicResource Row.Muted}" VerticalAlignment="Center" Margin="0,0,7,0" />
+          <Border Grid.Column="1" x:Name="Stripe" Width="4" Height="12" CornerRadius="2" Background="{Binding Stripe}" Margin="0,0,6,0" VerticalAlignment="Center" />
+          <TextBlock x:Name="Name" Grid.Column="2" Text="{Binding Name}" FontSize="11.5" FontWeight="Medium" Foreground="{DynamicResource Row.Muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <TextBox x:Name="HeadField" Grid.Column="1" Grid.ColumnSpan="2" Visibility="Collapsed" FontSize="11.5" BorderThickness="0" Background="Transparent"
+                   Foreground="{DynamicResource Ink}" CaretBrush="{DynamicResource Ink}" VerticalContentAlignment="Center" Padding="-2,0,0,0"
+                   PreviewKeyDown="HeadField_PreviewKeyDown" LostKeyboardFocus="HeadField_LostFocus" />
+          <TextBlock Grid.Column="3" Text="{Binding CountText}" FontSize="10.5" Foreground="{DynamicResource Row.Muted}" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+      <DataTemplate.Triggers>
+        <Trigger SourceName="Head" Property="IsMouseOver" Value="True">
+          <Setter TargetName="Head" Property="Background" Value="{DynamicResource Row.Hover}" />
+        </Trigger>
+        <DataTrigger Binding="{Binding Stripe}" Value="{x:Null}">
+          <Setter TargetName="Stripe" Property="Visibility" Value="Collapsed" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Editing}" Value="True">
+          <Setter TargetName="HeadField" Property="Visibility" Value="Visible" />
+          <Setter TargetName="Name" Property="Visibility" Value="Hidden" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- The same, along the top strip. -->
+    <DataTemplate x:Key="HeadingChip" DataType="{x:Type local:RowHeading}">
+      <Border x:Name="Head" AutomationProperties.Name="{Binding Name}" Height="30" CornerRadius="9" Background="Transparent" Margin="0,0,2,0" Padding="9,0,9,0" WindowChrome.IsHitTestVisibleInChrome="True"
+              MouseLeftButtonDown="Heading_MouseDown" ContextMenuOpening="Heading_ContextMenuOpening">
+        <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Border x:Name="Stripe" Width="4" Height="12" CornerRadius="2" Background="{Binding Stripe}" Margin="0,0,6,0" />
+          <TextBlock x:Name="Name" Text="{Binding Name}" FontSize="11.5" FontWeight="Medium" Foreground="{DynamicResource Row.Muted}" MaxWidth="110" TextTrimming="CharacterEllipsis" />
+          <TextBox x:Name="HeadField" Visibility="Collapsed" MinWidth="80" FontSize="11.5" BorderThickness="0" Background="Transparent"
+                   Foreground="{DynamicResource Ink}" CaretBrush="{DynamicResource Ink}" PreviewKeyDown="HeadField_PreviewKeyDown" LostKeyboardFocus="HeadField_LostFocus" />
+          <TextBlock Text="{Binding Mark}" FontFamily="{StaticResource Glyphs}" FontSize="8" Foreground="{DynamicResource Row.Muted}" VerticalAlignment="Center" Margin="6,0,0,0" />
+        </StackPanel>
+      </Border>
+      <DataTemplate.Triggers>
+        <Trigger SourceName="Head" Property="IsMouseOver" Value="True">
+          <Setter TargetName="Head" Property="Background" Value="{DynamicResource Row.Hover}" />
+        </Trigger>
+        <DataTrigger Binding="{Binding Stripe}" Value="{x:Null}">
+          <Setter TargetName="Stripe" Property="Visibility" Value="Collapsed" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Editing}" Value="True">
+          <Setter TargetName="HeadField" Property="Visibility" Value="Visible" />
+          <Setter TargetName="Name" Property="Visibility" Value="Collapsed" />
         </DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>

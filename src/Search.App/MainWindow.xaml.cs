@@ -48,6 +48,14 @@ public partial class MainWindow : Window
         windowId = window ?? Guid.Empty;
         profileId = profile ?? Spaces.PersonalId;
         InitializeComponent();
+        PreviewDragOver += (_, e) =>
+        {
+            var at = e.GetPosition(this);
+            if (at.X > 260) return;
+            var hits = new List<string>();
+            VisualTreeHelper.HitTest(this, null, r => { if (r.VisualHit is FrameworkElement f && f.DataContext is Tab or RowHeading) hits.Add($"{f.GetType().Name}:{(f.DataContext is Tab ? "T" : "H")}@{f.TranslatePoint(new Point(0, 0), this).Y:0}"); return HitTestResultBehavior.Continue; }, new PointHitTestParameters(at));
+            App.Trace($"drag hits {at.Y:0} {string.Join(' ', hits.Take(8))}");
+        };
         InitSpaces();
         InitPages();
         RegisterWindow();
@@ -96,6 +104,8 @@ public partial class MainWindow : Window
         var shape = persistent ? Session.Load(space.Id, windowId) : null;
         if (shape is not null)
         {
+            StateOf(space).Groups.AddRange(shape.Groups);
+            StateOf(space).Folders.AddRange(shape.Folders);
             if (shape.SideWidth is double w) SideColumn.Width = new GridLength(Math.Clamp(w, SideMin, SideMax));
             foreach (var e in shape.Tabs)
             {
@@ -107,6 +117,7 @@ public partial class MainWindow : Window
             }
         }
         restoring = false;
+        RebuildRows(StateOf(space));
         if (shape is not null && !Shared.Prefs.Data.StartFresh) RestoreSplits(StateOf(space), shape);
         wasTop = false; // the saved column width must not undo a top layout
         ApplyTabsLayout();
@@ -159,9 +170,12 @@ public partial class MainWindow : Window
     {
         EndEditing(commit: false);
         if (t != live) CloseFind();
+        var previous = live;
         if (live is not null) live.Live = false;
         live = t;
         if (SplitOf(t) is { } own) own.Focused = t.Id;
+        if (t.GroupId is not null) RebuildRows(StateOf(space));
+        if (previous is not null && previous != t) DipPage();
         t.Live = true;
         t.LastSeen = DateTime.UtcNow;
         PeekFollows();
@@ -398,6 +412,7 @@ public partial class MainWindow : Window
     {
         if (t.IsPin || t.IsBlank) return;
         tabs.Remove(t);
+        t.GroupId = null;
         t.PinId = Guid.NewGuid();
         t.Home = t.Url;
         pins.Add(t);
@@ -408,6 +423,7 @@ public partial class MainWindow : Window
     {
         if (!t.IsPin) return;
         pins.Remove(t);
+        t.FolderId = null;
         t.PinId = null;
         t.Home = null;
         tabs.Insert(0, t);
@@ -683,7 +699,7 @@ public partial class MainWindow : Window
 
     void Row_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        pressAt = e.GetPosition(this);
+        pressAt = e.GetPosition(this); App.Trace($"row press {e.ClickCount} at {pressAt}");
         if ((sender as FrameworkElement)?.DataContext is Tab t && e.ClickCount == 1)
         {
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && SplitOn && !t.IsBlank) OpenInSplit(t);
@@ -733,6 +749,7 @@ public partial class MainWindow : Window
             menu.Items.Add(new Separator());
             menu.Items.Add(Item("Rename", () => BeginRenaming(t)));
         }
+        AddGroupItems(menu, t, (h, a, on) => Item(h, a, null, on));
         menu.Items.Add(Item("Duplicate", () => Duplicate(t), enabled: !t.IsBlank));
         if (Shared.Prefs.Data.LittleLinks && !t.IsPin)
             menu.Items.Add(Item("Open in Small Window", () => { var url = t.Url; Close(t); OpenLittle(url); }, enabled: !t.IsBlank && !t.IsInternal));
@@ -772,17 +789,19 @@ public partial class MainWindow : Window
         void Move(object s, MouseEventArgs m)
         {
             if (m.LeftButton != MouseButtonState.Pressed) { source.PreviewMouseMove -= Move; return; }
-            var d = m.GetPosition(this) - pressAt;
+            var d = m.GetPosition(this) - pressAt; if (Math.Abs(d.Y) >= 4 || Math.Abs(d.X) >= 4) App.Trace("row moved " + d);
             if (Math.Abs(d.Y) < 4 && Math.Abs(d.X) < 4) return;
             source.PreviewMouseMove -= Move;
             if (source.DataContext is not Tab t) return;
-            dragging = t;
+            dragging = t; App.Trace($"drag start {t.Title}");
             PinDrop.Visibility = pins.Count == 0 && !t.IsPin && !t.IsBlank ? Visibility.Visible : Visibility.Collapsed;
             source.Opacity = 0.55;
-            try { DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move); }
+            source.QueryContinueDrag += (_, q) => { if (q.Action != DragAction.Continue || q.EscapePressed) App.Trace($"drag query {q.Action} esc={q.EscapePressed} keys={q.KeyStates} loaded={source.IsLoaded} inTree={PresentationSource.FromVisual(source) is not null}"); };
+            try { var fx = DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move); App.Trace($"drag ended {fx}"); }
             finally
             {
                 source.Opacity = 1;
+                if (dragging is { } landed) Landed(landed);
                 dragging = null;
                 PinDrop.Visibility = Visibility.Collapsed;
                 SaveSoon();
@@ -793,12 +812,14 @@ public partial class MainWindow : Window
 
     void Row_DragOver(object sender, DragEventArgs e)
     {
+        App.Trace($"drag over row rows=[{string.Join(',', StateOf(space).Rows.Select(r => r is Tab x ? "T" + tabs.IndexOf(x) : "H"))}] at={((sender as FrameworkElement)?.TranslatePoint(new Point(0, 0), this))} h={(sender as FrameworkElement)?.ActualHeight} local={e.GetPosition(sender as IInputElement)} ctx={(sender as FrameworkElement)?.DataContext?.GetType().Name} idx={((sender as FrameworkElement)?.DataContext is Tab tt ? tabs.IndexOf(tt) : -9)} drag={(dragging is null ? -1 : tabs.IndexOf(dragging))} grp={(((sender as FrameworkElement)?.DataContext is Tab q) ? q.GroupId : null)}");
         e.Effects = DragDropEffects.Move;
         e.Handled = true;
         if (dragging is not { } moving || (sender as FrameworkElement)?.DataContext is not Tab target || moving == target) return;
         // Within one list, the row moves as you go, so you see where it will land.
         if (moving.IsPin == target.IsPin)
         {
+            if (moving.IsPin && FoldersShown && moving.FolderId != target.FolderId) { moving.FolderId = target.FolderId; RebuildRows(StateOf(space)); }
             var list = moving.IsPin ? pins : tabs;
             int from = list.IndexOf(moving), to = list.IndexOf(target);
             if (from >= 0 && to >= 0 && from != to) list.Move(from, to);
@@ -812,6 +833,7 @@ public partial class MainWindow : Window
         if (moving.IsPin == target.IsPin) return; // already moved while dragging
         if (target.IsPin && moving.IsBlank) return;
         (moving.IsPin ? pins : tabs).Remove(moving);
+        moving.GroupId = null; moving.FolderId = null;
         if (target.IsPin) { moving.PinId = Guid.NewGuid(); moving.Home = moving.Url; }
         else { moving.PinId = null; moving.Home = null; }
         var to = target.IsPin ? pins : tabs;
@@ -941,15 +963,14 @@ public partial class MainWindow : Window
         if (Side.Visibility == Visibility.Visible)
         {
             sideBefore = SideColumn.ActualWidth;
-            Side.Visibility = Visibility.Collapsed;
-            SideColumn.Width = new GridLength(0);
+            FoldColumn(sideBefore, 0, () => { Side.Visibility = Visibility.Collapsed; SideColumn.Width = new GridLength(0); ApplyLayout(); });
         }
         else
         {
             Side.Visibility = Visibility.Visible;
-            SideColumn.Width = new GridLength(sideBefore);
+            ApplyLayout();
+            FoldColumn(0, sideBefore > 0 ? sideBefore : 232, () => { SideColumn.Width = new GridLength(sideBefore > 0 ? sideBefore : 232); ApplyLayout(); });
         }
-        ApplyLayout();
     }
 
     bool TopLayout => Shared.Prefs.Data.Layout == TabsLayout.Top;
@@ -967,7 +988,7 @@ public partial class MainWindow : Window
         }
         TopBar.Visibility = top ? Visibility.Visible : Visibility.Collapsed;
         var rows = Shared.Prefs.Data.PinsAsRows;
-        PinGrid.ItemTemplate = (DataTemplate)FindResource(rows ? "TabRow" : "PinTile");
+        if (rowsMode != rows) { RebuildRows(StateOf(space)); SetRowSources(StateOf(space)); }
         PinGrid.ItemsPanel = rows
             ? new ItemsPanelTemplate(new FrameworkElementFactory(typeof(StackPanel)))
             : (ItemsPanelTemplate)PinGridPanel;
