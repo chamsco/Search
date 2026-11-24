@@ -385,8 +385,9 @@ try
         return l is not null && CentreOf(l).Y < 650 && CentreOf(l).Y > 60 ? l : null;
     }
     var link = OnScreenLink();
-    var titled = () => app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
-    var windowsBefore = titled();
+    // Owned windows hang off their owner in the UI tree, so they are looked for by what is on them.
+    bool Shows(string name) { try { var t = Task.Run(() => automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(name)) is not null); return t.Wait(TimeSpan.FromSeconds(15)) && t.Result; } catch { return false; } }
+    var windowsBefore = 0;
     if (link is not null)
     {
         Keyboard.Press(VirtualKeyShort.SHIFT);
@@ -405,10 +406,10 @@ try
         catch (Exception e) { return e.Message; }
     }
     var edgeNote = EdgeLaunch();
-    Step("Shift+click a link: its page opens over this one in a panel, the page behind dimmed", link is not null && titled() == windowsBefore + 1, $"link found: {link is not null}, windows {windowsBefore} -> {titled()}, browser started: {edgeNote} · " + Shot("peek"));
+    Step("Shift+click a link: its page opens over this one in a panel, the page behind dimmed", link is not null && Shows("Open as tab"), $"link found: {link is not null}, panel with Open as tab: {Shows("Open as tab")}, browser started: {edgeNote} · " + Shot("peek"));
     Keyboard.Press(VirtualKeyShort.ESCAPE);
     Thread.Sleep(1500);
-    Step("Esc: the peek goes away", titled() == windowsBefore, $"windows {titled()} · " + Shot("peek-closed"));
+    Step("Esc: the peek goes away", !Shows("Open as tab"), Shot("peek-closed"));
 
     var splitsBefore = SplitCounts().Length;
     link = OnScreenLink();
@@ -422,13 +423,14 @@ try
     Step("Alt+click a link (Settings › Alt+click opens in Split View): the link loads beside the page", SplitCounts().SequenceEqual([2]), $"splits: [{string.Join(",", SplitCounts())}] · " + Shot("split-link"));
 
     // A link handed in from another app, with little windows on.
-    var littleBefore = titled();
     var little = Process.Start(new ProcessStartInfo(exe, "https://example.com/?little") { UseShellExecute = false, Environment = { ["SEARCH_DATA"] = data, ["SEARCH_NO_UPDATES"] = "1" } })!;
     little.WaitForExit(8000);
     Thread.Sleep(6000);
-    Step("A link from another app, with Little windows on: it opens in a small window, not a tab", little.HasExited && titled() == littleBefore + 1 && !SessionText().Contains("?little"), $"windows {littleBefore} -> {titled()} · " + Shot("little-window"));
-    foreach (var w in app.GetAllTopLevelWindows(automation).Where(w => w.Title.Contains("Example") && w.BoundingRectangle.Width < 700)) { try { w.Focus(); Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4); } catch { } }
+    Step("A link from another app, with Little windows on: it opens in a small window, not a tab", little.HasExited && Shows("Open in Search") && !SessionText().Contains("?little"), $"small window with Open in Search: {Shows("Open in Search")} · " + Shot("little-window"));
+    try { automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("\u2715"))?.AsButton().Invoke(); } catch { }
     Thread.Sleep(1500);
+    try { window.Focus(); } catch { }
+    Thread.Sleep(500);
 
     // Snap layouts: the system asks the window what is under the pointer; over the maximise button the answer is HTMAXBUTTON.
     var max = window.FindFirstDescendant(cf => cf.ByAutomationId("MaxDoor"));

@@ -34,10 +34,11 @@ public partial class MainWindow
         {
             var w = await Mini(url, little: true, place: w =>
             {
-                w.Width = 440; w.Height = 700;
+                var area = SystemParameters.WorkArea;
+                w.Width = Math.Min(440, area.Width); w.Height = Math.Min(700, area.Height - 20);
                 w.WindowStartupLocation = WindowStartupLocation.Manual;
-                w.Left = Math.Max(0, Left + Width - 440 - 24);
-                w.Top = Math.Max(0, Top + 60);
+                w.Left = Math.Clamp(Left + Width - w.Width - 24, area.Left, area.Right - w.Width);
+                w.Top = Math.Clamp(Top + 60, area.Top, area.Bottom - w.Height);
             });
             if (w is null) return;
             w.OpenInSearch.Click += (_, _) => { var at = w.View.CoreWebView2?.Source ?? url; w.Close(); Open(at); Activate(); };
