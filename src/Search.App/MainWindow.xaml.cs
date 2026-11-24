@@ -48,7 +48,14 @@ public partial class MainWindow : Window
         windowId = window ?? Guid.Empty;
         profileId = profile ?? Spaces.PersonalId;
         InitializeComponent();
-        PreviewDragOver += (_, e) => App.Trace($"drag preview {e.OriginalSource?.GetType().Name} at {e.GetPosition(this)}");
+        PreviewDragOver += (_, e) =>
+        {
+            var at = e.GetPosition(this);
+            if (at.X > 260) return;
+            var hits = new List<string>();
+            VisualTreeHelper.HitTest(this, null, r => { if (r.VisualHit is FrameworkElement f && f.DataContext is Tab or RowHeading) hits.Add($"{f.GetType().Name}:{(f.DataContext is Tab ? "T" : "H")}@{f.TranslatePoint(new Point(0, 0), this).Y:0}"); return HitTestResultBehavior.Continue; }, new PointHitTestParameters(at));
+            App.Trace($"drag hits {at.Y:0} {string.Join(' ', hits.Take(8))}");
+        };
         InitSpaces();
         InitPages();
         RegisterWindow();

@@ -545,7 +545,7 @@ try
         Mouse.Up(MouseButton.Left);
     }
     Thread.Sleep(3000);
-    string DragTrace() { try { var lines = File.ReadAllLines(Path.Combine(data, "trace.log")).Where(l => (l.Contains("drag") || l.Contains("drop") || l.Contains("row ")) && !l.Contains("preview")).Select(l => l[(l.IndexOf(']') + 2)..]).ToList(); var outp = new List<string>(); foreach (var l in lines) if (outp.Count == 0 || outp[^1] != l) outp.Add(l); return string.Join(" / ", outp.TakeLast(16)); } catch (Exception e) { return "no trace: " + e.Message; } }
+    string DragTrace() { try { var lines = File.ReadAllLines(Path.Combine(data, "trace.log")).Where(l => (l.Contains("drag") || l.Contains("drop") || l.Contains("row ")) && (!l.Contains("preview")) && !l.Contains("drag over row")).Select(l => l[(l.IndexOf(']') + 2)..]).ToList(); var outp = new List<string>(); foreach (var l in lines) if (outp.Count == 0 || outp[^1] != l) outp.Add(l); return string.Join(" / ", outp.TakeLast(16)); } catch (Exception e) { return "no trace: " + e.Message; } }
     Step("Drag a loose tab onto the Research heading: it joins the group", Members() == 3, $"members: {Members()} · from {looseRows.FirstOrDefault()} to {(head is null ? "none" : CentreOf(head).ToString())} trace: {DragTrace()} · " + Shot("group-drop"));
 
     // Pin a tab, then folders: pinned rows are on, so the pin is a row.
