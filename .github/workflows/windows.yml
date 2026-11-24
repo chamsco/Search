@@ -1,0 +1,30 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Test
+        run: dotnet test tests/Search.Core.Tests -c Release
+      - name: Publish Search.exe
+        run: dotnet publish src/Search.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o out/win-x64
+      - name: Build installer
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\Search.iss'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Search-win-x64
+          path: out/win-x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Search-Setup
+          path: out/Search-Setup-*.exe

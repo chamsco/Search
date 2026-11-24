@@ -1,0 +1,164 @@
+namespace Search.Core;
+
+public enum SuggestionKind { Open, Visited, Bookmark, Known, Search, Suggested }
+
+public sealed record Suggestion(string Key, string Title, string Url, SuggestionKind Kind)
+{
+    public Guid? Tab { get; init; }
+}
+
+public sealed class Visit
+{
+    public string Url { get; set; } = "";
+    public string Title { get; set; } = "";
+    public int Count { get; set; }
+    public DateTime Last { get; set; }
+}
+
+/// <summary>
+/// Where you have been, so the field can finish the address for you.
+/// Port of the ranking in Sources/Search/History.swift:
+/// score = fit × log(2 + popularity), popularity = visits × e^(−days/30).
+/// </summary>
+public sealed class History
+{
+    public const int Cap = 20_000;
+    const string FileName = "history.json";
+    readonly Dictionary<string, Visit> visits = new();
+    readonly Func<DateTime> now;
+
+    public History(Func<DateTime>? clock = null) => now = clock ?? (() => DateTime.UtcNow);
+
+    public IReadOnlyCollection<Visit> All => visits.Values;
+
+    public static History Load()
+    {
+        var h = new History();
+        foreach (var v in Store.Read<List<Visit>>(FileName) ?? []) h.visits[Identity(v.Url)] = v;
+        return h;
+    }
+
+    public void Save() => Store.Write(FileName,
+        visits.Values.OrderByDescending(v => Score(v, now())).Take(Cap).ToList());
+
+    /// <summary>The same page however it was written: no scheme, no www, no trailing slash, no fragment.</summary>
+    public static string Identity(string url)
+    {
+        var s = url;
+        var hash = s.IndexOf('#');
+        if (hash >= 0) s = s[..hash];
+        var sep = s.IndexOf("://", StringComparison.Ordinal);
+        if (sep >= 0) s = s[(sep + 3)..];
+        s = Address.WithoutWww(s);
+        if (s.EndsWith('/')) s = s[..^1];
+        return s.ToLowerInvariant();
+    }
+
+    public void Record(string url, string title)
+    {
+        if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return;
+        var key = Identity(url);
+        if (!visits.TryGetValue(key, out var v)) visits[key] = v = new Visit { Url = url };
+        v.Url = url;
+        if (!string.IsNullOrWhiteSpace(title)) v.Title = title;
+        v.Count++;
+        v.Last = now();
+    }
+
+    public void Retitle(string url, string title)
+    {
+        if (visits.TryGetValue(Identity(url), out var v) && !string.IsNullOrWhiteSpace(title)) v.Title = title;
+    }
+
+    public void Clear() => visits.Clear();
+
+    static double Score(Visit v, DateTime at) =>
+        v.Count * Math.Exp(-Math.Max(0, (at - v.Last).TotalDays) / 30);
+
+    /// <summary>What you could type to get here: the address without scheme or www.</summary>
+    public static string KeyOf(string url)
+    {
+        var s = url;
+        var sep = s.IndexOf("://", StringComparison.Ordinal);
+        if (sep >= 0) s = s[(sep + 3)..];
+        s = Address.WithoutWww(s);
+        return s.EndsWith('/') && s.IndexOf('/') == s.Length - 1 ? s[..^1] : s;
+    }
+
+    /// <summary>Best matches first. An empty field proposes nothing.</summary>
+    public List<Suggestion> Suggestions(string typed, int limit = 5)
+    {
+        var needle = typed.Trim().ToLowerInvariant();
+        if (needle.Length == 0) return [];
+        var words = Fuzzy.Words(needle);
+        var at = now();
+        var scored = new List<(Suggestion s, double score)>();
+        foreach (var v in visits.Values)
+        {
+            var key = KeyOf(v.Url);
+            var findable = (key + " " + v.Title).ToLowerInvariant();
+            if (!words.All(w => findable.Contains(w, StringComparison.Ordinal))) continue;
+            var fit = Fit(needle, words, key.ToLowerInvariant(), findable);
+            if (fit is null) continue;
+            scored.Add((new Suggestion(key, v.Title, v.Url, SuggestionKind.Visited), fit.Value * Math.Log(2 + Score(v, at))));
+        }
+        if (scored.Count < limit && needle.Length >= 3)
+        {
+            foreach (var v in visits.Values)
+            {
+                var key = KeyOf(v.Url);
+                var findable = (key + " " + v.Title).ToLowerInvariant();
+                if (Fuzzy.Match(words, findable) != 0) continue;
+                scored.Add((new Suggestion(key, v.Title, v.Url, SuggestionKind.Visited), 1 * Math.Log(2 + Score(v, at))));
+            }
+        }
+        return scored
+            .OrderByDescending(x => x.score).ThenBy(x => x.s.Key.Length)
+            .Select(x => x.s).DistinctBy(s => Identity(s.Url)).Take(limit).ToList();
+    }
+
+    /// <summary>4 address starts with it, 3 a word of the host does, 2 every word starts a word, 1 inside a word.</summary>
+    static double? Fit(string needle, List<string> words, string address, string findable)
+    {
+        if (address.StartsWith(needle, StringComparison.Ordinal)) return 4;
+        var end = address.IndexOfAny(['/', '?', '#']);
+        var host = end < 0 ? address : address[..end];
+        if (StartsWord(needle, host)) return 3;
+        if (needle.Length < 3) return null;
+        return words.All(w => StartsWord(w, findable)) ? 2 : 1;
+    }
+
+    static bool StartsWord(string word, string text)
+    {
+        var from = 0;
+        while (from <= text.Length - word.Length)
+        {
+            var hit = text.IndexOf(word, from, StringComparison.Ordinal);
+            if (hit < 0) return false;
+            if (hit == 0 || !char.IsLetterOrDigit(text[hit - 1])) return true;
+            from = hit + 1;
+        }
+        return false;
+    }
+
+    /// <summary>What the field draws greyed after the caret: the rest of the best match, when it carries on from what was typed.</summary>
+    public static string? Completion(string typed, IReadOnlyList<Suggestion> options)
+    {
+        if (typed.Length == 0 || options.Count == 0) return null;
+        var single = typed.Length == 1;
+        if (single && options[0].Kind != SuggestionKind.Visited) return null;
+        foreach (var o in single ? options.Take(1) : options)
+        {
+            if (o.Kind is not (SuggestionKind.Visited or SuggestionKind.Bookmark or SuggestionKind.Open)) continue;
+            var key = o.Key;
+            if (key.Length < typed.Length) continue;
+            if (single && key.IndexOfAny(['/', '?', '#']) >= 0) continue;
+            if (!key.StartsWith(typed, StringComparison.OrdinalIgnoreCase)) continue;
+            var rest = key[typed.Length..];
+            var completed = Address.Url(typed + rest);
+            if (completed is null || Identity(completed) != Identity(o.Url)) continue;
+            return rest.Length == 0 ? null : rest;
+        }
+        return null;
+    }
+}
