@@ -100,6 +100,9 @@ public partial class MainWindow : Window
             }
         }
         restoring = false;
+        wasTop = false; // the saved column width must not undo a top layout
+        ApplyTabsLayout();
+        ApplyLayout();
 
         var all = Ordered().ToList();
         if (open is not null)

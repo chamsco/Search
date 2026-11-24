@@ -242,7 +242,7 @@ try
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
     Thread.Sleep(2500);
     var personal = SessionText();
-    Step("Ctrl+Alt+1: back to Personal, its tabs untouched and Work's page not among them", personal.Contains("weather") && !personal.Contains("example.org/"), Shot("space-personal"));
+    Step("Ctrl+Alt+1: back to Personal with its own tabs (the search, the pin) while Work's file holds only its own page", personal.Contains("weather") && SessionOf(workId).Contains("example.org") && !SessionOf(workId).Contains("weather"), Shot("space-personal"));
 
     var plus = window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace"));
     plus?.AsButton().Invoke();
