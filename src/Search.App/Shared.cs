@@ -21,4 +21,5 @@ static class Shared
     public static readonly Downloads Downloads = new();
     public static readonly SitePermissions Perms = SitePermissions.Load();
     public static readonly SiteStyles Styles = SiteStyles.Load();
+    public static readonly PasswordVault Vault = new(Store.File("vault.json"), new DpapiProtector());
 }

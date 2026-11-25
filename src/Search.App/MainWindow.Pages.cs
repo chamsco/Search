@@ -67,7 +67,7 @@ public partial class MainWindow
 
     void OnPageMessage(Tab tab, CoreWebView2 core, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        if (LinkMessage(tab, e)) return;
+        if (LinkMessage(tab, e) || FormMessage(tab, core, e)) return;
         // Any web page can post a message; only our own pages are listened to.
         if (PageUrl(e.Source) is null || PageUrl(core.Source) is null) return;
         try
@@ -126,6 +126,15 @@ public partial class MainWindow
                     break;
                 case "permissions.resetAll": Shared.Perms.ResetAll(); break;
                 case "styles.get": Send(core, StylesMessage()); break;
+                case "vault.get": Send(core, VaultMessage()); break;
+                case "vault.forget": Shared.Vault.Forget(S("host"), S("user")); break;
+                case "vault.forgetAll": Shared.Vault.ForgetAll(); break;
+                case "vault.never.forget": Shared.Vault.ForgetNever(S("host")); break;
+                case "vault.save":
+                    if (!Shared.Vault.Save(S("host").Trim().ToLowerInvariant(), S("user").Trim(), S("password"))) PostToPages(new { type = "vault.refused" }, "settings");
+                    break;
+                case "vault.reveal": _ = RevealPassword(core, S("host"), S("user"), copy: false); break;
+                case "vault.copy": _ = RevealPassword(core, S("host"), S("user"), copy: true); break;
                 case "styles.set": Shared.Styles.Set(S("host"), S("css")); break;
                 case "space.add": Shared.Book.AddSpace(G("profile") ?? profileId, S("name"), 1, true); break;
                 case "space.update" when G("id") is Guid sid:
@@ -219,7 +228,7 @@ public partial class MainWindow
             type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
             engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
             spacesOn = d.SpacesOn, closeIdleDays = d.CloseIdleDays, littleLinks = d.LittleLinks, peek = d.Peek, splitView = d.SplitView, altSplit = d.AltSplit, peekClick = d.PeekClick, peekStays = d.PeekStays, pinsPeek = d.PinsPeek, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
-            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer, proxyUser = d.ProxyUser, proxyHasPassword = ProxyVault.Has,
+            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer, proxyUser = d.ProxyUser, proxyHasPassword = ProxyVault.Has, askHello = d.AskHello,
             spaces = Shared.Book.Spaces.Select(sp => new { id = sp.Id, name = sp.Name, colour = sp.Colour, colour2 = sp.Colour2, strength = sp.Strength.ToString(), icon = sp.IconIndex, shares = sp.SharesSignIns, profile = sp.ProfileId, first = sp.IsFirst }),
             profiles = Shared.Book.Profiles.Select(pf => new { id = pf.Id, name = pf.Name, personal = pf.IsPersonal }),
             iconGlyphs = Spaces.Icons, iconNames = Spaces.IconNames, colourNames = Spaces.ColourNames,
@@ -254,6 +263,7 @@ public partial class MainWindow
                 case "blockTrackers": d.BlockTrackers = B(); break;
                 case "siteSearch": d.SiteSearch = B(); break;
                 case "siteStylesOn": d.SiteStylesOn = B(); break;
+                case "askHello": d.AskHello = B(); break;
                 case "proxyMode": if (Enum.TryParse<ProxyMode>(S(), out var pm)) d.ProxyMode = pm; break;
                 case "proxyServer": d.ProxyServer = S().Trim(); break;
                 case "proxyUser": d.ProxyUser = S().Trim(); if (d.ProxyUser.Length == 0) ProxyVault.Forget(); break;

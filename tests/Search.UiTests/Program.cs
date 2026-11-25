@@ -623,6 +623,10 @@ try
     const string styledPage = "<!doctype html><title>Styled</title><body style='background:white'><h1>Styled</h1><script>setTimeout(()=>{document.title='bg='+getComputedStyle(document.body).backgroundColor},2000)</script>";
     const string videoPage = "<!doctype html><title>Video</title><video id=v muted autoplay playsinline width=320 height=180></video><canvas id=c width=320 height=180 style='display:none'></canvas>" +
         "<script>const c=document.getElementById('c'),x=c.getContext('2d');setInterval(()=>{x.fillStyle='hsl('+(Date.now()/10%360)+',70%,50%)';x.fillRect(0,0,320,180)},50);const v=document.getElementById('v');v.srcObject=c.captureStream(20);v.play();</script>";
+    const string loginPage = "<!doctype html><title>Sign in</title><body style='font:16px sans-serif'><form action='/welcome' method='post'><input id=e aria-label='Email address' autocomplete=username> <input id=p type=password aria-label='Password field' autocomplete=current-password> <button type=submit>Sign in</button></form>" +
+        "<script>const t=()=>{document.title='f:'+e.value+':'+p.value.length};e.oninput=p.oninput=t</script>";
+    const string signupPage = "<!doctype html><title>Sign up</title><body style='font:16px sans-serif'><form action='/welcome' method='post'><input id=e aria-label='New email' autocomplete=username> <input id=p type=password aria-label='Choose a password' autocomplete=new-password> <input id=q type=password aria-label='Repeat password' autocomplete=new-password></form>" +
+        "<script>const t=()=>{document.title='n:'+p.value.length+':'+(p.value===q.value)};p.oninput=q.oninput=t</script>";
     const string feedXml = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Harbour News</title>" +
         "<item><title>Post one</title><link>/post1</link></item><item><title>Post two &amp; more</title><link>/post2</link></item></channel></rss>";
     var serving = Task.Run(async () =>
@@ -633,7 +637,7 @@ try
             {
                 var ctx = await server.GetContextAsync();
                 var path = ctx.Request.Url!.AbsolutePath;
-                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", _ => indexPage };
+                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", "/login" => loginPage, "/signup" => signupPage, "/welcome" => "<!doctype html><title>Welcome</title><h1>Welcome</h1>", _ => indexPage };
                 var bytes = System.Text.Encoding.UTF8.GetBytes(html);
                 ctx.Response.ContentType = path == "/feed.xml" ? "application/rss+xml; charset=utf-8" : "text/html; charset=utf-8";
                 ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
@@ -808,6 +812,68 @@ try
     if (addressBox) { Keyboard.Type(origin6 + "/blog"); Thread.Sleep(300); Keyboard.Press(VirtualKeyShort.RETURN); }
     var made = Await(() => window!.FindFirstDescendant(cf => cf.ByName("Harbour News")) is not null, 15000);
     Step("Heading menu › New Live Folder Inside…, a site's address (not the feed's): the feed it points to is found and a folder named after it is made", addressBox && made, $"address box: {addressBox}, folder made: {made} · " + Shot("live-folder-new"));
+
+    // Passwords
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w7-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/login\",\"title\":\"\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(7000);
+    string VaultText() => DataText("vault.json");
+    bool TypeInto(string field, string text) { for (var i = 0; i < 4; i++) { if (OnPage(field) is { } el) { Mouse.Click(CentreOf(el)); Thread.Sleep(500); Keyboard.Type(text); Thread.Sleep(400); return true; } Thread.Sleep(1000); } return false; }
+    var typedUser = TypeInto("Email address", "ana@example.com");
+    var typedPw = TypeInto("Password field", "correct horse 42");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    var offerSave = Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 20000);
+    var saveShot = Shot("password-save-card");
+    ClickCard("Save");
+    var vaultHas = Await(() => VaultText().Contains("ana@example.com"), 6000);
+    Step("A sign-in sent and settled: a card offers to keep the password; Save puts it in the vault, protected, never in the file as written", typedUser && typedPw && offerSave && vaultHas && !VaultText().Contains("correct horse"), $"card: {offerSave}, kept: {vaultHas}, file shows the password: {VaultText().Contains("correct horse")} · {saveShot}");
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type(origin6 + "/login");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4500);
+    if (OnPage("Email address") is { } emailBox) { Mouse.Click(CentreOf(emailBox)); }
+    var offerFill = Await(() => Anywhere("Sign in to localhost") is not null, 15000);
+    var fillShot = Shot("password-fill-card");
+    ClickCard("Fill");
+    var filled = Await(() => OnPage("f:ana@example.com:16") is not null || window!.FindAllDescendants().Any(el => { try { return el.Name == "f:ana@example.com:16"; } catch { return false; } }), 8000);
+    Step("Back on the sign-in: the caret in the box offers the kept account; Fill puts the name and password in through the field's own setter", offerFill && filled, $"card: {offerFill}, page title shows both filled: {filled} · {fillShot}");
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var listedPw = false;
+    for (var i = 0; i < 4 && !listedPw; i++)
+    {
+        if (i < 2 && OnPage("Passwords") is { } nav) Mouse.Click(CentreOf(nav));
+        else Mouse.Click(new Point(window!.BoundingRectangle.Left + 293, window.BoundingRectangle.Top + 289));
+        Thread.Sleep(1200);
+        listedPw = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name?.Contains("ana@example.com") == true; } catch { return false; } }), 3000);
+    }
+    if (OnPage("Show") is { } showBtn) { Mouse.Click(CentreOf(showBtn)); Thread.Sleep(2500); }
+    var revealed = window.FindAllDescendants().Any(el => { try { return el.Name?.Contains("correct horse 42") == true; } catch { return false; } });
+    Step("Settings › Passwords: the account is listed; Show (Windows Hello, or straight through where none is set up) reveals the password", listedPw && revealed, $"listed: {listedPw}, shown: {revealed} · " + Shot("settings-passwords"));
+    if (window.FindFirstDescendant(cf => cf.ByName("Forget the password for ana@example.com")) is { } forgetBtn) { Mouse.Click(CentreOf(forgetBtn)); Thread.Sleep(1500); }
+    Step("Forget removes it from the vault", !VaultText().Contains("ana@example.com"), "vault.json: " + VaultText().Replace("\n", " ").Replace("|", "/")[..Math.Min(120, VaultText().Length)]);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type(origin6 + "/signup");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4500);
+    var offerStrong = false;
+    for (var i = 0; i < 3 && !offerStrong; i++)
+    {
+        if (OnPage("Choose a password") is { } newBox) Mouse.Click(CentreOf(newBox));
+        offerStrong = Await(() => Anywhere("Use a strong password for localhost?") is not null, 6000);
+    }
+    ClickCard("Use");
+    var strong = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "n:20:true"; } catch { return false; } }), 8000);
+    Step("A sign-up's new-password box: a strong password is offered and fills both boxes", offerStrong && strong, $"card: {offerStrong}, both boxes hold the same 20 characters: {strong} · " + Shot("password-strong"));
 
     // Proxy
     Quit();

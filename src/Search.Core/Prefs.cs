@@ -49,6 +49,8 @@ public sealed class PrefsData
     public string ProxyServer { get; set; } = "";
     /// <summary>The user name for a proxy that asks for one. The password is not here: it is kept protected for this Windows account (ProxyVault).</summary>
     public string ProxyUser { get; set; } = "";
+    /// <summary>Settings › Passwords › Ask Windows Hello before filling: one of Search's own passwords goes into a page only once the person has said so. Off unless turned on.</summary>
+    public bool AskHello { get; set; }
     /// <summary>Settings › Keyboard &amp; Mouse › Type a site's name, press Tab, and search that site.</summary>
     public bool SiteSearch { get; set; } = true;
     /// <summary>Settings › Sites › Your own style for a site: off until turned on, as on the Mac.</summary>
