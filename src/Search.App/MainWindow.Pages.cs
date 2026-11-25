@@ -145,6 +145,10 @@ public partial class MainWindow
                         });
                     }
                     break;
+                case "mecard.get": Send(core, new { type = "mecard", card = MeCard.Load() }); break;
+                case "mecard.save":
+                    if (m.TryGetProperty("card", out var cardJson) && cardJson.Deserialize<MeCardData>(Store.Json) is { } card) { MeCard.Save(card); Send(core, new { type = "mecard", card = MeCard.Load(), saved = true }); }
+                    break;
                 case "vault.forget": Shared.Vault.Forget(S("host"), S("user")); break;
                 case "vault.forgetAll": Shared.Vault.ForgetAll(); break;
                 case "vault.never.forget": Shared.Vault.ForgetNever(S("host")); break;
@@ -246,7 +250,7 @@ public partial class MainWindow
             type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
             engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
             spacesOn = d.SpacesOn, closeIdleDays = d.CloseIdleDays, littleLinks = d.LittleLinks, peek = d.Peek, splitView = d.SplitView, altSplit = d.AltSplit, peekClick = d.PeekClick, peekStays = d.PeekStays, pinsPeek = d.PinsPeek, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
-            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer, proxyUser = d.ProxyUser, proxyHasPassword = ProxyVault.Has, askHello = d.AskHello,
+            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer, proxyUser = d.ProxyUser, proxyHasPassword = ProxyVault.Has, askHello = d.AskHello, fillFromCard = d.FillFromCard,
             spaces = Shared.Book.Spaces.Select(sp => new { id = sp.Id, name = sp.Name, colour = sp.Colour, colour2 = sp.Colour2, strength = sp.Strength.ToString(), icon = sp.IconIndex, shares = sp.SharesSignIns, profile = sp.ProfileId, first = sp.IsFirst }),
             profiles = Shared.Book.Profiles.Select(pf => new { id = pf.Id, name = pf.Name, personal = pf.IsPersonal }),
             iconGlyphs = Spaces.Icons, iconNames = Spaces.IconNames, colourNames = Spaces.ColourNames,
@@ -282,6 +286,7 @@ public partial class MainWindow
                 case "siteSearch": d.SiteSearch = B(); break;
                 case "siteStylesOn": d.SiteStylesOn = B(); break;
                 case "askHello": d.AskHello = B(); break;
+                case "fillFromCard": d.FillFromCard = B(); break;
                 case "proxyMode": if (Enum.TryParse<ProxyMode>(S(), out var pm)) d.ProxyMode = pm; break;
                 case "proxyServer": d.ProxyServer = S().Trim(); break;
                 case "proxyUser": d.ProxyUser = S().Trim(); if (d.ProxyUser.Length == 0) ProxyVault.Forget(); break;

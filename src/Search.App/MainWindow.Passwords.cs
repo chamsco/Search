@@ -16,7 +16,9 @@ public partial class MainWindow
     readonly Dictionary<Guid, string> formOffered = [];
     readonly Dictionary<Guid, (string Id, string Source)> formScripts = [];
 
-    const string FormScript = """
+    static readonly string FormScript = FormScriptTemplate.Replace("%KINDS%", JsonSerializer.Serialize(MeCard.Kinds));
+
+    const string FormScriptTemplate = """
     (() => {
       if (window.__searchForms) return; window.__searchForms = true;
       const post = m => { try { chrome.webview.postMessage(m); } catch (e) {} };
@@ -39,6 +41,20 @@ public partial class MainWindow
         const u = userFor(p); if (u && user) setValue(u, user);
         setValue(p, pw); return true;
       };
+      const cardKinds = new Set(%KINDS%);
+      let cardEl = null;
+      const kindOf = el => (el.autocomplete || '').toLowerCase().split(/\s+/).filter(t => cardKinds.has(t)).pop();
+      // The boxes of the form the caret is in that are still empty and visible take what the picked row holds.
+      window.__searchFillCard = fields => {
+        if (!cardEl || !document.contains(cardEl)) return 0;
+        let n = 0;
+        for (const b of scope(cardEl).querySelectorAll('input, textarea')) {
+          if (b.disabled || b.readOnly || !visible(b) || b.value || (b.tagName === 'INPUT' && !textual(b))) continue;
+          const k = kindOf(b); if (!k || fields[k] === undefined) continue;
+          setValue(b, b.tagName === 'INPUT' ? fields[k].replace(/\n/g, ', ') : fields[k]); n++;
+        }
+        return n;
+      };
       window.__searchFillNew = pw => { const ps = pwIn(document); ps.forEach(p => setValue(p, pw)); return ps.length; };
       addEventListener('focusin', e => {
         const el = e.target; if (!(el instanceof HTMLInputElement)) return;
@@ -46,7 +62,8 @@ public partial class MainWindow
         if (el.type === 'password') {
           const fresh = ac.includes('new-password') || (pwIn(scope(el)).length >= 2 && !ac.includes('current-password'));
           post({ type: 'form.focus', kind: fresh ? 'new' : 'sign-in' });
-        } else if (textual(el) && (ac.includes('username') || pwIn(scope(el)).length > 0)) post({ type: 'form.focus', kind: 'sign-in' });
+        } else if (textual(el) && !el.value && kindOf(el) && !ac.includes('username') && pwIn(scope(el)).length === 0) { cardEl = el; post({ type: 'form.card', kind: kindOf(el) }); }
+        else if (textual(el) && (ac.includes('username') || pwIn(scope(el)).length > 0)) post({ type: 'form.focus', kind: 'sign-in' });
       }, true);
       let sent = 0;
       const sending = el => {
@@ -97,6 +114,7 @@ public partial class MainWindow
             switch (type)
             {
                 case "form.focus" when tab == live: OfferForField(tab, core, page, S("kind")); break;
+                case "form.card" when tab == live: OfferFromCard(tab, core, page, S("kind")); break;
                 case "form.submit":
                     var password = S("password");
                     if (password.Length == 0 || Shared.Vault.IsNever(host)) break;
@@ -175,6 +193,31 @@ public partial class MainWindow
             ("Fill", () => { if ((list.SelectedItem as ListBoxItem)?.Tag is Kept chosen) _ = FillLogin(core, host, chosen); }),
             ("Not now", () => { }),
         ], list);
+    }
+
+    /// <summary>The caret went into a name, email, phone or address box: the rows of your card for it, once for a page and kind. Nothing goes in until a row is picked.</summary>
+    void OfferFromCard(Tab tab, CoreWebView2 core, Uri page, string kind)
+    {
+        if (!Shared.Prefs.Data.FillFromCard) return;
+        var key = page.AbsoluteUri + "|card|" + kind;
+        if (formOffered.TryGetValue(tab.Id, out var seen) && seen == key) return;
+        var rows = MeCard.Offers(MeCard.Load(), kind);
+        if (rows.Count == 0) return;
+        formOffered[tab.Id] = key;
+        var list = new ListBox { MaxHeight = 150, Margin = new Thickness(0, 0, 0, 4), SelectedIndex = 0 };
+        System.Windows.Automation.AutomationProperties.SetName(list, "Card rows");
+        foreach (var r in rows) list.Items.Add(new ListBoxItem { Content = r.Detail.Length > 0 ? r.Title + "  ·  " + r.Detail : r.Title, Tag = r });
+        Ask($"Fill in from your card at {page.Host}?", "The empty boxes of this form that your card can answer. Nothing is sent until you submit.",
+        [
+            ("Fill", () => { if ((list.SelectedItem as ListBoxItem)?.Tag is MeOffer o) _ = FillCard(core, o); }),
+            ("Not now", () => { }),
+        ], list);
+    }
+
+    async Task FillCard(CoreWebView2 core, MeOffer offer)
+    {
+        var n = await core.ExecuteScriptAsync("window.__searchFillCard(" + JsonSerializer.Serialize(offer.Fields) + ")");
+        App.Trace("card fill " + n);
     }
 
     /// <summary>One kept account into the page. Nothing is ever filled on page load: this is by a pick, and, with Settings › Passwords › Ask Windows Hello on, after the person has said yes.</summary>

@@ -630,6 +630,8 @@ try
         "<script>const t=()=>{document.title='f:'+e.value+':'+p.value.length};e.oninput=p.oninput=t</script>";
     const string signupPage = "<!doctype html><title>Sign up</title><body style='font:16px sans-serif'><form action='/welcome' method='post'><input id=e aria-label='New email' autocomplete=username> <input id=p type=password aria-label='Choose a password' autocomplete=new-password> <input id=q type=password aria-label='Repeat password' autocomplete=new-password></form>" +
         "<script>const t=()=>{document.title='n:'+p.value.length+':'+(p.value===q.value)};p.oninput=q.oninput=t</script>";
+    const string contactPage = "<!doctype html><title>Contact</title><body style='font:16px sans-serif'><form action='/welcome' method='post'><input id=g aria-label='Given name' autocomplete=given-name> <input id=f aria-label='Family name' autocomplete=family-name> <input id=m aria-label='Contact email' autocomplete=email> <input id=z aria-label='Postal code' autocomplete=postal-code> <input id=o aria-label='Already typed' autocomplete=organization value='Kept'></form>" +
+        "<script>const t=()=>{document.title='c:'+g.value+'|'+f.value+'|'+m.value+'|'+z.value+'|'+o.value};for(const i of document.querySelectorAll('input'))i.oninput=t</script>";
     const string feedXml = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Harbour News</title>" +
         "<item><title>Post one</title><link>/post1</link></item><item><title>Post two &amp; more</title><link>/post2</link></item></channel></rss>";
     var serving = Task.Run(async () =>
@@ -640,7 +642,7 @@ try
             {
                 var ctx = await server.GetContextAsync();
                 var path = ctx.Request.Url!.AbsolutePath;
-                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", "/login" => loginPage, "/signup" => signupPage, "/welcome" => "<!doctype html><title>Welcome</title><h1>Welcome</h1>", _ => indexPage };
+                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", "/login" => loginPage, "/signup" => signupPage, "/contact" => contactPage, "/welcome" => "<!doctype html><title>Welcome</title><h1>Welcome</h1>", _ => indexPage };
                 var bytes = System.Text.Encoding.UTF8.GetBytes(html);
                 ctx.Response.ContentType = path == "/feed.xml" ? "application/rss+xml; charset=utf-8" : "text/html; charset=utf-8";
                 ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
@@ -819,7 +821,8 @@ try
     // Passwords
     Quit();
     data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w7-" + Guid.NewGuid().ToString("N")[..8])).FullName;
-    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"fillFromCard\":true}");
+    File.WriteAllText(Path.Combine(data, "mecard.json"), "{\"given\":\"Ana\",\"family\":\"Diaz\",\"organization\":\"Acme\",\"emails\":[\"ana@example.com\"],\"phones\":[\"+33 6 12 34 56 78\"],\"addresses\":[{\"street\":\"1 Rue Haute\",\"city\":\"Lyon\",\"postal\":\"69001\",\"country\":\"FR\"}]}");
     File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/login\",\"title\":\"\"}],\"active\":0}");
     app = Launch();
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
@@ -877,6 +880,21 @@ try
     ClickCard("Use");
     var strong = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "n:20:true"; } catch { return false; } }), 8000);
     Step("A sign-up's new-password box: a strong password is offered and fills both boxes", offerStrong && strong, $"card: {offerStrong}, both boxes hold the same 20 characters: {strong} · " + Shot("password-strong"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type(origin6 + "/contact");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4500);
+    var offerCard = false;
+    for (var i = 0; i < 3 && !offerCard; i++)
+    {
+        if (OnPage("Contact email") is { } mailBox) Mouse.Click(CentreOf(mailBox));
+        offerCard = Await(() => Anywhere("Fill in from your card at localhost?") is not null, 6000);
+    }
+    var cardShot = Shot("card-offer");
+    ClickCard("Fill");
+    var cardFilled = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "c:Ana|Diaz|ana@example.com|69001|Kept"; } catch { return false; } }), 8000);
+    Step("A contact form's email box offers your card (Settings › Passwords › My card); Fill puts name, email and postal code in the empty boxes and leaves the one already typed alone", offerCard && cardFilled, $"card: {offerCard}, boxes: {cardFilled} · {cardShot} · " + Shot("card-filled"));
 
     // Import from another browser
     Quit();

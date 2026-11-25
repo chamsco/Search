@@ -51,6 +51,8 @@ public sealed class PrefsData
     public string ProxyUser { get; set; } = "";
     /// <summary>Settings › Passwords › Ask Windows Hello before filling: one of Search's own passwords goes into a page only once the person has said so. Off unless turned on.</summary>
     public bool AskHello { get; set; }
+    /// <summary>Offer the details of Settings › Passwords › My card under name, email, phone and address boxes.</summary>
+    public bool FillFromCard { get; set; }
     /// <summary>Settings › Keyboard &amp; Mouse › Type a site's name, press Tab, and search that site.</summary>
     public bool SiteSearch { get; set; } = true;
     /// <summary>Settings › Sites › Your own style for a site: off until turned on, as on the Mac.</summary>

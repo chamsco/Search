@@ -89,6 +89,12 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
   <h3>Kept passwords</h3>
   <div class="group" id="vaultList"></div>
   <div class="group"><div class="line" style="flex-wrap:wrap;gap:8px"><div class="label" style="flex:1;display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="vaultHost" aria-label="Site" placeholder="example.com" style="width:170px"><input type="text" id="vaultUser" aria-label="Account" placeholder="Account" style="width:150px" autocomplete="off"><input type="password" id="vaultPassword" aria-label="Password" placeholder="Password" style="width:150px" autocomplete="off"></div><button id="vaultAdd">Keep</button></div></div>
+  <h3>My card</h3>
+  <div class="group"><div class="line"><div class="label">Fill in from my card<small>Under a name, email, phone or address box, offers the details below. Nothing goes in until you pick a row, and only the empty boxes of that form are filled. The details stay on this PC</small></div><div class="switch" id="fillFromCard"></div></div>
+  <div class="line" style="flex-wrap:wrap;gap:8px"><div class="label" style="flex:1;display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="meGiven" aria-label="First name" placeholder="First name"><input type="text" id="meMiddle" aria-label="Middle name" placeholder="Middle name"><input type="text" id="meFamily" aria-label="Last name" placeholder="Last name"><input type="text" id="meOrg" aria-label="Company" placeholder="Company"></div></div>
+  <div class="line" style="flex-wrap:wrap;gap:8px"><div class="label" style="flex:1;display:flex;gap:8px;flex-wrap:wrap"><textarea id="meEmails" rows="2" aria-label="Email addresses, one per line" placeholder="Emails, one per line" style="flex:1;min-width:180px"></textarea><textarea id="mePhones" rows="2" aria-label="Phone numbers, one per line" placeholder="Phone numbers, one per line" style="flex:1;min-width:180px"></textarea></div></div>
+  <div id="meAddresses"></div>
+  <div class="line"><div class="label"><span id="meNote" style="color:var(--muted)"></span></div><button id="meAdd">Add an address</button><button id="meSave">Save my card</button></div></div>
   <h3>Never asked on</h3>
   <div class="group" id="neverList"></div>
   <div class="group"><div class="line"><div class="label">Forget every password<small>Removes all of them from this PC</small></div><button class="danger" id="vaultAll">Forget all</button></div></div>
@@ -120,7 +126,7 @@ function show(id) { id = ['general','appearance','tabs','privacy','sites','keybo
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.s === id)); }
 window.addEventListener('hashchange', () => show(location.hash.slice(1))); show(location.hash.slice(1));
 const set = (key, value) => host.send('settings.set', { key, value });
-for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','blockTrackers','siteSearch','siteStylesOn','pinsAsRows','spacesOn','littleLinks','peek','peekStays','pinsPeek','splitView','altSplit','askHello']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
+for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','blockTrackers','siteSearch','siteStylesOn','pinsAsRows','spacesOn','littleLinks','peek','peekStays','pinsPeek','splitView','altSplit','askHello','fillFromCard']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
 document.getElementById('peekClick').onchange = e => set('peekClick', e.target.value);
 document.getElementById('engine').onchange = e => { set('engine', e.target.value); document.getElementById('customLine').style.display = e.target.value === 'Custom' ? '' : 'none'; };
 let customTimer; document.getElementById('custom').oninput = e => { clearTimeout(customTimer); customTimer = setTimeout(() => set('customEngine', e.target.value), 300); };
@@ -182,7 +188,7 @@ host.on('cleared', m => { document.getElementById('cleared').textContent = m.tex
 host.on('update', m => document.getElementById('updateText').textContent = m.text);
 host.on('settings', m => {
   markLayout(m.layout); drawSpaces(m); document.getElementById('closeIdleDays').value = String(m.closeIdleDays);
-  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','blockTrackers','siteSearch','siteStylesOn','pinsAsRows','spacesOn','littleLinks','peek','peekStays','pinsPeek','splitView','altSplit','askHello']) document.getElementById(id).classList.toggle('on', !!m[id]);
+  for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','blockTrackers','siteSearch','siteStylesOn','pinsAsRows','spacesOn','littleLinks','peek','peekStays','pinsPeek','splitView','altSplit','askHello','fillFromCard']) document.getElementById(id).classList.toggle('on', !!m[id]);
   document.getElementById('peekClick').value = m.peekClick;
   document.getElementById('proxyMode').value = m.proxyMode; document.getElementById('proxyServer').value = m.proxyServer || '';
   showProxy(m.proxyMode); document.getElementById('proxyUser').value = m.proxyUser || ''; document.getElementById('proxyPassword').placeholder = m.proxyHasPassword ? 'Kept — type to change' : '';
@@ -230,5 +236,22 @@ host.on('import.done', m => {
 });
 host.on('vault.copied', () => toast('Copied. It clears from the clipboard in a minute'));
 host.on('vault.refused', () => toast('Needs a site and a password'));
-host.send('settings.get'); host.send('permissions.get'); host.send('styles.get'); host.send('vault.get'); host.send('import.scan');
+
+const addressRow = (a = {}) => { const d = document.createElement('div'); d.className = 'line meAddress'; d.style.cssText = 'flex-wrap:wrap;gap:8px';
+  d.innerHTML = `<div class="label" style="flex:1;display:flex;gap:8px;flex-wrap:wrap"><input type="text" class="aStreet" aria-label="Street" placeholder="Street" style="flex:2;min-width:180px"><input type="text" class="aCity" aria-label="City" placeholder="City"><input type="text" class="aState" aria-label="State or region" placeholder="State"><input type="text" class="aPostal" aria-label="Postal code" placeholder="Postal code"><input type="text" class="aCountry" aria-label="Country" placeholder="Country"></div><button class="icon" aria-label="Remove this address" title="Remove">&#xE74D;</button>`;
+  d.querySelector('.aStreet').value = (a.street || '').replace(/\n/g, ', '); d.querySelector('.aCity').value = a.city || ''; d.querySelector('.aState').value = a.state || ''; d.querySelector('.aPostal').value = a.postal || ''; d.querySelector('.aCountry').value = a.country || '';
+  d.querySelector('button').onclick = () => d.remove(); return d; };
+document.getElementById('meAdd').onclick = () => document.getElementById('meAddresses').appendChild(addressRow());
+document.getElementById('meSave').onclick = () => {
+  const lines = id => document.getElementById(id).value.split('\n').map(x => x.trim()).filter(Boolean);
+  host.send('mecard.save', { card: { given: meGiven.value, middle: meMiddle.value, family: meFamily.value, organization: meOrg.value, emails: lines('meEmails'), phones: lines('mePhones'),
+    addresses: [...document.querySelectorAll('.meAddress')].map(r => ({ street: r.querySelector('.aStreet').value, city: r.querySelector('.aCity').value, state: r.querySelector('.aState').value, postal: r.querySelector('.aPostal').value, country: r.querySelector('.aCountry').value })) } });
+};
+host.on('mecard', m => {
+  const c = m.card; meGiven.value = c.given || ''; meMiddle.value = c.middle || ''; meFamily.value = c.family || ''; meOrg.value = c.organization || '';
+  meEmails.value = (c.emails || []).join('\n'); mePhones.value = (c.phones || []).join('\n');
+  const box = document.getElementById('meAddresses'); box.innerHTML = ''; for (const a of c.addresses || []) box.appendChild(addressRow(a));
+  meNote.textContent = m.saved ? 'Saved' : '';
+});
+host.send('mecard.get'); host.send('settings.get'); host.send('permissions.get'); host.send('styles.get'); host.send('vault.get'); host.send('import.scan');
 </script></body></html>
