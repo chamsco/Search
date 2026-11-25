@@ -819,7 +819,6 @@ public partial class MainWindow : Window
         menu.Items.Add(Item("Take Screenshot", () => { if (t != live) Select(t); Shot_Click(this, new RoutedEventArgs()); }, enabled: isPage));
         menu.Items.Add(Item("Share", () => { if (t != live) Select(t); Share_Click(this, new RoutedEventArgs()); }, enabled: isPage));
         menu.Items.Add(Item("Style This Site", () => OpenPage("search://settings/sites"), enabled: isPage));
-        menu.Items.Add(new Separator());
         var others = Shared.Book.In(profileId).Where(s => s.Id != space.Id).ToList();
         if (SpacesOn && others.Count > 0)
         {
