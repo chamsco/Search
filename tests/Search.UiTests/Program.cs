@@ -907,6 +907,16 @@ try
         ("create table moz_bookmarks (id integer primary key, type integer, fk integer, parent integer, position integer, title text)", []),
         ("insert into moz_places values (1, 'https://zen-mark.example/', 'Zen page', 2, 1740830400000000)", []),
         ("insert into moz_bookmarks values (1, 2, null, 0, 0, ''), (2, 2, null, 1, 0, 'toolbar'), (3, 1, 1, 2, 0, 'Fake Zen Bookmark')", []));
+    {
+        // Zen keeps its spaces and pins in zen-sessions.jsonlz4: a mozLz40 header around one LZ4 block (here all literals).
+        var zenJson = System.Text.Encoding.UTF8.GetBytes("{\"spaces\":[{\"uuid\":\"{aaa}\",\"name\":\"Zen Garden\",\"icon\":\"🌱\"}],\"folders\":[{\"id\":\"f1\",\"name\":\"Reading\"}],\"tabs\":[{\"pinned\":true,\"zenWorkspace\":\"{aaa}\",\"groupId\":\"f1\",\"entries\":[{\"url\":\"https://zen-pin.example/read\",\"title\":\"Zen Pinned Page\"}],\"index\":1}]}");
+        var block = new List<byte> { 0xF0 };
+        var rest = zenJson.Length - 15; while (rest >= 255) { block.Add(255); rest -= 255; }
+        block.Add((byte)rest); block.AddRange(zenJson);
+        var packed = new List<byte>(System.Text.Encoding.ASCII.GetBytes("mozLz40\0"));
+        packed.AddRange(BitConverter.GetBytes(zenJson.Length)); packed.AddRange(block);
+        File.WriteAllBytes(Path.Combine(zenProfile, "zen-sessions.jsonlz4"), packed.ToArray());
+    }
     data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w7i-" + Guid.NewGuid().ToString("N")[..8])).FullName;
     File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
     app = Launch();
@@ -932,6 +942,9 @@ try
     if (OnPage("Import from Zen · Default (release)") is { } goZen) Mouse.Click(CentreOf(goZen));
     var zenIn = Await(() => DataText("bookmarks.json").Contains("Fake Zen Bookmark"), 15000);
     Step("The same for Zen (a Firefox-family profile in the roaming folder): its bookmarks come over", zenIn, "bookmark kept: " + zenIn + " · " + Shot("import-zen"));
+    var zenSpaces = Await(() => DataText("spaces.json").Contains("Zen Garden"), 8000);
+    var zenPins = Directory.EnumerateFiles(data, "session-*.json").Select(File.ReadAllText).Any(t => t.Contains("zen-pin.example/read") && t.Contains("Reading"));
+    Step("Zen's sidebar comes too: its space is a space here, and the page pinned inside its folder is pinned in that space, in a folder of the same name", zenSpaces && zenPins, $"space: {zenSpaces}, pin in folder: {zenPins} · " + Shot("import-zen-spaces"));
     importLocal = null; importRoaming = null;
 
     // Proxy

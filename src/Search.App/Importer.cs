@@ -11,7 +11,11 @@ public sealed record ImportSource(string Id, string Browser, string Name, string
     public string Label => Name.Length > 0 && Name != "Default" ? $"{Browser} · {Name}" : Browser;
 }
 
-public sealed record ImportSummary(int Bookmarks, int Visits, int Logins, List<string> Notes);
+public sealed record ImportSummary(int Bookmarks, int Visits, int Logins, List<string> Notes)
+{
+    public int Spaces { get; init; }
+    public int Pins { get; init; }
+}
 
 public static class Importer
 {
@@ -119,6 +123,62 @@ public static class Importer
             if (vault.Save(host, l.User, l.Password, null, u.Scheme == "http")) kept++;
         }
         return new ImportSummary(added, newVisits, kept, notes);
+    }
+
+    /// <summary>Arc's or Zen's sidebar, if this source has one: spaces and the pages pinned in them.</summary>
+    public static Sidebar? ReadSidebar(ImportSource source)
+    {
+        try
+        {
+            if (source.Browser == "Zen") return ZenSidebar.Read(source.Dir);
+            if (source.Browser != "Arc") return null;
+            var userData = Path.GetDirectoryName(source.Dir)!;
+            foreach (var dir in new[] { Path.GetDirectoryName(userData)!, userData })
+                if (ArcSidebar.Read(Path.Combine(dir, "StorableSidebar.json")) is { } s) return s;
+        }
+        catch (Exception e) { App.Log(e); }
+        return null;
+    }
+
+    /// <summary>Each space becomes a space here, its pinned pages and folders pinned in it, and the favourites pinned in every one of them.
+    /// A space that is already here by that name is left alone.</summary>
+    public static ImportSummary Spaces(ImportSource source, SpaceBook book, Guid profile)
+    {
+        var notes = new List<string>();
+        var side = ReadSidebar(source);
+        if (side is null) { notes.Add($"{source.Browser}'s sidebar wasn't found or couldn't be read."); return new ImportSummary(0, 0, 0, notes); }
+        int spaces = 0, pins = 0;
+        var palette = Core.Spaces.Colours.Length;
+        foreach (var sp in side.Spaces)
+        {
+            if (book.In(profile).Any(x => string.Equals(x.Name, sp.Name, StringComparison.OrdinalIgnoreCase))) { notes.Add($"“{sp.Name}” is already a space here."); continue; }
+            var made = book.AddSpace(profile, sp.Name, Math.Clamp(sp.Colour, 0, palette - 1));
+            book.UpdateSpace(made.Id, x => { x.Icon = sp.Icon; x.Colour2 = Math.Clamp(sp.Colour2, 0, palette - 1); });
+            var shape = new SessionShape();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            void Pin(SidebarItem i, Guid? folder)
+            {
+                if (!seen.Add(i.Url)) return;
+                shape.Tabs.Add(new SessionEntry { Url = i.Url, Title = i.Title, PinId = Guid.NewGuid(), Home = i.Url, Folder = folder });
+                pins++;
+            }
+            foreach (var f in side.Favorites) Pin(f, null);
+            void Walk(List<SidebarNode> nodes, Guid? parent)
+            {
+                foreach (var n in nodes)
+                {
+                    if (!n.IsFolder) { Pin(n.Item!, parent); continue; }
+                    var folder = new PinFolder { Name = n.FolderTitle ?? "Folder", Parent = parent };
+                    shape.Folders.Add(folder);
+                    Walk(n.Children, folder.Id);
+                }
+            }
+            Walk(sp.Pinned, null);
+            if (shape.Tabs.Count > 0) Session.Save(shape, made.Id);
+            spaces++;
+        }
+        if (side.Spaces.Any(x => x.Pinned.Any(n => n.IsFolder))) Shared.Prefs.Update(d => d.PinsAsRows = true);
+        return new ImportSummary(0, 0, 0, notes) { Spaces = spaces, Pins = pins };
     }
 
     static void ReadLogins(ImportSource source, ImportRead read, List<string> notes)

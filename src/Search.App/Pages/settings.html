@@ -215,7 +215,7 @@ host.on('vault', m => {
 host.on('vault.secret', m => { for (const r of document.querySelectorAll('#vaultList .line')) { const b = r.querySelector('button[data-act=show]'); if (b && b.dataset.h === m.host && b.dataset.u === m.user) { r.querySelector('.secret').textContent = ' ' + m.secret; b.textContent = 'Hide'; setTimeout(() => { r.querySelector('.secret').textContent = ''; b.textContent = 'Show'; }, 15000); } } });
 host.on('import.sources', m => {
   document.getElementById('importNone').style.display = m.sources.length ? 'none' : '';
-  document.getElementById('importList').innerHTML = m.sources.map(s => `<h3>${esc(s.label)}</h3><div class="group" data-id="${esc(s.id)}"><div class="line checks" style="display:block"><label><input type="checkbox" class="ik" data-k="bookmarks" checked aria-label="Bookmarks from ${esc(s.label)}"> Bookmarks</label><label><input type="checkbox" class="ik" data-k="history" checked aria-label="History from ${esc(s.label)}"> History</label><label><input type="checkbox" class="ik" data-k="passwords" checked aria-label="Passwords from ${esc(s.label)}"> Saved passwords</label></div><div class="line"><div class="label importNote" style="color:var(--muted)"></div><button class="importGo" aria-label="Import from ${esc(s.label)}">Import</button></div></div>`).join('');
+  document.getElementById('importList').innerHTML = m.sources.map(s => `<h3>${esc(s.label)}</h3><div class="group" data-id="${esc(s.id)}"><div class="line checks" style="display:block"><label><input type="checkbox" class="ik" data-k="bookmarks" checked aria-label="Bookmarks from ${esc(s.label)}"> Bookmarks</label><label><input type="checkbox" class="ik" data-k="history" checked aria-label="History from ${esc(s.label)}"> History</label><label><input type="checkbox" class="ik" data-k="passwords" checked aria-label="Passwords from ${esc(s.label)}"> Saved passwords</label>${s.browser === 'Arc' || s.browser === 'Zen' ? `<label><input type="checkbox" class="ik" data-k="spaces" checked aria-label="Spaces and pins from ${esc(s.label)}"> Spaces and pins</label>` : ''}</div><div class="line"><div class="label importNote" style="color:var(--muted)"></div><button class="importGo" aria-label="Import from ${esc(s.label)}">Import</button></div></div>`).join('');
 });
 document.getElementById('importList').onclick = e => {
   const b = e.target.closest('.importGo'); if (!b) return;
@@ -225,7 +225,7 @@ document.getElementById('importList').onclick = e => {
 host.on('import.done', m => {
   for (const g of document.querySelectorAll('#importList .group')) if (g.dataset.id === m.id) {
     g.querySelector('.importGo').disabled = false;
-    g.querySelector('.importNote').textContent = `Imported ${m.bookmarks} bookmarks, ${m.visits} pages of history, ${m.logins} passwords.` + (m.notes.length ? ' ' + m.notes.join(' ') : '');
+    g.querySelector('.importNote').textContent = `Imported ${m.bookmarks} bookmarks, ${m.visits} pages of history, ${m.logins} passwords` + (m.spaces ? `, ${m.spaces} spaces with ${m.pins} pins` : '') + '.' + (m.notes.length ? ' ' + m.notes.join(' ') : '');
   }
 });
 host.on('vault.copied', () => toast('Copied. It clears from the clipboard in a minute'));

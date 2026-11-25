@@ -133,10 +133,15 @@ public partial class MainWindow
                     {
                         bool Kind(string k) => m.TryGetProperty("kinds", out var ks) && ks.ValueKind == JsonValueKind.Array && ks.EnumerateArray().Any(x => x.GetString() == k);
                         var wantBookmarks = Kind("bookmarks"); var wantHistory = Kind("history"); var wantPasswords = Kind("passwords");
+                        var wantSpaces = Kind("spaces");
                         _ = Task.Run(() =>
                         {
                             var sum = Importer.Run(src, wantBookmarks, wantHistory, wantPasswords, Marks, history, Shared.Vault);
-                            Dispatcher.BeginInvoke(() => Send(core, new { type = "import.done", id = src.Id, bookmarks = sum.Bookmarks, visits = sum.Visits, logins = sum.Logins, notes = sum.Notes }));
+                            Dispatcher.BeginInvoke(() =>
+                            {
+                                if (wantSpaces) { var sp = Importer.Spaces(src, Shared.Book, profileId); sum = sum with { Notes = [.. sum.Notes, .. sp.Notes] } with { Spaces = sp.Spaces, Pins = sp.Pins }; }
+                                Send(core, new { type = "import.done", id = src.Id, bookmarks = sum.Bookmarks, visits = sum.Visits, logins = sum.Logins, spaces = sum.Spaces, pins = sum.Pins, notes = sum.Notes });
+                            });
                         });
                     }
                     break;
