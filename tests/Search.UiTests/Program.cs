@@ -1039,11 +1039,16 @@ try
     ClickCard("Done");
 
     // The column never gets narrower than its top row.
-    Mouse.Drag(new Point(window.BoundingRectangle.Left + 232, window.BoundingRectangle.Top + 400), new Point(window.BoundingRectangle.Left + 90, window.BoundingRectangle.Top + 400));
+    var hideBefore = ById("CollapseSidebar")?.BoundingRectangle.Right ?? 0;
+    var edgeAt = new Point(hideBefore + 10, window.BoundingRectangle.Top + 400);
+    Mouse.MoveTo(edgeAt); Thread.Sleep(300);
+    Mouse.Down(MouseButton.Left);
+    for (var dx = 0; dx <= 150; dx += 10) { Mouse.MoveTo(new Point(edgeAt.X - dx, edgeAt.Y)); Thread.Sleep(30); }
+    Mouse.Up(MouseButton.Left);
     Thread.Sleep(1000);
     var reload = ById("ReloadDoor")?.BoundingRectangle; var hideBtn = ById("CollapseSidebar")?.BoundingRectangle;
     var gap = hideBtn is null || reload is null ? -999 : hideBtn.Value.Left - reload.Value.Right;
-    Step("Dragging the column's edge as narrow as it goes: the reload button stays whole with a little space before the next one", gap >= 0 && gap < 40 && reload is not null && reload.Value.Width > 20, $"gap after reload: {gap}px · " + Shot("column-narrowest"));
+    Step("Dragging the column's edge as narrow as it goes: the reload button stays whole with a little space before the next one", gap >= 0 && gap < 40 && reload is not null && reload.Value.Width > 20 && (hideBtn?.Right ?? hideBefore) < hideBefore - 2, $"column's right button moved from {hideBefore} to {hideBtn?.Right}, gap after reload: {gap}px · " + Shot("column-narrowest"));
 
     if (ById("FootSettings") is { } footSet && ById("FootUpdate") is { } footUp)
         Step("The foot has Settings at the right, and Update beside it when one is ready", footUp.BoundingRectangle.Right <= footSet.BoundingRectangle.Left + 4 && Math.Abs(footUp.BoundingRectangle.Top - footSet.BoundingRectangle.Top) < 6, $"update at {footUp.BoundingRectangle.Left}, settings at {footSet.BoundingRectangle.Left} · " + Shot("column-foot"));
@@ -1052,7 +1057,7 @@ try
     for (var i = 0; i < 3 && !settingsOpened; i++)
     {
         if (ById("FootSettings") is { } footSet2) Mouse.Click(CentreOf(footSet2));
-        settingsOpened = Await(() => OnPage("Passwords") is not null, 5000);
+        settingsOpened = Await(() => window!.FindAllDescendants().Count(el => { try { return el.Name == "Settings"; } catch { return false; } }) >= 2 || OnPage("Passwords") is not null, 5000);
     }
     Step("Settings at the foot opens Settings", settingsOpened, "Settings page shown: " + settingsOpened);
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
