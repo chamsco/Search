@@ -66,7 +66,7 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Reading mode | ✅ | Ctrl+Alt+Shift+R; the Mac's prose-minus-links heuristic. Markdown twins ⬜ |
 | Translation | ⛔ | Skipped by the owner's decision (wave 6) |
 | Site styles | ✅ | Settings › Sites; CSS only; off until turned on |
-| Live folders | ⬜ | Feeds inside pin folders; next |
+| Live folders | ✅ | Pin folders filled from an RSS or Atom feed: latest 12 posts, refreshed every 30 minutes and on Refresh, a site address finds its feed; only with pins as rows |
 | Picture in picture | ✅ | Ctrl+Shift+P floats the playing video in Chromium's own window |
 | HTTPS upgrade | ✅ | Falls back to http if the site has no https; Settings › Privacy |
 | Tracker protection | ✅ | Settings › Privacy › Block trackers; known ad and tracking hosts are not asked |

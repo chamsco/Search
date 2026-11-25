@@ -95,8 +95,10 @@ public partial class MainWindow
                     {
                         var h = HeadingFor(f.Id, true);
                         h.Name = f.Name; h.Collapsed = f.Collapsed; h.Depth = line.Depth; h.Colour = null;
-                        h.Count = st.Pins.Count(p => p.FolderId == f.Id);
+                        h.Count = f.IsLive ? (f.Items?.Count ?? 0) : st.Pins.Count(p => p.FolderId == f.Id);
                         pinRows.Add(h);
+                        if (f.IsLive && !f.Collapsed)
+                            foreach (var item in f.Items ?? []) pinRows.Add(feedRows.TryGetValue(item.Id, out var fr) && fr.Item == item ? fr : feedRows[item.Id] = new FeedRow(item, line.Depth));
                     }
                     else if (st.Pins.FirstOrDefault(p => p.Id == line.Pin) is { } pin)
                     {
@@ -134,6 +136,7 @@ public partial class MainWindow
         var chip = (DataTemplate)FindResource("TabChip");
         var tile = (DataTemplate)FindResource("PinTile");
         var headRow = (DataTemplate)FindResource("HeadingRow");
+        var feedLine = (DataTemplate)FindResource("FeedLine");
         var headChip = (DataTemplate)FindResource("HeadingChip");
         TabList.ItemTemplate = null; TabList.ItemTemplateSelector = new RowSelector(tabRow, headRow);
         TopTabs.ItemTemplate = null; TopTabs.ItemTemplateSelector = new RowSelector(chip, headChip);
@@ -143,7 +146,7 @@ public partial class MainWindow
         var rows = FoldersShown;
         rowsMode = rows;
         PinGrid.ItemTemplate = null;
-        PinGrid.ItemTemplateSelector = new RowSelector(rows ? tabRow : tile, headRow);
+        PinGrid.ItemTemplateSelector = new RowSelector(rows ? tabRow : tile, headRow, feedLine);
         PinGrid.ItemsPanel = rows ? new ItemsPanelTemplate(new FrameworkElementFactory(typeof(StackPanel))) : (ItemsPanelTemplate)PinGridPanel;
         PinGrid.ItemsSource = rows ? st.PinRows : pins;
     }
@@ -234,6 +237,8 @@ public partial class MainWindow
         else
         {
             menu.Items.Add(Item("New Folder Inside", () => NewFolder(h.Id), PinTree.Depth(h.Id, st.Folders) < PinTree.MaxDepth));
+            menu.Items.Add(Item("New Live Folder Inside…", () => NewLiveFolderPopup(h.Id), PinTree.Depth(h.Id, st.Folders) < PinTree.MaxDepth));
+            if (st.Folders.FirstOrDefault(f => f.Id == h.Id) is { IsLive: true }) menu.Items.Add(Item("Refresh", () => RefreshLiveFolder(h.Id)));
             menu.Items.Add(new Separator());
             menu.Items.Add(Item("Delete Folder", () => DeleteFolder(h.Id)));
         }
@@ -325,7 +330,8 @@ public partial class MainWindow
             if (!FoldersShown) return;
             var move = new MenuItem { Header = "Move to Folder" };
             move.Items.Add(item("New Folder", () => NewFolder(null, t), true));
-            foreach (var f in st.Folders)
+            move.Items.Add(item("New Live Folder…", () => NewLiveFolderPopup(null), true));
+            foreach (var f in st.Folders.Where(f => !f.IsLive))
             {
                 var target = f;
                 var sub = item(new string(' ', (PinTree.Depth(f.Id, st.Folders) - 1) * 2) + f.Name, () => { t.FolderId = target.Id; RebuildRows(st); SaveSoon(); }, true);

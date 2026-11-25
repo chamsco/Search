@@ -622,6 +622,8 @@ try
     const string styledPage = "<!doctype html><title>Styled</title><body style='background:white'><h1>Styled</h1><script>setTimeout(()=>{document.title='bg='+getComputedStyle(document.body).backgroundColor},2000)</script>";
     const string videoPage = "<!doctype html><title>Video</title><video id=v muted autoplay playsinline width=320 height=180></video><canvas id=c width=320 height=180 style='display:none'></canvas>" +
         "<script>const c=document.getElementById('c'),x=c.getContext('2d');setInterval(()=>{x.fillStyle='hsl('+(Date.now()/10%360)+',70%,50%)';x.fillRect(0,0,320,180)},50);const v=document.getElementById('v');v.srcObject=c.captureStream(20);v.play();</script>";
+    const string feedXml = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Harbour News</title>" +
+        "<item><title>Post one</title><link>/post1</link></item><item><title>Post two &amp; more</title><link>/post2</link></item></channel></rss>";
     var serving = Task.Run(async () =>
     {
         while (server.IsListening)
@@ -630,9 +632,9 @@ try
             {
                 var ctx = await server.GetContextAsync();
                 var path = ctx.Request.Url!.AbsolutePath;
-                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, _ => indexPage };
+                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", _ => indexPage };
                 var bytes = System.Text.Encoding.UTF8.GetBytes(html);
-                ctx.Response.ContentType = "text/html; charset=utf-8";
+                ctx.Response.ContentType = path == "/feed.xml" ? "application/rss+xml; charset=utf-8" : "text/html; charset=utf-8";
                 ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
                 ctx.Response.Close();
             }
@@ -786,6 +788,25 @@ try
     var pipTrace = Trace6().Split('\n').LastOrDefault(l => l.Contains("pip ")) ?? "";
     Step("Ctrl+Shift+P on a page with a playing video: it floats in a picture-in-picture window", pipTrace.Contains("opened"), pipTrace.Trim().Replace("|", "/") + " · " + Shot("picture-in-picture"));
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_P);
+
+    // Live folders
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6-live-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"pinsAsRows\":true}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/\",\"title\":\"Wave six\"}],\"active\":0,\"folders\":[{\"id\":\"6f1b2c3d-0000-4000-8000-000000000001\",\"name\":\"Seeded live\",\"feed\":\"" + origin6 + "/feed.xml\"}]}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    var postOne = Await(() => OnPage("Post one") is not null || window!.FindFirstDescendant(cf => cf.ByName("Post one")) is not null, 25000);
+    Step("A live folder (pin folder with a feed address): its latest posts fill it a few seconds after launch", postOne && window.FindFirstDescendant(cf => cf.ByName("Post two & more")) is not null, "feed: " + origin6 + "/feed.xml · " + Shot("live-folder"));
+    if (window.FindFirstDescendant(cf => cf.ByName("Post one")) is { } post) Mouse.Click(CentreOf(post));
+    var opened = Await(() => SessionText().Contains("/post1"), 8000);
+    Step("Click a post: its page opens in a new tab", opened, "session has /post1: " + opened + " · " + Shot("live-folder-post"));
+    if (window.FindFirstDescendant(cf => cf.ByName("Seeded live")) is { } seeded) { Mouse.Click(CentreOf(seeded), MouseButton.Right); Thread.Sleep(900); MenuEntry("New Live Folder Inside…")?.Click(); }
+    var addressBox = Await(() => Anywhere("Feed address") is not null, 8000);
+    if (addressBox) { Keyboard.Type(origin6 + "/blog"); Thread.Sleep(300); Keyboard.Press(VirtualKeyShort.RETURN); }
+    var made = Await(() => window!.FindFirstDescendant(cf => cf.ByName("Harbour News")) is not null, 15000);
+    Step("Heading menu › New Live Folder Inside…, a site's address (not the feed's): the feed it points to is found and a folder named after it is made", addressBox && made, $"address box: {addressBox}, folder made: {made} · " + Shot("live-folder-new"));
 
     // Proxy
     Quit();
