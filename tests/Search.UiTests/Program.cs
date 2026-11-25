@@ -850,6 +850,71 @@ try
     string saw; lock (proxySaw) saw = string.Join(" / ", proxySaw.Where(l => l.Contains("proxy-probe")).Take(2));
     Step("Settings › Privacy › Proxy set to a server of its own: a page for a name that exists nowhere loads through it", viaProxy && saw.Length > 0, $"the proxy saw: {saw} · " + Shot("proxy"));
     proxy.Stop();
+
+    // Proxy that asks who you are
+    Quit();
+    var authPort = port + 200;
+    var authSaw = new List<string>();
+    var authProxy = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, authPort);
+    authProxy.Start();
+    var expected = "Proxy-Authorization: Basic " + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("alice:s3cret"));
+    var authing = Task.Run(async () =>
+    {
+        while (true)
+        {
+            try
+            {
+                var client = await authProxy.AcceptTcpClientAsync();
+                _ = Task.Run(() =>
+                {
+                    using var c = client;
+                    var stream = c.GetStream();
+                    var buf = new byte[8192];
+                    var n = stream.Read(buf, 0, buf.Length);
+                    var head = System.Text.Encoding.ASCII.GetString(buf, 0, n);
+                    var first = head.Split('\n')[0].Trim();
+                    if (!first.StartsWith("GET http://proxy-auth.test", StringComparison.Ordinal)) return;
+                    var signedIn = head.Contains(expected, StringComparison.OrdinalIgnoreCase);
+                    lock (authSaw) authSaw.Add(signedIn ? "signed in" : "asked who");
+                    string reply;
+                    if (signedIn) { var body = "<!doctype html><title>Signed in at the proxy</title><h1>Signed in at the proxy</h1>"; reply = $"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}"; }
+                    else reply = "HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm=\"test\"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                    var bytes = System.Text.Encoding.ASCII.GetBytes(reply);
+                    stream.Write(bytes, 0, bytes.Length);
+                });
+            }
+            catch { return; }
+        }
+    });
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6a-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"proxyMode\":2,\"proxyServer\":\"127.0.0.1:" + authPort + "\"}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var userBox = false;
+    for (var i = 0; i < 4 && !userBox; i++)
+    {
+        Mouse.Click(new Point(window.BoundingRectangle.Left + 293, window.BoundingRectangle.Top + 225)); // Privacy in the nav
+        Thread.Sleep(1200);
+        userBox = Await(() => OnPage("Proxy user name") is not null, 3000);
+    }
+    if (OnPage("Proxy user name") is { } userField) { Mouse.Click(CentreOf(userField)); Thread.Sleep(300); Keyboard.Type("alice"); Keyboard.Press(VirtualKeyShort.TAB); Thread.Sleep(900); }
+    if (OnPage("Proxy password") is { } pwField) { Mouse.Click(CentreOf(pwField)); Thread.Sleep(300); Keyboard.Type("s3cret"); Keyboard.Press(VirtualKeyShort.TAB); Thread.Sleep(1500); }
+    var vault = Path.Combine(data, "proxy-secret.bin");
+    var vaulted = File.Exists(vault) && !System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(vault)).Contains("s3cret") && !DataText("prefs.json").Contains("s3cret");
+    Step("Settings › Privacy › Proxy › User name and Password typed: the name is vaulted in prefs, the password protected in its own file and nowhere else", userBox && vaulted && DataText("prefs.json").Contains("alice"), $"settings has the fields: {userBox}, protected file: {File.Exists(vault)} · " + Shot("proxy-credentials"));
+    Quit();
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"http://proxy-auth.test/\",\"title\":\"\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    var signed = Await(() => OnPage("Signed in at the proxy") is not null, 25000);
+    string sawAuth; lock (authSaw) sawAuth = string.Join(" / ", authSaw);
+    Step("A proxy that answers 407: Search signs in with the kept name and password, and the page loads", signed, $"the proxy saw: {sawAuth} · " + Shot("proxy-signed-in"));
+    authProxy.Stop();
     server.Stop();
 }
 catch (Exception e)

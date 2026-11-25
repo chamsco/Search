@@ -63,7 +63,9 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
     <div class="line"><div class="label">Block trackers<small>Ad and tracking servers are not asked at all</small></div><div class="switch" id="blockTrackers"></div></div></div>
   <h3>Proxy</h3>
   <div class="group"><div class="line"><div class="label">Proxy<small>What every page goes through. Takes effect the next time Search starts</small></div><select id="proxyMode"><option value="System">As Windows says</option><option value="Off">None</option><option value="Custom">My own server</option></select></div>
-    <div class="line" id="proxyLine" style="display:none"><div class="label">Server<small>host:port, or socks5://host:port</small></div><input type="text" id="proxyServer" style="width:260px" placeholder="127.0.0.1:8080"></div></div>
+    <div class="line" id="proxyLine" style="display:none"><div class="label">Server<small>host:port, or socks5://host:port</small></div><input type="text" id="proxyServer" style="width:260px" placeholder="127.0.0.1:8080"></div>
+    <div class="line proxyAuth" style="display:none"><div class="label">User name<small>Only if the proxy asks who you are</small></div><input type="text" id="proxyUser" aria-label="Proxy user name" style="width:260px" autocomplete="off"></div>
+    <div class="line proxyAuth" style="display:none"><div class="label">Password<small id="proxyPwNote">Kept protected for this Windows account; never shown again</small></div><input type="password" id="proxyPassword" aria-label="Proxy password" style="width:260px" autocomplete="off"></div></div>
   <h3>Clear browsing data</h3>
   <div class="group"><div class="line"><div class="label">Time range</div><select id="range"><option value="hour">Last hour</option><option value="day">Last 24 hours</option><option value="week">Last 7 days</option><option value="all" selected>All time</option></select></div>
     <div class="line checks" style="display:block"><label><input type="checkbox" id="k-history" checked> Browsing history</label><label><input type="checkbox" id="k-downloads" checked> Download list</label>
@@ -117,7 +119,10 @@ document.getElementById('clearNow').onclick = () => {
   const kinds = ['history','downloads','cookies','cache','permissions'].filter(k => document.getElementById('k-' + k).checked);
   if (!kinds.length) return; host.send('settings.clear', { range: document.getElementById('range').value, kinds }); };
 
-document.getElementById('proxyMode').onchange = e => { set('proxyMode', e.target.value); document.getElementById('proxyLine').style.display = e.target.value === 'Custom' ? '' : 'none'; };
+const showProxy = mode => { document.getElementById('proxyLine').style.display = mode === 'Custom' ? '' : 'none'; document.querySelectorAll('.proxyAuth').forEach(l => l.style.display = mode === 'Custom' ? '' : 'none'); };
+document.getElementById('proxyMode').onchange = e => { set('proxyMode', e.target.value); showProxy(e.target.value); };
+document.getElementById('proxyUser').onchange = e => set('proxyUser', e.target.value);
+document.getElementById('proxyPassword').onchange = e => { set('proxyPassword', e.target.value); e.target.value = ''; };
 let proxyTimer; document.getElementById('proxyServer').oninput = e => { clearTimeout(proxyTimer); proxyTimer = setTimeout(() => set('proxyServer', e.target.value), 300); };
 document.getElementById('permAll').onclick = () => host.send('permissions.resetAll');
 document.getElementById('permList').onclick = e => { const b = e.target.closest('button'); if (b) host.send('permissions.reset', { origin: b.dataset.o, kind: b.dataset.k }); };
@@ -165,7 +170,7 @@ host.on('settings', m => {
   for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','blockTrackers','siteSearch','siteStylesOn','pinsAsRows','spacesOn','littleLinks','peek','peekStays','pinsPeek','splitView','altSplit']) document.getElementById(id).classList.toggle('on', !!m[id]);
   document.getElementById('peekClick').value = m.peekClick;
   document.getElementById('proxyMode').value = m.proxyMode; document.getElementById('proxyServer').value = m.proxyServer || '';
-  document.getElementById('proxyLine').style.display = m.proxyMode === 'Custom' ? '' : 'none';
+  showProxy(m.proxyMode); document.getElementById('proxyUser').value = m.proxyUser || ''; document.getElementById('proxyPassword').placeholder = m.proxyHasPassword ? 'Kept — type to change' : '';
   document.getElementById('engine').value = m.engine; document.getElementById('custom').value = m.customEngine || '';
   document.getElementById('customLine').style.display = m.engine === 'Custom' ? '' : 'none';
   document.getElementById('dlpath').textContent = m.downloadFolder; mark(m.look);

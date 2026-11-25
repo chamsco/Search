@@ -255,6 +255,7 @@ public partial class MainWindow : Window
         core.PermissionRequested += (_, e) => OnPermission(e);
         core.NotificationReceived += (_, e) => OnNotification(t, e);
         core.ClientCertificateRequested += (_, e) => OnClientCertificate(e);
+        core.BasicAuthenticationRequested += (_, e) => OnProxyAuth(e);
         WatchTrackers(t, core);
         WatchStyles(t, core);
 

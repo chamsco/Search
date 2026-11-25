@@ -219,7 +219,7 @@ public partial class MainWindow
             type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
             engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
             spacesOn = d.SpacesOn, closeIdleDays = d.CloseIdleDays, littleLinks = d.LittleLinks, peek = d.Peek, splitView = d.SplitView, altSplit = d.AltSplit, peekClick = d.PeekClick, peekStays = d.PeekStays, pinsPeek = d.PinsPeek, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
-            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer,
+            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer, proxyUser = d.ProxyUser, proxyHasPassword = ProxyVault.Has,
             spaces = Shared.Book.Spaces.Select(sp => new { id = sp.Id, name = sp.Name, colour = sp.Colour, colour2 = sp.Colour2, strength = sp.Strength.ToString(), icon = sp.IconIndex, shares = sp.SharesSignIns, profile = sp.ProfileId, first = sp.IsFirst }),
             profiles = Shared.Book.Profiles.Select(pf => new { id = pf.Id, name = pf.Name, personal = pf.IsPersonal }),
             iconGlyphs = Spaces.Icons, iconNames = Spaces.IconNames, colourNames = Spaces.ColourNames,
@@ -231,6 +231,7 @@ public partial class MainWindow
     {
         bool B() => value.ValueKind == JsonValueKind.True;
         string S() => value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : "";
+        if (key == "proxyPassword") { ProxyVault.Write(S()); PostToPages(SettingsMessage(), "settings"); return; }
         Shared.Prefs.Update(d =>
         {
             switch (key)
@@ -255,6 +256,7 @@ public partial class MainWindow
                 case "siteStylesOn": d.SiteStylesOn = B(); break;
                 case "proxyMode": if (Enum.TryParse<ProxyMode>(S(), out var pm)) d.ProxyMode = pm; break;
                 case "proxyServer": d.ProxyServer = S().Trim(); break;
+                case "proxyUser": d.ProxyUser = S().Trim(); if (d.ProxyUser.Length == 0) ProxyVault.Forget(); break;
                 case "engine": if (Enum.TryParse<Engine>(S(), out var en)) d.Engine = en; break;
                 case "customEngine": d.CustomEngine = S(); break;
                 case "look": if (Enum.TryParse<LookChoice>(S(), out var lk)) d.Look = lk; break;

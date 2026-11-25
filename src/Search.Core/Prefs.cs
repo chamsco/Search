@@ -47,6 +47,8 @@ public sealed class PrefsData
     /// <summary>Settings › Privacy › Proxy: what Windows says, none, or a server of your own (host:port).</summary>
     public ProxyMode ProxyMode { get; set; } = ProxyMode.System;
     public string ProxyServer { get; set; } = "";
+    /// <summary>The user name for a proxy that asks for one. The password is not here: it is kept protected for this Windows account (ProxyVault).</summary>
+    public string ProxyUser { get; set; } = "";
     /// <summary>Settings › Keyboard &amp; Mouse › Type a site's name, press Tab, and search that site.</summary>
     public bool SiteSearch { get; set; } = true;
     /// <summary>Settings › Sites › Your own style for a site: off until turned on, as on the Mac.</summary>
