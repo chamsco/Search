@@ -107,7 +107,7 @@ try
 
     var b = window.BoundingRectangle;
     // First row: below the 52-point strip, the address pill (38) and the page's actions (34), 10 in from the column's edge (maximised windows sit 7 in).
-    var firstRow = new Point(b.Left + 7 + 80, b.Top + 7 + 52 + 72 + 14);
+    var firstRow = new Point(b.Left + 7 + 80, b.Top + 7 + 52 + 14);
     Mouse.MoveTo(firstRow);
     Thread.Sleep(700);
     Step("Hover the first tab: soft grey row and a close button, no tooltip box", true, Shot("hover-tab"));
@@ -668,7 +668,7 @@ try
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(9000);
 
-    Point RowPoints6() => new Point(window!.BoundingRectangle.Left + 117, 144);
+    Point RowPoints6() => new Point(window!.BoundingRectangle.Left + 117, 72);
     AutomationElement? Anywhere(string name)
     {
         // The app's own top-level windows (popups are separate windows of this process); bounded so a slow tree never stalls the step.
