@@ -923,7 +923,7 @@ public partial class MainWindow : Window
         else if (ctrl && shift && !alt && key == Key.Q) { App.Quitting = true; Application.Current.Shutdown(); }
         else if (ctrl && !alt && key == Key.F) OpenFind();
         else if (ctrl && !alt && key == Key.G) FindStep(shift ? -1 : 1);
-        else if (ctrl && !alt && key == Key.P) Print();
+        else if (ctrl && !alt && !shift && key == Key.P) Print();
         else if (ctrl && !alt && key is Key.OemPlus or Key.Add) Zoom(1);
         else if (ctrl && !alt && key is Key.OemMinus or Key.Subtract) Zoom(-1);
         else if (ctrl && !alt && key is Key.D0 or Key.NumPad0) Zoom(0);
@@ -938,7 +938,7 @@ public partial class MainWindow : Window
         else if (ctrl && shift && !alt && key == Key.B) AddBookmark();
         else if (ctrl && alt && key == Key.B) Shared.Prefs.Update(d => d.BookmarksBar = !d.BookmarksBar);
         else if (key == Key.F12 || (ctrl && alt && key == Key.I)) ToggleDevTools();
-        else if (ctrl && alt && key == Key.R) core?.CallDevToolsProtocolMethodAsync("Page.reload", "{\"ignoreCache\":true}");
+        else if (ctrl && alt && !shift && key == Key.R) core?.CallDevToolsProtocolMethodAsync("Page.reload", "{\"ignoreCache\":true}");
         else if (ctrl && !alt && key is Key.W or Key.F4 && live is not null) Close(live);
         else if ((ctrl && key == Key.L) || (alt && key == Key.D) || key == Key.F6) BeginEditing();
         else if ((ctrl && key == Key.R) || key == Key.F5)

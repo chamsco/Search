@@ -714,9 +714,13 @@ try
     // Settings › Sites
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
     Thread.Sleep(3500);
-    if (OnPage("Sites") is { } nav) Mouse.Click(CentreOf(nav));
-    Thread.Sleep(1500);
-    var listed6 = Await(() => OnPage("Location: allowed") is not null || OnPage(site6) is not null, 5000);
+    var listed6 = false;
+    for (var i = 0; i < 4 && !listed6; i++)
+    {
+        if (OnPage("Sites") is { } nav) Mouse.Click(CentreOf(nav));
+        Thread.Sleep(1200);
+        listed6 = Await(() => OnPage("Location: allowed") is not null || OnPage(site6) is not null, 3000);
+    }
     Step("Settings › Sites lists what the site was allowed", listed6, Shot("settings-sites"));
     if (OnPage("Forget") is { } forget) Mouse.Click(CentreOf(forget));
     Thread.Sleep(1500);

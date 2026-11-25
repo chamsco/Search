@@ -44,11 +44,11 @@ public partial class MainWindow
         head.SetResourceReference(TextBlock.ForegroundProperty, "Ink");
         System.Windows.Automation.AutomationProperties.SetName(head, title);
         panel.Children.Add(head);
-        if (detail.Length > 0)
+        foreach (var line in detail.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
-            var d = new TextBlock { Text = detail, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) };
+            var d = new TextBlock { Text = line, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 3) };
             d.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
-            System.Windows.Automation.AutomationProperties.SetName(d, detail);
+            System.Windows.Automation.AutomationProperties.SetName(d, line);
             panel.Children.Add(d);
         }
         if (extra is not null) panel.Children.Add(extra);
