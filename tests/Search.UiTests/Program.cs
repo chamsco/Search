@@ -1020,23 +1020,33 @@ try
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(7000);
     AutomationElement? ById(string id) { try { return window!.FindFirstDescendant(cf => cf.ByAutomationId(id)); } catch { return null; } }
-    var pillText = ""; Await(() => { pillText = ById("AddressText")?.Name ?? ""; return pillText.Contains("localhost"); }, 8000);
-    var pillOk = pillText.Contains("localhost");
-    Step("The top of the column shows the page's address in a pill, with the page's actions under it", pillOk && OnPage("Copy link") is not null && OnPage("Screenshot") is not null && OnPage("Bookmark this page") is not null, $"pill: {pillText}, actions: {OnPage("Copy link") is not null} · " + Shot("column-address"));
-    if (ById("AddressText") is { } pill) Mouse.Click(CentreOf(pill));
+    // The page's actions live in the tab's own menu; the row itself is the address.
+    Mouse.MoveTo(RowPoints6()); Thread.Sleep(500);
+    var copyOnRow = OnPage("Copy link");
+    Step("Hover the tab: a copy-link button sits at the far right of the row, no second address bar above the pages", copyOnRow is not null && ById("AddressPill") is null && ById("AddressText") is null, $"copy button on row: {copyOnRow is not null} · " + Shot("column-address"));
+    if (copyOnRow is not null) Mouse.Click(CentreOf(copyOnRow));
+    var copied = Await(() => Trace6().Contains("link copied"), 5000);
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 700, window.BoundingRectangle.Top + 400)); Thread.Sleep(300);
+    // A plain click on the tab you are on edits its address where it is.
+    Mouse.Click(new Point(RowPoints6().X + 20, RowPoints6().Y));
     Thread.Sleep(900);
     Keyboard.Type(origin6 + "/signup"); Keyboard.Press(VirtualKeyShort.RETURN);
     var navigated = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "Sign up"; } catch { return false; } }), 12000);
-    Step("Clicking the address pill changes the address right there, no new tab", navigated, "tab titled Sign up: " + navigated + " · " + Shot("column-address-edit"));
-    if (OnPage("Copy link") is { } copyBtn) Mouse.Click(CentreOf(copyBtn));
-    var copied = Await(() => Trace6().Contains("link copied"), 5000);
-    if (OnPage("Bookmark this page") is { } starBtn) Mouse.Click(CentreOf(starBtn));
-    var starred = Await(() => DataText("bookmarks.json").Contains("localhost"), 6000);
-    Step("Page actions: Copy link copies the address, the star bookmarks the page", copied && starred, $"copied: {copied}, bookmarked: {starred} · " + Shot("column-actions"));
-    if (OnPage("Screenshot") is { } shotBtn) Mouse.Click(CentreOf(shotBtn));
+    Step("Clicking the tab you are on changes its address right there, no new tab; Copy link copied it", navigated && copied, $"tab titled Sign up: {navigated}, copied: {copied} · " + Shot("column-address-edit"));
+    Mouse.Click(RowPoints6(), MouseButton.Right);
+    Thread.Sleep(900);
+    var menuHas = new[] { "Bookmark This Page", "Take Screenshot", "Share", "Style This Site" }.All(n => MenuEntry(n) is not null);
+    var menuShot = Shot("column-actions");
+    MenuEntry("Bookmark This Page")?.Click();
+    var starred = Await(() => DataText("bookmarks.json").Contains("localhost"), 8000);
+    Keyboard.Press(VirtualKeyShort.ESCAPE); Thread.Sleep(500);
+    Step("The tab's right-click menu has Bookmark, Screenshot, Share and Style This Site; Bookmark saves the page", menuHas && starred, $"items: {menuHas}, bookmarked: {starred} · " + menuShot);
+    Mouse.Click(RowPoints6(), MouseButton.Right);
+    Thread.Sleep(900);
+    MenuEntry("Take Screenshot")?.Click();
     var shotCard = Await(() => Anywhere("Screenshot saved") is not null, 10000);
     var shotFile = Directory.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots")) && Directory.EnumerateFiles(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots"), "Search *.png").Any(f => (DateTime.Now - File.GetLastWriteTime(f)).TotalMinutes < 5);
-    Step("Screenshot: the page is saved to Pictures › Screenshots and a card says so", shotCard && shotFile, $"card: {shotCard}, file: {shotFile} · " + Shot("column-screenshot"));
+    Step("Take Screenshot from the tab menu: the page is saved to Pictures › Screenshots and a card says so", shotCard && shotFile, $"card: {shotCard}, file: {shotFile} · " + Shot("column-screenshot"));
     ClickCard("Done");
 
     // The column never gets narrower than its top row.

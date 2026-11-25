@@ -63,44 +63,24 @@ public partial class MainWindow
 
     void FootSettings_Click(object sender, RoutedEventArgs e) => OpenPage("search://settings");
 
-    // MARK: - the address and the page's actions
+    // MARK: - the page's actions (in the tab's menu), and copy link on the row
 
-    void RefreshPageBar()
-    {
-        if (AddressText is null) return;
-        var t = live;
-        var page = t is { IsBlank: false, IsInternal: false };
-        AddressText.Text = page ? Address.Pretty(t!.Url) : t is { IsInternal: true } ? t.Label : "Search or enter address";
-        AddressGlyph.Text = t is not null && t.Url.StartsWith("https:", StringComparison.OrdinalIgnoreCase) ? "\uE72E" : "\uE785";
-        PageActions.Visibility = page ? Visibility.Visible : Visibility.Collapsed;
-        if (page) BookmarkDoor.Content = Marks.Contains(t!.Url) ? "" : "";
-    }
+    void RefreshPageBar() { }
 
-    void AddressPill_Click(object sender, MouseButtonEventArgs e)
+    void CopyRowLink_Click(object sender, RoutedEventArgs e)
     {
-        if (live is null) return;
-        BeginEditing();
-    }
-
-    void CopyLink_Click(object sender, RoutedEventArgs e)
-    {
-        if (live is not { IsBlank: false, IsInternal: false } t) return;
+        e.Handled = true;
+        if ((sender as FrameworkElement)?.DataContext is not Tab { IsBlank: false, IsInternal: false } t) return;
         try { Clipboard.SetText(t.Url); } catch { return; }
-        CopyLinkDoor.Content = "";
-        CopyLinkDoor.ToolTip = "Link copied";
-        var back = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
-        back.Tick += (_, _) => { back.Stop(); CopyLinkDoor.Content = ""; CopyLinkDoor.ToolTip = "Copy link"; };
-        back.Start();
+        if (sender is Button b)
+        {
+            b.Content = "\uE73E"; b.ToolTip = "Link copied";
+            var back = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+            back.Tick += (_, _) => { back.Stop(); b.Content = "\uE8C8"; b.ToolTip = "Copy link"; };
+            back.Start();
+        }
         App.Trace("link copied");
     }
-
-    void BookmarkDoor2_Click(object sender, RoutedEventArgs e)
-    {
-        AddBookmark();
-        RefreshPageBar();
-    }
-
-    void StyleDoor_Click(object sender, RoutedEventArgs e) => OpenPage("search://settings/sites");
 
     async void Shot_Click(object sender, RoutedEventArgs e)
     {
@@ -157,7 +137,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             App.Log(ex);
-            CopyLink_Click(sender, e); // no share sheet here: the link is on the clipboard instead
+            try { Clipboard.SetText(t.Url); } catch { } // no share sheet here: the link is on the clipboard instead
         }
     }
 }

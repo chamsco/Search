@@ -133,14 +133,17 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <ContentPresenter x:Name="MarkHost" Content="{Binding}" ContentTemplate="{StaticResource Mark}" Margin="0,0,8,0" VerticalAlignment="Center" />
           <TextBlock x:Name="Title" Grid.Column="1" Text="{Binding Label}" FontSize="12.5" VerticalAlignment="Center"
                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Row.Muted}" />
+          <Button x:Name="CopyLink" Grid.Column="2" Style="{StaticResource Door}" Width="15" Height="15" Margin="8,0,0,0" FontSize="9" Content="&#xE8C8;"
+                  Visibility="Collapsed" Click="CopyRowLink_Click" ToolTip="Copy link" AutomationProperties.Name="Copy link" />
           <TextBox x:Name="Field" Grid.Column="0" Grid.ColumnSpan="2" Visibility="Collapsed" FontSize="12.5" BorderThickness="0" Background="Transparent"
                    Foreground="{DynamicResource Ink}" CaretBrush="{DynamicResource Ink}" VerticalContentAlignment="Center" Padding="-2,0,0,0"
                    PreviewKeyDown="InlineField_PreviewKeyDown" TextChanged="InlineField_TextChanged" LostKeyboardFocus="InlineField_LostFocus" />
-          <Grid Grid.Column="2" Width="15" Height="15" Margin="8,0,0,0">
+          <Grid Grid.Column="3" Width="15" Height="15" Margin="8,0,0,0">
             <ContentControl x:Name="Ring" Template="{StaticResource Ring}" Visibility="Collapsed" />
             <Button x:Name="Close" Style="{StaticResource Door}" Width="15" Height="15" Margin="0" FontSize="8" Content="&#xE8BB;"
                     Visibility="Hidden" Click="CloseTab_Click" ToolTip="Close tab (Ctrl+W)" />
@@ -159,6 +162,7 @@
           <Trigger.EnterActions><BeginStoryboard Storyboard="{StaticResource HoverIn}" /></Trigger.EnterActions>
           <Trigger.ExitActions><BeginStoryboard Storyboard="{StaticResource HoverOut}" /></Trigger.ExitActions>
           <Setter TargetName="Close" Property="Visibility" Value="Visible" />
+          <Setter TargetName="CopyLink" Property="Visibility" Value="Visible" />
           <Setter TargetName="Ring" Property="Visibility" Value="Collapsed" />
         </Trigger>
         <DataTrigger Binding="{Binding InSplit}" Value="True">
@@ -465,21 +469,6 @@
           <Button Style="{StaticResource Door}" x:Name="ReloadDoor" AutomationProperties.AutomationId="ReloadDoor" Content="&#xE72C;" FontSize="10" Click="Reload_Click" ToolTip="Reload (Ctrl+R)" />
         </StackPanel>
       </Grid>
-
-      <!-- The address: click to change it where it is; the page's own actions under it. -->
-      <Border x:Name="AddressPill" AutomationProperties.AutomationId="AddressPill" DockPanel.Dock="Top" Height="34" Margin="10,0,10,4" CornerRadius="9" Background="{DynamicResource Row.Wash}" Cursor="IBeam" MouseLeftButtonUp="AddressPill_Click">
-        <StackPanel Orientation="Horizontal" Margin="10,0">
-          <TextBlock x:Name="AddressGlyph" Text="&#xE72E;" FontFamily="{StaticResource Glyphs}" FontSize="10" Margin="0,0,8,0" VerticalAlignment="Center" Foreground="{DynamicResource Row.Muted}" />
-          <TextBlock x:Name="AddressText" AutomationProperties.AutomationId="AddressText" Text="Search or enter address" FontSize="12.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ink}" />
-        </StackPanel>
-      </Border>
-      <StackPanel x:Name="PageActions" DockPanel.Dock="Top" Orientation="Horizontal" Margin="10,0,10,8" Visibility="Collapsed">
-        <Button Style="{StaticResource Door}" x:Name="CopyLinkDoor" Content="&#xE8C8;" ToolTip="Copy link" AutomationProperties.Name="Copy link" Click="CopyLink_Click" />
-        <Button Style="{StaticResource Door}" x:Name="BookmarkDoor" Content="&#xE734;" ToolTip="Bookmark (Ctrl+Shift+B)" AutomationProperties.Name="Bookmark this page" Click="BookmarkDoor2_Click" />
-        <Button Style="{StaticResource Door}" x:Name="ShotDoor" Content="&#xE722;" ToolTip="Screenshot" AutomationProperties.Name="Screenshot" Click="Shot_Click" />
-        <Button Style="{StaticResource Door}" x:Name="ShareDoor" Content="&#xE72D;" ToolTip="Share" AutomationProperties.Name="Share" Click="Share_Click" />
-        <Button Style="{StaticResource Door}" x:Name="StyleDoor" Content="&#xE790;" ToolTip="Style this site" AutomationProperties.Name="Style this site" Click="StyleDoor_Click" />
-      </StackPanel>
 
       <!-- Pins: squares, four to a line. -->
       <Border x:Name="PinDrop" DockPanel.Dock="Top" Height="34" Margin="10,0,10,8" CornerRadius="9" Visibility="Collapsed"
