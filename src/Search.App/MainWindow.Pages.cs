@@ -127,6 +127,19 @@ public partial class MainWindow
                 case "permissions.resetAll": Shared.Perms.ResetAll(); break;
                 case "styles.get": Send(core, StylesMessage()); break;
                 case "vault.get": Send(core, VaultMessage()); break;
+                case "import.scan": Send(core, new { type = "import.sources", sources = Importer.Scan().Select(s => new { id = s.Id, label = s.Label, browser = s.Browser, firefox = s.Firefox }) }); break;
+                case "import.run":
+                    if (Importer.Scan().FirstOrDefault(s => s.Id == S("id")) is { } src)
+                    {
+                        bool Kind(string k) => m.TryGetProperty("kinds", out var ks) && ks.ValueKind == JsonValueKind.Array && ks.EnumerateArray().Any(x => x.GetString() == k);
+                        var wantBookmarks = Kind("bookmarks"); var wantHistory = Kind("history"); var wantPasswords = Kind("passwords");
+                        _ = Task.Run(() =>
+                        {
+                            var sum = Importer.Run(src, wantBookmarks, wantHistory, wantPasswords, Marks, history, Shared.Vault);
+                            Dispatcher.BeginInvoke(() => Send(core, new { type = "import.done", id = src.Id, bookmarks = sum.Bookmarks, visits = sum.Visits, logins = sum.Logins, notes = sum.Notes }));
+                        });
+                    }
+                    break;
                 case "vault.forget": Shared.Vault.Forget(S("host"), S("user")); break;
                 case "vault.forgetAll": Shared.Vault.ForgetAll(); break;
                 case "vault.never.forget": Shared.Vault.ForgetNever(S("host")); break;

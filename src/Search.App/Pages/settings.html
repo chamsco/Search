@@ -19,6 +19,7 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
   <a href="#privacy" data-s="privacy"><i>&#xE72E;</i>Privacy</a>
   <a href="#sites" data-s="sites"><i>&#xE774;</i>Sites</a>
   <a href="#passwords" data-s="passwords"><i>&#xE8D7;</i>Passwords</a>
+  <a href="#import" data-s="import"><i>&#xE896;</i>Import</a>
   <a href="#keyboard" data-s="keyboard"><i>&#xE765;</i>Keyboard &amp; Mouse</a>
   <a href="#about" data-s="about"><i>&#xE946;</i>About</a></nav>
 <main>
@@ -91,6 +92,10 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
   <h3>Never asked on</h3>
   <div class="group" id="neverList"></div>
   <div class="group"><div class="line"><div class="label">Forget every password<small>Removes all of them from this PC</small></div><button class="danger" id="vaultAll">Forget all</button></div></div>
+</section>
+<section id="import"><h1>Import</h1><p class="sub">Bring bookmarks, history and saved passwords over from another browser on this PC. Nothing is changed there, and what is already here stays.</p>
+  <div id="importList"></div>
+  <div class="group" id="importNone" style="display:none"><div class="line"><div class="label" style="color:var(--muted)">No other browser was found: Chrome, Edge, Brave, Arc, Firefox and Zen are looked for</div></div></div>
 </section>
 <section id="keyboard"><h1>Keyboard &amp; Mouse</h1><p class="sub">The Mac's shortcuts with Ctrl in place of ⌘, and Windows' own where a Mac key is Windows' too.</p>
   <div class="group"><table id="keys"></table></div>
@@ -208,7 +213,22 @@ host.on('vault', m => {
   document.getElementById('neverList').innerHTML = m.never.length ? m.never.map(h => `<div class="line"><div class="label">${esc(h)}</div><button data-h="${esc(h)}">Ask again</button></div>`).join('') : '<div class="line"><div class="label" style="color:var(--muted)">Every site may ask to keep a password</div></div>';
 });
 host.on('vault.secret', m => { for (const r of document.querySelectorAll('#vaultList .line')) { const b = r.querySelector('button[data-act=show]'); if (b && b.dataset.h === m.host && b.dataset.u === m.user) { r.querySelector('.secret').textContent = ' ' + m.secret; b.textContent = 'Hide'; setTimeout(() => { r.querySelector('.secret').textContent = ''; b.textContent = 'Show'; }, 15000); } } });
+host.on('import.sources', m => {
+  document.getElementById('importNone').style.display = m.sources.length ? 'none' : '';
+  document.getElementById('importList').innerHTML = m.sources.map(s => `<h3>${esc(s.label)}</h3><div class="group" data-id="${esc(s.id)}"><div class="line checks" style="display:block"><label><input type="checkbox" class="ik" data-k="bookmarks" checked aria-label="Bookmarks from ${esc(s.label)}"> Bookmarks</label><label><input type="checkbox" class="ik" data-k="history" checked aria-label="History from ${esc(s.label)}"> History</label><label><input type="checkbox" class="ik" data-k="passwords" checked aria-label="Passwords from ${esc(s.label)}"> Saved passwords</label></div><div class="line"><div class="label importNote" style="color:var(--muted)"></div><button class="importGo" aria-label="Import from ${esc(s.label)}">Import</button></div></div>`).join('');
+});
+document.getElementById('importList').onclick = e => {
+  const b = e.target.closest('.importGo'); if (!b) return;
+  const g = b.closest('.group'); b.disabled = true; g.querySelector('.importNote').textContent = 'Importing…';
+  host.send('import.run', { id: g.dataset.id, kinds: [...g.querySelectorAll('.ik')].filter(x => x.checked).map(x => x.dataset.k) });
+};
+host.on('import.done', m => {
+  for (const g of document.querySelectorAll('#importList .group')) if (g.dataset.id === m.id) {
+    g.querySelector('.importGo').disabled = false;
+    g.querySelector('.importNote').textContent = `Imported ${m.bookmarks} bookmarks, ${m.visits} pages of history, ${m.logins} passwords.` + (m.notes.length ? ' ' + m.notes.join(' ') : '');
+  }
+});
 host.on('vault.copied', () => toast('Copied. It clears from the clipboard in a minute'));
 host.on('vault.refused', () => toast('Needs a site and a password'));
-host.send('settings.get'); host.send('permissions.get'); host.send('styles.get'); host.send('vault.get');
+host.send('settings.get'); host.send('permissions.get'); host.send('styles.get'); host.send('vault.get'); host.send('import.scan');
 </script></body></html>

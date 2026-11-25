@@ -39,6 +39,7 @@ string Shot(string name)
     return file;
 }
 
+string? importLocal = null, importRoaming = null;
 Application Launch()
 {
     var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
@@ -46,6 +47,8 @@ Application Launch()
     psi.Environment["SEARCH_NO_UPDATES"] = "1";
     psi.Environment["SEARCH_SNAP"] = "1";
     psi.Environment["SEARCH_TEST_TRUST_LOCALHOST"] = "1";
+    if (importLocal is not null) psi.Environment["SEARCH_IMPORT_LOCALAPPDATA"] = importLocal;
+    if (importRoaming is not null) psi.Environment["SEARCH_IMPORT_APPDATA"] = importRoaming;
     return Application.Launch(psi);
 }
 
@@ -874,6 +877,62 @@ try
     ClickCard("Use");
     var strong = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "n:20:true"; } catch { return false; } }), 8000);
     Step("A sign-up's new-password box: a strong password is offered and fills both boxes", offerStrong && strong, $"card: {offerStrong}, both boxes hold the same 20 characters: {strong} · " + Shot("password-strong"));
+
+    // Import from another browser
+    Quit();
+    var fakeRoot = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-import-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    importLocal = Path.Combine(fakeRoot, "Local"); importRoaming = Path.Combine(fakeRoot, "Roaming");
+    var chromeUser = Directory.CreateDirectory(Path.Combine(importLocal, "Google", "Chrome", "User Data")).FullName;
+    var chromeDefault = Directory.CreateDirectory(Path.Combine(chromeUser, "Default")).FullName;
+    var chromeKey = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+    var wrapped = System.Security.Cryptography.ProtectedData.Protect(chromeKey, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+    File.WriteAllText(Path.Combine(chromeUser, "Local State"), "{\"os_crypt\":{\"encrypted_key\":\"" + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("DPAPI").Concat(wrapped).ToArray()) + "\"},\"profile\":{\"info_cache\":{\"Default\":{\"name\":\"Ana\"}}}}");
+    File.WriteAllText(Path.Combine(chromeDefault, "Bookmarks"), "{\"roots\":{\"bookmark_bar\":{\"type\":\"folder\",\"name\":\"Bookmarks bar\",\"children\":[{\"type\":\"url\",\"name\":\"Fake Chrome Bookmark\",\"url\":\"https://chrome-mark.example/\"},{\"type\":\"folder\",\"name\":\"Reading list\",\"children\":[{\"type\":\"url\",\"name\":\"Deep One\",\"url\":\"https://deep.example/\"}]}]}}}");
+    void Lite(string file, params (string Sql, (string, object)[] Args)[] statements)
+    {
+        using var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={file};Pooling=false"); c.Open();
+        foreach (var (sql, args) in statements) { using var cmd = c.CreateCommand(); cmd.CommandText = sql; foreach (var (k, v) in args) cmd.Parameters.AddWithValue(k, v); cmd.ExecuteNonQuery(); }
+    }
+    var chromeNow = (long)((DateTime.UtcNow - DateTime.UnixEpoch).TotalSeconds + 11644473600L) * 1000000;
+    Lite(Path.Combine(chromeDefault, "History"), ("create table urls (id integer primary key, url text, title text, visit_count integer, last_visit_time integer)", []),
+        ("insert into urls (url, title, visit_count, last_visit_time) values ('https://history.example/page', 'A history page', 3, " + chromeNow + ")", []));
+    var nonce = System.Security.Cryptography.RandomNumberGenerator.GetBytes(12);
+    var plainPw = System.Text.Encoding.UTF8.GetBytes("imported-secret-9");
+    var cipherPw = new byte[plainPw.Length]; var tagPw = new byte[16];
+    using (var gcm = new System.Security.Cryptography.AesGcm(chromeKey, 16)) gcm.Encrypt(nonce, plainPw, cipherPw, tagPw);
+    Lite(Path.Combine(chromeDefault, "Login Data"), ("create table logins (origin_url text, username_value text, password_value blob, blacklisted_by_user integer)", []),
+        ("insert into logins values ('https://login.fake.example/', 'chrome-user', $p, 0)", [("$p", System.Text.Encoding.ASCII.GetBytes("v10").Concat(nonce).Concat(cipherPw).Concat(tagPw).ToArray())]));
+    var zenProfile = Directory.CreateDirectory(Path.Combine(importRoaming, "zen", "Profiles", "abcd1234.Default (release)")).FullName;
+    Lite(Path.Combine(zenProfile, "places.sqlite"), ("create table moz_places (id integer primary key, url text, title text, visit_count integer, last_visit_date integer)", []),
+        ("create table moz_bookmarks (id integer primary key, type integer, fk integer, parent integer, position integer, title text)", []),
+        ("insert into moz_places values (1, 'https://zen-mark.example/', 'Zen page', 2, 1740830400000000)", []),
+        ("insert into moz_bookmarks values (1, 2, null, 0, 0, ''), (2, 2, null, 1, 0, 'toolbar'), (3, 1, 1, 2, 0, 'Fake Zen Bookmark')", []));
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w7i-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var importGo = false;
+    for (var i = 0; i < 4 && !importGo; i++)
+    {
+        if (i < 2 && OnPage("Import") is { } nav) Mouse.Click(CentreOf(nav));
+        else Mouse.Click(new Point(window.BoundingRectangle.Left + 293, window.BoundingRectangle.Top + 321));
+        Thread.Sleep(1200);
+        importGo = Await(() => OnPage("Import from Chrome · Ana") is not null, 3000);
+    }
+    var importShot = Shot("import-sources");
+    if (OnPage("Import from Chrome · Ana") is { } goChrome) Mouse.Click(CentreOf(goChrome));
+    var chromeIn = Await(() => DataText("bookmarks.json").Contains("Fake Chrome Bookmark") && DataText("history.json").Contains("history.example") && DataText("vault.json").Contains("login.fake.example"), 15000);
+    Step("Settings › Import lists Chrome; Import brings over its bookmarks (a folder keeps its name), history and saved passwords; the vault holds the password protected, not as written",
+        importGo && chromeIn && DataText("bookmarks.json").Contains("Reading list") && !DataText("vault.json").Contains("imported-secret-9"),
+        $"sources listed: {importGo}, imported: {chromeIn}, folder kept: {DataText("bookmarks.json").Contains("Reading list")}, file shows the password: {DataText("vault.json").Contains("imported-secret-9")} · {importShot} · " + Shot("import-chrome"));
+    if (OnPage("Import from Zen · Default (release)") is { } goZen) Mouse.Click(CentreOf(goZen));
+    var zenIn = Await(() => DataText("bookmarks.json").Contains("Fake Zen Bookmark"), 15000);
+    Step("The same for Zen (a Firefox-family profile in the roaming folder): its bookmarks come over", zenIn, "bookmark kept: " + zenIn + " · " + Shot("import-zen"));
+    importLocal = null; importRoaming = null;
 
     // Proxy
     Quit();
