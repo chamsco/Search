@@ -45,6 +45,7 @@ Application Launch()
     psi.Environment["SEARCH_DATA"] = data;
     psi.Environment["SEARCH_NO_UPDATES"] = "1";
     psi.Environment["SEARCH_SNAP"] = "1";
+    psi.Environment["SEARCH_TEST_TRUST_LOCALHOST"] = "1";
     return Application.Launch(psi);
 }
 
@@ -915,6 +916,58 @@ try
     string sawAuth; lock (authSaw) sawAuth = string.Join(" / ", authSaw);
     Step("A proxy that answers 407: Search signs in with the kept name and password, and the page loads", signed, $"the proxy saw: {sawAuth} · " + Shot("proxy-signed-in"));
     authProxy.Stop();
+
+    // A site that asks for a certificate (mutual TLS: openssl's own test server, a client certificate in this account's store)
+    Quit();
+    var certDir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-certs-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    using var caKey = System.Security.Cryptography.RSA.Create(2048);
+    var caReq = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=Search Test CA", caKey, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    caReq.CertificateExtensions.Add(new System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension(true, false, 0, true));
+    using var ca = caReq.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(2));
+    using var srvKey = System.Security.Cryptography.RSA.Create(2048);
+    var srvReq = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=localhost", srvKey, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    var san = new System.Security.Cryptography.X509Certificates.SubjectAlternativeNameBuilder(); san.AddDnsName("localhost");
+    srvReq.CertificateExtensions.Add(san.Build());
+    using var srvCert = srvReq.Create(ca, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1), Guid.NewGuid().ToByteArray());
+    using var cliKey = System.Security.Cryptography.RSA.Create(2048);
+    var cliReq = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=Test Client", cliKey, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    cliReq.CertificateExtensions.Add(new System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension(new System.Security.Cryptography.OidCollection { new System.Security.Cryptography.Oid("1.3.6.1.5.5.7.3.2") }, false));
+    using var cliCert = cliReq.Create(ca, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1), Guid.NewGuid().ToByteArray());
+    File.WriteAllText(Path.Combine(certDir, "ca.pem"), ca.ExportCertificatePem());
+    File.WriteAllText(Path.Combine(certDir, "srv.pem"), srvCert.ExportCertificatePem());
+    File.WriteAllText(Path.Combine(certDir, "srv.key"), srvKey.ExportPkcs8PrivateKeyPem());
+    var cliPfx = new System.Security.Cryptography.X509Certificates.X509Certificate2(System.Security.Cryptography.X509Certificates.RSACertificateExtensions.CopyWithPrivateKey(cliCert, cliKey).Export(System.Security.Cryptography.X509Certificates.X509ContentType.Pfx, "x"), "x",
+        System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.PersistKeySet | System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.UserKeySet);
+    using (var my = new System.Security.Cryptography.X509Certificates.X509Store(System.Security.Cryptography.X509Certificates.StoreName.My, System.Security.Cryptography.X509Certificates.StoreLocation.CurrentUser)) { my.Open(System.Security.Cryptography.X509Certificates.OpenFlags.ReadWrite); my.Add(cliPfx); }
+    var tlsPort = port + 300;
+    var openssl = File.Exists(@"C:\Program Files\Git\usr\bin\openssl.exe") ? @"C:\Program Files\Git\usr\bin\openssl.exe" : "openssl";
+    var tlsOut = new System.Text.StringBuilder();
+    Process? tls = null;
+    try
+    {
+        tls = Process.Start(new ProcessStartInfo(openssl, $"s_server -accept {tlsPort} -tls1_2 -cert srv.pem -key srv.key -Verify 1 -CAfile ca.pem -www") { WorkingDirectory = certDir, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true });
+        tls!.OutputDataReceived += (_, e) => { lock (tlsOut) tlsOut.AppendLine(e.Data); };
+        tls.ErrorDataReceived += (_, e) => { lock (tlsOut) tlsOut.AppendLine(e.Data); };
+        tls.BeginOutputReadLine(); tls.BeginErrorReadLine();
+    }
+    catch (Exception e) { tlsOut.AppendLine("could not start openssl: " + e.Message); }
+    Thread.Sleep(1500);
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6c-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"https://localhost:" + tlsPort + "/\",\"title\":\"\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    var certAsked = Await(() => Anywhere($"localhost:{tlsPort} asks who you are") is not null, 25000);
+    var certShot = Shot("client-certificate-card");
+    ClickCard("Continue");
+    Thread.Sleep(5000);
+    string said; lock (tlsOut) said = tlsOut.ToString();
+    var sent = said.Contains("Test Client");
+    var shownOnPage = window.FindAllDescendants().Any(el => { try { return el.Name?.Contains("Test Client") == true; } catch { return false; } });
+    Step("A site that asks for a certificate: a card lists yours, Continue sends it, and the site sees it", certAsked && (sent || shownOnPage), $"card: {certAsked}, server saw the certificate: {sent}, page shows it: {shownOnPage} · {certShot} · " + Shot("client-certificate-sent"));
+    try { tls?.Kill(true); } catch { }
+    try { using var my = new System.Security.Cryptography.X509Certificates.X509Store(System.Security.Cryptography.X509Certificates.StoreName.My, System.Security.Cryptography.X509Certificates.StoreLocation.CurrentUser); my.Open(System.Security.Cryptography.X509Certificates.OpenFlags.ReadWrite); my.Remove(cliPfx); } catch { }
     server.Stop();
 }
 catch (Exception e)

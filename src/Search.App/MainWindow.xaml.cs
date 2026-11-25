@@ -256,6 +256,9 @@ public partial class MainWindow : Window
         core.NotificationReceived += (_, e) => OnNotification(t, e);
         core.ClientCertificateRequested += (_, e) => OnClientCertificate(e);
         core.BasicAuthenticationRequested += (_, e) => OnProxyAuth(e);
+        // The test run's own https server on localhost has a certificate of its own making: only when the run says so, and only for localhost.
+        if (Environment.GetEnvironmentVariable("SEARCH_TEST_TRUST_LOCALHOST") == "1")
+            core.ServerCertificateErrorDetected += (_, e) => { if (Uri.TryCreate(e.RequestUri, UriKind.Absolute, out var u) && u.Host == "localhost") e.Action = CoreWebView2ServerCertificateErrorAction.AlwaysAllow; };
         WatchTrackers(t, core);
         WatchStyles(t, core);
 
