@@ -723,8 +723,11 @@ try
         listed6 = Await(() => OnPage("Location: allowed") is not null || OnPage(site6) is not null, 3000);
     }
     Step("Settings › Sites lists what the site was allowed", listed6, Shot("settings-sites"));
-    if (OnPage("Forget") is { } forget) Mouse.Click(CentreOf(forget));
-    Thread.Sleep(1500);
+    for (var i = 0; i < 4 && DataText("permissions.json").Contains(origin6); i++) // one row per thing the site was allowed
+    {
+        if (OnPage("Forget") is { } forget) Mouse.Click(CentreOf(forget));
+        Thread.Sleep(1500);
+    }
     Step("Forget takes the answer back", !DataText("permissions.json").Contains(origin6), $"permissions.json: {DataText("permissions.json")}");
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
     Thread.Sleep(800);
