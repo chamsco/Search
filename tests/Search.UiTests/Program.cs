@@ -40,6 +40,7 @@ string Shot(string name)
 }
 
 string? importLocal = null, importRoaming = null;
+bool showUpdate = false;
 Application Launch()
 {
     var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
@@ -47,6 +48,7 @@ Application Launch()
     psi.Environment["SEARCH_NO_UPDATES"] = "1";
     psi.Environment["SEARCH_SNAP"] = "1";
     psi.Environment["SEARCH_TEST_TRUST_LOCALHOST"] = "1";
+    if (showUpdate) psi.Environment["SEARCH_TEST_SHOW_UPDATE"] = "1";
     if (importLocal is not null) psi.Environment["SEARCH_IMPORT_LOCALAPPDATA"] = importLocal;
     if (importRoaming is not null) psi.Environment["SEARCH_IMPORT_APPDATA"] = importRoaming;
     return Application.Launch(psi);
@@ -1005,6 +1007,70 @@ try
     Thread.Sleep(3500);
     var syncText = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name?.Contains("Synced with 1 other PC") == true; } catch { return false; } }), 6000);
     Step("Settings › General says who it synced with", syncText, "status shown: " + syncText + " · " + Shot("sync-settings"));
+
+    // The column: address pill, page actions, hide, edge, foot
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-side-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/login\",\"title\":\"\"}],\"active\":0}");
+    showUpdate = true;
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(7000);
+    AutomationElement? ById(string id) { try { return window!.FindFirstDescendant(cf => cf.ByAutomationId(id)); } catch { return null; } }
+    var pillText = ""; Await(() => { pillText = ById("AddressText")?.Name ?? ""; return pillText.Contains("localhost"); }, 8000);
+    var pillOk = pillText.Contains("localhost");
+    Step("The top of the column shows the page's address in a pill, with the page's actions under it", pillOk && OnPage("Copy link") is not null && OnPage("Screenshot") is not null && OnPage("Bookmark this page") is not null, $"pill: {pillText}, actions: {OnPage("Copy link") is not null} · " + Shot("column-address"));
+    if (ById("AddressPill") is { } pill) Mouse.Click(CentreOf(pill));
+    Thread.Sleep(900);
+    Keyboard.Type(origin6 + "/signup"); Keyboard.Press(VirtualKeyShort.RETURN);
+    var navigated = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "Sign up"; } catch { return false; } }), 12000);
+    Step("Clicking the address pill changes the address right there, no new tab", navigated, "tab titled Sign up: " + navigated + " · " + Shot("column-address-edit"));
+    if (OnPage("Copy link") is { } copyBtn) Mouse.Click(CentreOf(copyBtn));
+    var copied = Await(() => Trace6().Contains("link copied"), 5000);
+    if (OnPage("Bookmark this page") is { } starBtn) Mouse.Click(CentreOf(starBtn));
+    var starred = Await(() => DataText("bookmarks.json").Contains("/signup"), 6000);
+    Step("Page actions: Copy link copies the address, the star bookmarks the page", copied && starred, $"copied: {copied}, bookmarked: {starred} · " + Shot("column-actions"));
+    if (OnPage("Screenshot") is { } shotBtn) Mouse.Click(CentreOf(shotBtn));
+    var shotCard = Await(() => Anywhere("Screenshot saved") is not null, 10000);
+    var shotFile = Directory.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots")) && Directory.EnumerateFiles(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots"), "Search *.png").Any(f => (DateTime.Now - File.GetLastWriteTime(f)).TotalMinutes < 5);
+    Step("Screenshot: the page is saved to Pictures › Screenshots and a card says so", shotCard && shotFile, $"card: {shotCard}, file: {shotFile} · " + Shot("column-screenshot"));
+    ClickCard("Done");
+
+    // The column never gets narrower than its top row.
+    Mouse.Drag(new Point(window.BoundingRectangle.Left + 232, window.BoundingRectangle.Top + 400), new Point(window.BoundingRectangle.Left + 90, window.BoundingRectangle.Top + 400));
+    Thread.Sleep(1000);
+    var reload = ById("ReloadDoor")?.BoundingRectangle; var hideBtn = ById("CollapseSidebar")?.BoundingRectangle;
+    var gap = hideBtn is null || reload is null ? -999 : hideBtn.Value.Left - reload.Value.Right;
+    Step("Dragging the column's edge as narrow as it goes: the reload button stays whole with a little space before the next one", gap >= 0 && gap < 40 && reload is not null && reload.Value.Width > 20, $"gap after reload: {gap}px · " + Shot("column-narrowest"));
+
+    if (ById("FootSettings") is { } footSet && ById("FootUpdate") is { } footUp)
+        Step("The foot has Settings at the right, and Update beside it when one is ready", footUp.BoundingRectangle.Right <= footSet.BoundingRectangle.Left + 4 && Math.Abs(footUp.BoundingRectangle.Top - footSet.BoundingRectangle.Top) < 6, $"update at {footUp.BoundingRectangle.Left}, settings at {footSet.BoundingRectangle.Left} · " + Shot("column-foot"));
+    else Step("The foot has Settings at the right, and Update beside it when one is ready", false, "buttons not found");
+    if (ById("FootSettings") is { } footSet2) Mouse.Click(CentreOf(footSet2));
+    var settingsOpened = Await(() => OnPage("Passwords") is not null, 8000);
+    Step("Settings at the foot opens Settings", settingsOpened, "Settings page shown: " + settingsOpened);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+
+    // Hide, edge, keep
+    if (ById("CollapseSidebar") is { } hide) Mouse.Click(CentreOf(hide));
+    var hidden = Await(() => ById("CollapseSidebar") is null, 4000);
+    var hiddenShot = Shot("column-hidden");
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 700, window.BoundingRectangle.Top + 400)); Thread.Sleep(300);
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 3, window.BoundingRectangle.Top + 400));
+    var peeked = Await(() => ById("CollapseSidebar") is not null, 4000);
+    var peekShot = Shot("column-edge");
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 800, window.BoundingRectangle.Top + 400));
+    var gone = Await(() => ById("CollapseSidebar") is null, 4000);
+    Step("The hide button takes the column away; the pointer at the window's edge brings it back and it leaves again with the pointer", hidden && peeked && gone, $"hidden: {hidden}, shown from the edge: {peeked}, left again: {gone} · {hiddenShot} · {peekShot}");
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 3, window.BoundingRectangle.Top + 400));
+    Await(() => ById("CollapseSidebar") is not null, 4000);
+    if (ById("CollapseSidebar") is { } keep) Mouse.Click(CentreOf(keep));
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 800, window.BoundingRectangle.Top + 400)); Thread.Sleep(2000);
+    var stayed = ById("CollapseSidebar") is not null;
+    Step("Pressing the button while the column is out from the edge keeps it open", stayed, "still there after the pointer left: " + stayed + " · " + Shot("column-kept"));
+    showUpdate = false;
 
     // Proxy
     Quit();
