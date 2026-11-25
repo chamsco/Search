@@ -965,6 +965,40 @@ try
     Step("Zen's sidebar comes too: its space is a space here, and the page pinned inside its folder is pinned in that space, in a folder of the same name", zenSpaces && zenPins, $"space: {zenSpaces}, pin in folder: {zenPins} · " + Shot("import-zen-spaces"));
     importLocal = null; importRoaming = null;
 
+    // Folder sync
+    Quit();
+    var syncSpace = "";
+    var syncShared = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-sync-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    {
+        var otherPc = "{\"format\":1,\"device\":\"otherpc\",\"name\":\"Other PC\",\"scope\":\"SCOPE\",\"written\":100,\"items\":{ITEMS}}";
+        string E(string v) => "{\"v\":" + System.Text.Json.JsonSerializer.Serialize(v) + ",\"t\":100,\"d\":\"otherpc\"}";
+        var spaceId = "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"; var pinId = "6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b"; var markId = "7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c";
+        var syncPersonal = Path.Combine(syncShared, "Search Sync", "profile-000000000000000000000000000000a1");
+        Directory.CreateDirectory(syncPersonal); Directory.CreateDirectory(Path.Combine(syncShared, "Search Sync", "app"));
+        File.WriteAllText(Path.Combine(syncPersonal, "otherpc.json"), otherPc.Replace("SCOPE", "profile-000000000000000000000000000000a1").Replace("ITEMS", "{" + string.Join(",", new[] {
+            "\"bm:" + markId + "\":" + E("{\"Title\":\"Synced Mark\",\"Url\":\"https://synced.example/\",\"Folder\":null}"),
+            "\"space:" + spaceId + "\":" + E("{\"Name\":\"Synced Space\",\"Colour\":2,\"Colour2\":0,\"Icon\":null,\"Shares\":true,\"Strength\":0}"),
+            "\"pin:" + spaceId + ":" + pinId + "\":" + E("{\"Url\":\"https://synced-pin.example/\",\"Title\":\"Synced Pin\",\"Name\":null,\"Folder\":null,\"Muted\":false}"),
+            "\"pinorder:" + spaceId + "\":" + E("[\"" + pinId + "\"]") }.Select(x => x)) + "}"));
+        File.WriteAllText(Path.Combine(syncShared, "Search Sync", "app", "otherpc.json"), otherPc.Replace("SCOPE", "app").Replace("ITEMS", "{\"set:search.suggest\":" + E("false") + "}"));
+        syncSpace = spaceId;
+    }
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-sync-d-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"spacesOn\":true}");
+    File.WriteAllText(Path.Combine(data, "sync.json"), System.Text.Json.JsonSerializer.Serialize(new { on = true, folder = syncShared }));
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(6000);
+    var syncIn = Await(() => DataText("bookmarks.json").Contains("Synced Mark") && DataText("spaces.json").Contains("Synced Space") && DataText("prefs.json").Contains("\"engineSuggests\":false"), 15000);
+    var syncPin = File.Exists(Path.Combine(data, "session-" + syncSpace + ".json")) && DataText("session-" + syncSpace + ".json").Contains("synced-pin.example");
+    var syncWrote = Directory.EnumerateFiles(Path.Combine(syncShared, "Search Sync", "app"), "*.json").Count() == 2 && Directory.EnumerateFiles(Path.Combine(syncShared, "Search Sync", "profile-000000000000000000000000000000a1"), "*.json").Count() == 2;
+    Step("Sync through a folder: at launch another PC's bookmark, space, pin and setting are here, and this PC's own file is written beside it", syncIn && syncPin && syncWrote, $"bookmark/space/setting: {syncIn}, pin in the space's session: {syncPin}, own files written: {syncWrote} · " + Shot("sync-applied"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var syncText = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name?.Contains("Synced with 1 other PC") == true; } catch { return false; } }), 6000);
+    Step("Settings › General says who it synced with", syncText, "status shown: " + syncText + " · " + Shot("sync-settings"));
+
     // Proxy
     Quit();
     var proxyPort = port + 100;

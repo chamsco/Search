@@ -29,6 +29,7 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
     <div class="line" id="customLine" style="display:none"><div class="label">Custom address<small>Put %s or {searchTerms} where the words go</small></div><input type="text" id="custom" style="width:300px" placeholder="example.com/search?q=%s"></div>
     <div class="line"><div class="label">Suggestions from your search engine<small>Sent as you type; never for an address, never from a private tab</small></div><div class="switch" id="engineSuggests"></div></div>
     <div class="line"><div class="label">Site search with Tab<small>Type a site's name (youtube, wiki, github), press Tab, and search that site itself</small></div><div class="switch" id="siteSearch"></div></div>
+    <div class="line"><div class="label">Sync with your other PCs<small id="syncFolder">Through a folder you choose: OneDrive, Dropbox, a shared disk. Spaces, pins, bookmarks and a few settings; never history, passwords or open tabs</small><small id="syncStatus" style="color:var(--muted)"></small></div><button id="syncPick" aria-label="Choose the sync folder">Choose folder…</button><button id="syncNow" aria-label="Sync now">Sync now</button><div class="switch" id="syncOn" role="switch" aria-label="Sync with your other PCs"></div></div>
     <div class="line"><div class="label">Little windows<small>A link from another app opens in a small window with an Open in Search button</small></div><div class="switch" id="littleLinks"></div></div>
     <div class="line"><div class="label">Peek<small>Click a link with a key held to see its page over this one</small></div><div class="switch" id="peek"></div></div>
     <div class="line"><div class="label">Peek click<small>The keys held while clicking</small></div><select id="peekClick"><option value="shift">Shift+click</option><option value="altShift">Alt+Shift+click</option><option value="altCtrl">Alt+Ctrl+click</option></select></div>
@@ -253,5 +254,10 @@ host.on('mecard', m => {
   const box = document.getElementById('meAddresses'); box.innerHTML = ''; for (const a of c.addresses || []) box.appendChild(addressRow(a));
   meNote.textContent = m.saved ? 'Saved' : '';
 });
-host.send('mecard.get'); host.send('settings.get'); host.send('permissions.get'); host.send('styles.get'); host.send('vault.get'); host.send('import.scan');
+
+host.on('sync', m => { syncOn.classList.toggle('on', m.on); syncFolder.textContent = m.folder || 'Through a folder you choose: OneDrive, Dropbox, a shared disk. Spaces, pins, bookmarks and a few settings; never history, passwords or open tabs'; syncStatus.textContent = m.status; });
+syncOn.onclick = () => { const on = !syncOn.classList.contains('on'); if (on && !syncFolder.textContent.match(/[\\/]/)) host.send('sync.pick'); else host.send('sync.set', { on }); };
+syncPick.onclick = () => host.send('sync.pick');
+syncNow.onclick = () => host.send('sync.now');
+host.send('sync.get'); host.send('mecard.get'); host.send('settings.get'); host.send('permissions.get'); host.send('styles.get'); host.send('vault.get'); host.send('import.scan');
 </script></body></html>

@@ -51,12 +51,34 @@ public partial class App : Application
         };
         // A link handed to Search on the command line (default browser, a file opened with it).
         var first = e.Args.FirstOrDefault(a => !a.StartsWith('-'));
+        SyncNow(); // before a window reads its pins: what another PC changed is there from the first frame
+        StartSync();
         var window = new MainWindow(first);
         MainWindow = window;
         window.Show();
         // The other windows that were open last time.
         foreach (var saved in Search.App.MainWindow.Remembered)
             new MainWindow(null, true, saved.Profile, saved.Id).Show();
+    }
+
+    /// <summary>Folder sync (Settings › General › Sync with your other PCs): a pass at launch, every half minute, when Search comes forward, and a moment after a setting or space changes.</summary>
+    public static void SyncNow()
+    {
+        try { if (Shared.Sync.Config.On) Shared.LastSync = Shared.Sync.Run(); }
+        catch (Exception ex) { Log(ex); }
+    }
+
+    void StartSync()
+    {
+        var every = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        every.Tick += (_, _) => SyncNow();
+        every.Start();
+        var soon = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        soon.Tick += (_, _) => { soon.Stop(); SyncNow(); };
+        void Later() { if (Shared.Sync.Config.On) { soon.Stop(); soon.Start(); } }
+        Shared.Prefs.Changed += Later;
+        Shared.Book.Changed += Later;
+        Activated += (_, _) => Later();
     }
 
     static Mutex? instance;

@@ -127,6 +127,19 @@ public partial class MainWindow
                 case "permissions.resetAll": Shared.Perms.ResetAll(); break;
                 case "styles.get": Send(core, StylesMessage()); break;
                 case "vault.get": Send(core, VaultMessage()); break;
+                case "sync.get": Send(core, SyncMessage()); break;
+                case "sync.set":
+                    Shared.Sync.Configure(m.TryGetProperty("on", out var syncOn) && syncOn.ValueKind == JsonValueKind.True, S("folder").Length > 0 ? S("folder") : Shared.Sync.Config.Folder);
+                    App.SyncNow(); PostToPages(SyncMessage(), "settings");
+                    break;
+                case "sync.pick":
+                    {
+                        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Choose a folder to sync through (OneDrive, Dropbox, a shared disk)" };
+                        if (dlg.ShowDialog(this) == true) { Shared.Sync.Configure(true, dlg.FolderName); App.SyncNow(); }
+                        PostToPages(SyncMessage(), "settings");
+                    }
+                    break;
+                case "sync.now": App.SyncNow(); PostToPages(SyncMessage(), "settings"); break;
                 case "import.scan": Send(core, new { type = "import.sources", sources = Importer.Scan().Select(s => new { id = s.Id, label = s.Label, browser = s.Browser, firefox = s.Firefox }) }); break;
                 case "import.run":
                     if (Importer.Scan().FirstOrDefault(s => s.Id == S("id")) is { } src)
@@ -240,6 +253,13 @@ public partial class MainWindow
     };
 
     string? updateLine;
+
+    object SyncMessage()
+    {
+        var c = Shared.Sync.Config; var r = Shared.LastSync;
+        var status = !c.On ? "Off" : c.Folder.Length == 0 ? "Choose a folder" : r is null ? "Waiting for the first pass" : r.Problem ?? (r.Devices == 0 ? "Synced; no other PC has written here yet" : $"Synced with {r.Devices} other PC{(r.Devices == 1 ? "" : "s")}: " + string.Join(", ", r.Seen.Select(x => x.Name)));
+        return new { type = "sync", on = c.On, folder = c.Folder, status };
+    }
 
     object SettingsMessage()
     {

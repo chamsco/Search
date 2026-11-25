@@ -22,4 +22,9 @@ static class Shared
     public static readonly SitePermissions Perms = SitePermissions.Load();
     public static readonly SiteStyles Styles = SiteStyles.Load();
     public static readonly PasswordVault Vault = new(Store.File("vault.json"), new DpapiProtector());
+
+    /// <summary>Spaces whose tabs are held by a window: sync leaves their pins alone, the window's own are the truth until it is closed.</summary>
+    public static readonly HashSet<Guid> OpenSpaces = [];
+    public static readonly FolderSync Sync = new(Prefs, Book, BookmarksOf, id => OpenSpaces.Contains(id));
+    public static SyncOutcome? LastSync { get; set; }
 }
