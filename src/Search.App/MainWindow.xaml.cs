@@ -941,7 +941,7 @@ public partial class MainWindow : Window
         else if (ctrl && alt && !shift && key == Key.R) core?.CallDevToolsProtocolMethodAsync("Page.reload", "{\"ignoreCache\":true}");
         else if (ctrl && !alt && key is Key.W or Key.F4 && live is not null) Close(live);
         else if ((ctrl && key == Key.L) || (alt && key == Key.D) || key == Key.F6) BeginEditing();
-        else if ((ctrl && key == Key.R) || key == Key.F5)
+        else if ((ctrl && !alt && key == Key.R) || key == Key.F5)
         {
             if (shift || ctrl && key == Key.F5) core?.CallDevToolsProtocolMethodAsync("Page.reload", "{\"ignoreCache\":true}");
             else core?.Reload();

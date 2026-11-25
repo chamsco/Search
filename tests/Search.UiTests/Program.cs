@@ -717,7 +717,8 @@ try
     var listed6 = false;
     for (var i = 0; i < 4 && !listed6; i++)
     {
-        if (OnPage("Sites") is { } nav) Mouse.Click(CentreOf(nav));
+        if (i < 2 && OnPage("Sites") is { } nav) Mouse.Click(CentreOf(nav));
+        else Mouse.Click(new Point(window!.BoundingRectangle.Left + 293, window.BoundingRectangle.Top + 257)); // the nav entry in the 1024x768 layout
         Thread.Sleep(1200);
         listed6 = Await(() => OnPage("Location: allowed") is not null || OnPage(site6) is not null, 3000);
     }
