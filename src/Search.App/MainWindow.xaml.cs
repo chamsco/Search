@@ -66,7 +66,7 @@ public partial class MainWindow : Window
 
         SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
-        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); };
+        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); };
         Closing += (_, _) => { SaveAllSpaces(); history.Save(); Windows_Closing(); };
         Shared.Prefs.Changed += ApplyPrefs;
         Shared.Perms.Changed += OnPermsChanged;
@@ -277,6 +277,7 @@ public partial class MainWindow : Window
             SaveSoon();
         };
         _ = InstallLinkScript(t, core);
+        _ = InstallFormScript(t, core);
         core.NavigationStarting += (_, e) =>
         {
             if (PeekInstead(t, core, e)) return;

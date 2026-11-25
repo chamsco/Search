@@ -39,6 +39,7 @@ string Shot(string name)
     return file;
 }
 
+string? importLocal = null, importRoaming = null;
 Application Launch()
 {
     var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
@@ -46,6 +47,8 @@ Application Launch()
     psi.Environment["SEARCH_NO_UPDATES"] = "1";
     psi.Environment["SEARCH_SNAP"] = "1";
     psi.Environment["SEARCH_TEST_TRUST_LOCALHOST"] = "1";
+    if (importLocal is not null) psi.Environment["SEARCH_IMPORT_LOCALAPPDATA"] = importLocal;
+    if (importRoaming is not null) psi.Environment["SEARCH_IMPORT_APPDATA"] = importRoaming;
     return Application.Launch(psi);
 }
 
@@ -623,6 +626,12 @@ try
     const string styledPage = "<!doctype html><title>Styled</title><body style='background:white'><h1>Styled</h1><script>setTimeout(()=>{document.title='bg='+getComputedStyle(document.body).backgroundColor},2000)</script>";
     const string videoPage = "<!doctype html><title>Video</title><video id=v muted autoplay playsinline width=320 height=180></video><canvas id=c width=320 height=180 style='display:none'></canvas>" +
         "<script>const c=document.getElementById('c'),x=c.getContext('2d');setInterval(()=>{x.fillStyle='hsl('+(Date.now()/10%360)+',70%,50%)';x.fillRect(0,0,320,180)},50);const v=document.getElementById('v');v.srcObject=c.captureStream(20);v.play();</script>";
+    const string loginPage = "<!doctype html><title>Sign in</title><body style='font:16px sans-serif'><form action='/welcome' method='post'><input id=e aria-label='Email address' autocomplete=username> <input id=p type=password aria-label='Password field' autocomplete=current-password> <button type=submit>Sign in</button></form>" +
+        "<script>const t=()=>{document.title='f:'+e.value+':'+p.value.length};e.oninput=p.oninput=t</script>";
+    const string signupPage = "<!doctype html><title>Sign up</title><body style='font:16px sans-serif'><form action='/welcome' method='post'><input id=e aria-label='New email' autocomplete=username> <input id=p type=password aria-label='Choose a password' autocomplete=new-password> <input id=q type=password aria-label='Repeat password' autocomplete=new-password></form>" +
+        "<script>const t=()=>{document.title='n:'+p.value.length+':'+(p.value===q.value)};p.oninput=q.oninput=t</script>";
+    const string contactPage = "<!doctype html><title>Contact</title><body style='font:16px sans-serif'><form action='/welcome' method='post'><input id=g aria-label='Given name' autocomplete=given-name> <input id=f aria-label='Family name' autocomplete=family-name> <input id=m aria-label='Contact email' autocomplete=email> <input id=z aria-label='Postal code' autocomplete=postal-code> <input id=o aria-label='Already typed' autocomplete=organization value='Kept'></form>" +
+        "<script>const t=()=>{document.title='c:'+g.value+'|'+f.value+'|'+m.value+'|'+z.value+'|'+o.value};for(const i of document.querySelectorAll('input'))i.oninput=t</script>";
     const string feedXml = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Harbour News</title>" +
         "<item><title>Post one</title><link>/post1</link></item><item><title>Post two &amp; more</title><link>/post2</link></item></channel></rss>";
     var serving = Task.Run(async () =>
@@ -632,8 +641,9 @@ try
             try
             {
                 var ctx = await server.GetContextAsync();
+                if (ctx.Request.HasEntityBody) ctx.Request.InputStream.CopyTo(Stream.Null);
                 var path = ctx.Request.Url!.AbsolutePath;
-                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", _ => indexPage };
+                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", "/login" => loginPage, "/signup" => signupPage, "/contact" => contactPage, "/welcome" => "<!doctype html><title>Welcome</title><h1>Welcome</h1>", _ => indexPage };
                 var bytes = System.Text.Encoding.UTF8.GetBytes(html);
                 ctx.Response.ContentType = path == "/feed.xml" ? "application/rss+xml; charset=utf-8" : "text/html; charset=utf-8";
                 ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
@@ -680,6 +690,7 @@ try
     AutomationElement? OnPage(string name) { try { return window!.FindFirstDescendant(cf => cf.ByName(name)); } catch { return null; } }
     string Trace6() { try { using var fs = new FileStream(Path.Combine(data, "trace.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(fs); return r.ReadToEnd(); } catch { return ""; } }
     void ClickPage(string name) { if (OnPage(name) is { } el) { Mouse.Click(CentreOf(el)); } Thread.Sleep(1200); }
+    void ClickCardAway(string name, string title) { for (var i = 0; i < 3; i++) { ClickCard(name, 6000); if (Await(() => Anywhere(title) is null, 2500)) return; } }
     bool ClickCard(string name, int ms = 10000) { AutomationElement? el = null; Await(() => (el = Anywhere(name)) is not null, ms); if (el is not null) Mouse.Click(CentreOf(el)); Thread.Sleep(1200); return el is not null; }
 
     // Permissions
@@ -808,6 +819,192 @@ try
     if (addressBox) { Keyboard.Type(origin6 + "/blog"); Thread.Sleep(300); Keyboard.Press(VirtualKeyShort.RETURN); }
     var made = Await(() => window!.FindFirstDescendant(cf => cf.ByName("Harbour News")) is not null, 15000);
     Step("Heading menu › New Live Folder Inside…, a site's address (not the feed's): the feed it points to is found and a folder named after it is made", addressBox && made, $"address box: {addressBox}, folder made: {made} · " + Shot("live-folder-new"));
+
+    // Passwords
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w7-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"fillFromCard\":true}");
+    File.WriteAllText(Path.Combine(data, "mecard.json"), "{\"given\":\"Ana\",\"family\":\"Diaz\",\"organization\":\"Acme\",\"emails\":[\"ana@example.com\"],\"phones\":[\"+33 6 12 34 56 78\"],\"addresses\":[{\"street\":\"1 Rue Haute\",\"city\":\"Lyon\",\"postal\":\"69001\",\"country\":\"FR\"}]}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/login\",\"title\":\"\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(7000);
+    string VaultText() => DataText("vault.json");
+    string FormTrace() { try { using var fs = new FileStream(Path.Combine(data, "trace.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(fs); return string.Join(" / ", r.ReadToEnd().Split('\n').Where(l => l.Contains("form ") || l.Contains("password") || l.Contains("card fill")).TakeLast(8).Select(l => l[(l.IndexOf(']') + 2)..])); } catch { return "no trace"; } }
+    bool TypeInto(string field, string text) { for (var i = 0; i < 4; i++) { if (OnPage(field) is { } el) { Mouse.Click(CentreOf(el)); Thread.Sleep(500); Keyboard.Type(text); Thread.Sleep(400); return true; } Thread.Sleep(1000); } return false; }
+    var typedUser = TypeInto("Email address", "ana@example.com");
+    var typedPw = TypeInto("Password field", "correct horse 42");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    if (!Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 5000) && OnPage("Sign in") is { } signInBtn) Mouse.Click(CentreOf(signInBtn)); // the Enter can be lost to the first click
+    var offerSave = Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 20000);
+    var saveShot = Shot("password-save-card");
+    ClickCard("Save");
+    var vaultHas = Await(() => VaultText().Contains("ana@example.com"), 6000);
+    Step("A sign-in sent and settled: a card offers to keep the password; Save puts it in the vault, protected, never in the file as written", typedUser && typedPw && offerSave && vaultHas && !VaultText().Contains("correct horse"), $"card: {offerSave}, kept: {vaultHas}, file shows the password: {VaultText().Contains("correct horse")}, trace: {FormTrace()} · {saveShot}");
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type(origin6 + "/login");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4500);
+    if (OnPage("Email address") is { } emailBox) { Mouse.Click(CentreOf(emailBox)); }
+    var offerFill = Await(() => Anywhere("Sign in to localhost") is not null, 15000);
+    var fillShot = Shot("password-fill-card");
+    ClickCard("Fill");
+    var filled = Await(() => OnPage("f:ana@example.com:16") is not null || window!.FindAllDescendants().Any(el => { try { return el.Name == "f:ana@example.com:16"; } catch { return false; } }), 8000);
+    Step("Back on the sign-in: the caret in the box offers the kept account; Fill puts the name and password in through the field's own setter", offerFill && filled, $"card: {offerFill}, page title shows both filled: {filled} · {fillShot}");
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var listedPw = false;
+    for (var i = 0; i < 4 && !listedPw; i++)
+    {
+        if (i < 2 && OnPage("Passwords") is { } nav) Mouse.Click(CentreOf(nav));
+        else Mouse.Click(new Point(window!.BoundingRectangle.Left + 293, window.BoundingRectangle.Top + 289));
+        Thread.Sleep(1200);
+        listedPw = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name?.Contains("ana@example.com") == true; } catch { return false; } }), 3000);
+    }
+    if (OnPage("Show") is { } showBtn) { Mouse.Click(CentreOf(showBtn)); Thread.Sleep(2500); }
+    var revealed = window.FindAllDescendants().Any(el => { try { return el.Name?.Contains("correct horse 42") == true; } catch { return false; } });
+    Step("Settings › Passwords: the account is listed; Show (Windows Hello, or straight through where none is set up) reveals the password", listedPw && revealed, $"listed: {listedPw}, shown: {revealed} · " + Shot("settings-passwords"));
+    string passkeyLine = "";
+    Await(() => { passkeyLine = window!.FindAllDescendants().Select(el => { try { return el.Name ?? ""; } catch { return ""; } }).FirstOrDefault(n => n.StartsWith("Ready: Windows Hello") || n.StartsWith("Windows Hello is not set up") || n.StartsWith("Not available in this web engine") || n.StartsWith("Could not check")) ?? ""; return passkeyLine.Length > 0; }, 5000);
+    Step("Settings › Passwords › Passkeys reports whether this PC can hold passkeys (the web engine's WebAuthn answers; the signing itself needs a person at Windows Hello)", passkeyLine.Length > 0 && !passkeyLine.StartsWith("Not available") && !passkeyLine.StartsWith("Could not"), "status: " + passkeyLine.Replace("|", "/"));
+    if (window.FindFirstDescendant(cf => cf.ByName("Forget the password for ana@example.com")) is { } forgetBtn) { Mouse.Click(CentreOf(forgetBtn)); Thread.Sleep(1500); }
+    Step("Forget removes it from the vault", !VaultText().Contains("ana@example.com"), "vault.json: " + VaultText().Replace("\n", " ").Replace("|", "/")[..Math.Min(120, VaultText().Length)]);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type(origin6 + "/signup");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4500);
+    var offerStrong = false;
+    for (var i = 0; i < 3 && !offerStrong; i++)
+    {
+        if (OnPage("Choose a password") is { } newBox) Mouse.Click(CentreOf(newBox));
+        offerStrong = Await(() => Anywhere("Use a strong password for localhost?") is not null, 6000);
+    }
+    ClickCardAway("Use", "Use a strong password for localhost?");
+    var strong = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "n:20:true"; } catch { return false; } }), 8000);
+    Step("A sign-up's new-password box: a strong password is offered and fills both boxes", offerStrong && strong, $"card: {offerStrong}, both boxes hold the same 20 characters: {strong}, trace: {FormTrace()} · " + Shot("password-strong"));
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type(origin6 + "/contact");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4500);
+    var offerCard = false;
+    for (var i = 0; i < 3 && !offerCard; i++)
+    {
+        if (OnPage("Contact email") is { } mailBox) Mouse.Click(CentreOf(mailBox));
+        offerCard = Await(() => Anywhere("Fill in from your card at localhost?") is not null, 6000);
+    }
+    var cardShot = Shot("card-offer");
+    ClickCardAway("Fill", "Fill in from your card at localhost?");
+    var cardFilled = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "c:Ana|Diaz|ana@example.com|69001|Kept"; } catch { return false; } }), 8000);
+    Step("A contact form's email box offers your card (Settings › Passwords › My card); Fill puts name, email and postal code in the empty boxes and leaves the one already typed alone", offerCard && cardFilled, $"card: {offerCard}, boxes: {cardFilled} · {cardShot} · " + Shot("card-filled"));
+
+    // Import from another browser
+    Quit();
+    var fakeRoot = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-import-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    importLocal = Path.Combine(fakeRoot, "Local"); importRoaming = Path.Combine(fakeRoot, "Roaming");
+    var chromeUser = Directory.CreateDirectory(Path.Combine(importLocal, "Google", "Chrome", "User Data")).FullName;
+    var chromeDefault = Directory.CreateDirectory(Path.Combine(chromeUser, "Default")).FullName;
+    var chromeKey = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+    var wrapped = System.Security.Cryptography.ProtectedData.Protect(chromeKey, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+    File.WriteAllText(Path.Combine(chromeUser, "Local State"), "{\"os_crypt\":{\"encrypted_key\":\"" + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("DPAPI").Concat(wrapped).ToArray()) + "\"},\"profile\":{\"info_cache\":{\"Default\":{\"name\":\"Ana\"}}}}");
+    File.WriteAllText(Path.Combine(chromeDefault, "Bookmarks"), "{\"roots\":{\"bookmark_bar\":{\"type\":\"folder\",\"name\":\"Bookmarks bar\",\"children\":[{\"type\":\"url\",\"name\":\"Fake Chrome Bookmark\",\"url\":\"https://chrome-mark.example/\"},{\"type\":\"folder\",\"name\":\"Reading list\",\"children\":[{\"type\":\"url\",\"name\":\"Deep One\",\"url\":\"https://deep.example/\"}]}]}}}");
+    void Lite(string file, params (string Sql, (string, object)[] Args)[] statements)
+    {
+        using var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={file};Pooling=false"); c.Open();
+        foreach (var (sql, args) in statements) { using var cmd = c.CreateCommand(); cmd.CommandText = sql; foreach (var (k, v) in args) cmd.Parameters.AddWithValue(k, v); cmd.ExecuteNonQuery(); }
+    }
+    var chromeNow = (long)((DateTime.UtcNow - DateTime.UnixEpoch).TotalSeconds + 11644473600L) * 1000000;
+    Lite(Path.Combine(chromeDefault, "History"), ("create table urls (id integer primary key, url text, title text, visit_count integer, last_visit_time integer)", []),
+        ("insert into urls (url, title, visit_count, last_visit_time) values ('https://history.example/page', 'A history page', 3, " + chromeNow + ")", []));
+    var nonce = System.Security.Cryptography.RandomNumberGenerator.GetBytes(12);
+    var plainPw = System.Text.Encoding.UTF8.GetBytes("imported-secret-9");
+    var cipherPw = new byte[plainPw.Length]; var tagPw = new byte[16];
+    using (var gcm = new System.Security.Cryptography.AesGcm(chromeKey, 16)) gcm.Encrypt(nonce, plainPw, cipherPw, tagPw);
+    Lite(Path.Combine(chromeDefault, "Login Data"), ("create table logins (origin_url text, username_value text, password_value blob, blacklisted_by_user integer)", []),
+        ("insert into logins values ('https://login.fake.example/', 'chrome-user', $p, 0)", [("$p", System.Text.Encoding.ASCII.GetBytes("v10").Concat(nonce).Concat(cipherPw).Concat(tagPw).ToArray())]));
+    var zenProfile = Directory.CreateDirectory(Path.Combine(importRoaming, "zen", "Profiles", "abcd1234.Default (release)")).FullName;
+    Lite(Path.Combine(zenProfile, "places.sqlite"), ("create table moz_places (id integer primary key, url text, title text, visit_count integer, last_visit_date integer)", []),
+        ("create table moz_bookmarks (id integer primary key, type integer, fk integer, parent integer, position integer, title text)", []),
+        ("insert into moz_places values (1, 'https://zen-mark.example/', 'Zen page', 2, 1740830400000000)", []),
+        ("insert into moz_bookmarks values (1, 2, null, 0, 0, ''), (2, 2, null, 1, 0, 'toolbar'), (3, 1, 1, 2, 0, 'Fake Zen Bookmark')", []));
+    {
+        // Zen keeps its spaces and pins in zen-sessions.jsonlz4: a mozLz40 header around one LZ4 block (here all literals).
+        var zenJson = System.Text.Encoding.UTF8.GetBytes("{\"spaces\":[{\"uuid\":\"{aaa}\",\"name\":\"Zen Garden\",\"icon\":\"🌱\"}],\"folders\":[{\"id\":\"f1\",\"name\":\"Reading\"}],\"tabs\":[{\"pinned\":true,\"zenWorkspace\":\"{aaa}\",\"groupId\":\"f1\",\"entries\":[{\"url\":\"https://zen-pin.example/read\",\"title\":\"Zen Pinned Page\"}],\"index\":1}]}");
+        var block = new List<byte> { 0xF0 };
+        var rest = zenJson.Length - 15; while (rest >= 255) { block.Add(255); rest -= 255; }
+        block.Add((byte)rest); block.AddRange(zenJson);
+        var packed = new List<byte>(System.Text.Encoding.ASCII.GetBytes("mozLz40\0"));
+        packed.AddRange(BitConverter.GetBytes(zenJson.Length)); packed.AddRange(block);
+        File.WriteAllBytes(Path.Combine(zenProfile, "zen-sessions.jsonlz4"), packed.ToArray());
+    }
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w7i-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var importGo = false;
+    for (var i = 0; i < 4 && !importGo; i++)
+    {
+        if (i < 2 && OnPage("Import") is { } nav) Mouse.Click(CentreOf(nav));
+        else Mouse.Click(new Point(window.BoundingRectangle.Left + 293, window.BoundingRectangle.Top + 321));
+        Thread.Sleep(1200);
+        importGo = Await(() => OnPage("Import from Chrome · Ana") is not null, 3000);
+    }
+    var importShot = Shot("import-sources");
+    if (OnPage("Import from Chrome · Ana") is { } goChrome) Mouse.Click(CentreOf(goChrome));
+    var chromeIn = Await(() => DataText("bookmarks.json").Contains("Fake Chrome Bookmark") && DataText("history.json").Contains("history.example") && DataText("vault.json").Contains("login.fake.example"), 15000);
+    Step("Settings › Import lists Chrome; Import brings over its bookmarks (a folder keeps its name), history and saved passwords; the vault holds the password protected, not as written",
+        importGo && chromeIn && DataText("bookmarks.json").Contains("Reading list") && !DataText("vault.json").Contains("imported-secret-9"),
+        $"sources listed: {importGo}, imported: {chromeIn}, folder kept: {DataText("bookmarks.json").Contains("Reading list")}, file shows the password: {DataText("vault.json").Contains("imported-secret-9")} · {importShot} · " + Shot("import-chrome"));
+    if (OnPage("Import from Zen · Default (release)") is { } goZen) Mouse.Click(CentreOf(goZen));
+    var zenIn = Await(() => DataText("bookmarks.json").Contains("Fake Zen Bookmark"), 15000);
+    Step("The same for Zen (a Firefox-family profile in the roaming folder): its bookmarks come over", zenIn, "bookmark kept: " + zenIn + " · " + Shot("import-zen"));
+    var zenSpaces = Await(() => DataText("spaces.json").Contains("Zen Garden"), 8000);
+    var zenPins = Directory.EnumerateFiles(data, "session-*.json").Select(File.ReadAllText).Any(t => t.Contains("zen-pin.example/read") && t.Contains("Reading"));
+    Step("Zen's sidebar comes too: its space is a space here, and the page pinned inside its folder is pinned in that space, in a folder of the same name", zenSpaces && zenPins, $"space: {zenSpaces}, pin in folder: {zenPins} · " + Shot("import-zen-spaces"));
+    importLocal = null; importRoaming = null;
+
+    // Folder sync
+    Quit();
+    var syncSpace = "";
+    var syncShared = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-sync-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    {
+        var otherPc = "{\"format\":1,\"device\":\"otherpc\",\"name\":\"Other PC\",\"scope\":\"SCOPE\",\"written\":100,\"items\":{ITEMS}}";
+        string E(string v) => "{\"v\":" + System.Text.Json.JsonSerializer.Serialize(v) + ",\"t\":100,\"d\":\"otherpc\"}";
+        var spaceId = "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"; var pinId = "6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b"; var markId = "7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c";
+        var syncPersonal = Path.Combine(syncShared, "Search Sync", "profile-000000000000000000000000000000a1");
+        Directory.CreateDirectory(syncPersonal); Directory.CreateDirectory(Path.Combine(syncShared, "Search Sync", "app"));
+        File.WriteAllText(Path.Combine(syncPersonal, "otherpc.json"), otherPc.Replace("SCOPE", "profile-000000000000000000000000000000a1").Replace("ITEMS", string.Join(",", new[] {
+            "\"bm:" + markId + "\":" + E("{\"Title\":\"Synced Mark\",\"Url\":\"https://synced.example/\",\"Folder\":null}"),
+            "\"space:" + spaceId + "\":" + E("{\"Name\":\"Synced Space\",\"Colour\":2,\"Colour2\":0,\"Icon\":null,\"Shares\":true,\"Strength\":0}"),
+            "\"pin:" + spaceId + ":" + pinId + "\":" + E("{\"Url\":\"https://synced-pin.example/\",\"Title\":\"Synced Pin\",\"Name\":null,\"Folder\":null,\"Muted\":false}"),
+            "\"pinorder:" + spaceId + "\":" + E("[\"" + pinId + "\"]") }.Select(x => x))));
+        File.WriteAllText(Path.Combine(syncShared, "Search Sync", "app", "otherpc.json"), otherPc.Replace("SCOPE", "app").Replace("ITEMS", "\"set:search.suggest\":" + E("false")));
+        syncSpace = spaceId;
+    }
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-sync-d-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"spacesOn\":true}");
+    File.WriteAllText(Path.Combine(data, "sync.json"), System.Text.Json.JsonSerializer.Serialize(new { on = true, folder = syncShared }));
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(6000);
+    var syncIn = Await(() => DataText("bookmarks.json").Contains("Synced Mark") && DataText("spaces.json").Contains("Synced Space") && DataText("prefs.json").Contains("\"engineSuggests\":false"), 15000);
+    var syncPin = File.Exists(Path.Combine(data, "session-" + syncSpace + ".json")) && DataText("session-" + syncSpace + ".json").Contains("synced-pin.example");
+    var syncWrote = Directory.EnumerateFiles(Path.Combine(syncShared, "Search Sync", "app"), "*.json").Count() == 2 && Directory.EnumerateFiles(Path.Combine(syncShared, "Search Sync", "profile-000000000000000000000000000000a1"), "*.json").Count() == 2;
+    Step("Sync through a folder: at launch another PC's bookmark, space, pin and setting are here, and this PC's own file is written beside it", syncIn && syncPin && syncWrote, $"bookmark/space/setting: {syncIn}, pin in the space's session: {syncPin}, own files written: {syncWrote} · " + Shot("sync-applied"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var syncText = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name?.Contains("Synced with 1 other PC") == true; } catch { return false; } }), 6000);
+    Step("Settings › General says who it synced with", syncText, "status shown: " + syncText + " · " + Shot("sync-settings"));
 
     // Proxy
     Quit();

@@ -53,7 +53,7 @@ public partial class MainWindow
     {
         space = Shared.Book.HomeOf(profileId);
         var st = StateOf(space);
-        st.Restored = true;
+        st.Restored = true; Shared.OpenSpaces.Add(space.Id);
         pins = st.Pins;
         tabs = st.Tabs;
         BindLists();
@@ -121,7 +121,7 @@ public partial class MainWindow
 
         if (!st.Restored)
         {
-            st.Restored = true;
+            st.Restored = true; Shared.OpenSpaces.Add(target.Id);
             restoring = true;
             var shape = persistent ? Session.Load(target.Id, windowId) : null;
             st.Groups.AddRange(shape?.Groups ?? []);

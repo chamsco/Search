@@ -76,13 +76,13 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 ## Accounts and data
 | Feature | Status | Notes |
 |---|---|---|
-| Passkeys | 🟡 | Windows Hello via WebView2 out of the box; untested |
-| Saved passwords (own vault) | ⬜ | DPAPI + Windows Hello |
+| Passkeys | 🟡 | Handled by the web engine through Windows' own WebAuthn (Windows Hello, security keys); Settings › Passwords › Passkeys reports availability and opens Windows' passkey list. Creating and signing in with a passkey needs a person at Windows Hello, so CI checks only the report |
+| Saved passwords (own vault) | ✅ | Offer to save/update, Never for this site, fill by a pick under a sign-in box, strong password on sign-ups, Settings › Passwords (list, Show/Copy with Windows Hello, add, forget). Each secret protected by DPAPI for the Windows account |
 | Apple Passwords | ⛔ | Own vault instead |
-| Autofill from Contacts "Me" card | ⛔ | Card in Settings instead |
-| Import from Arc, Zen, Firefox, Chrome | ⬜ | Arc for Windows and Chrome/Edge data folders |
+| Autofill from Contacts "Me" card | ✅ | Windows has no card of yours to read, so Settings › Passwords › My card holds it (name, emails, phones, addresses); picked from a row under the box, only the empty boxes of that form are filled |
+| Import from Arc, Zen, Firefox, Chrome | ✅ | Settings › Import: Chrome, Edge, Brave, Arc (Chromium data) and Firefox, Zen: bookmarks, history, saved passwords (Chromium v10/v11 and Firefox NSS; Chrome's newer app-bound ones can't be read by anyone else and are reported), and Arc/Zen spaces, pins, folders and favourites |
 | iCloud sync | ⛔ | Folder sync instead |
-| Folder sync | ⬜ | |
+| Folder sync | ✅ | Settings › General › Sync with your other PCs: spaces, pins, pin folders, bookmarks and a few settings through a folder (OneDrive, Dropbox…), same stamped-item merge with tombstones as the Mac. A space open in a window gets another PC's pin changes at next launch |
 
 ## Extensions
 | Feature | Status | Notes |

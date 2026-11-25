@@ -41,6 +41,13 @@ public sealed class Bookmarks
     public Bookmark? Find(string url) =>
         file.Items.FirstOrDefault(b => History.Identity(b.Url) == History.Identity(url));
 
+    /// <summary>What another PC's copy says: the bookmarks and folders as they should be, in that order.</summary>
+    public void Replace(List<Bookmark> items, List<BookmarkFolder> folders)
+    {
+        file = new BookmarkFile { Items = items, Folders = folders };
+        Save();
+    }
+
     public bool Contains(string url) => Find(url) is not null;
 
     public Bookmark Add(string url, string title, Guid? folder = null)

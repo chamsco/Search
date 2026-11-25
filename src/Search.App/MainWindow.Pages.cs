@@ -67,7 +67,7 @@ public partial class MainWindow
 
     void OnPageMessage(Tab tab, CoreWebView2 core, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        if (LinkMessage(tab, e)) return;
+        if (LinkMessage(tab, e) || FormMessage(tab, core, e)) return;
         // Any web page can post a message; only our own pages are listened to.
         if (PageUrl(e.Source) is null || PageUrl(core.Source) is null) return;
         try
@@ -126,6 +126,52 @@ public partial class MainWindow
                     break;
                 case "permissions.resetAll": Shared.Perms.ResetAll(); break;
                 case "styles.get": Send(core, StylesMessage()); break;
+                case "vault.get": Send(core, VaultMessage()); break;
+                case "passkeys.settings": try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:savedpasskeys") { UseShellExecute = true }); } catch (Exception ex) { App.Log(ex); } break;
+                case "sync.get": Send(core, SyncMessage()); break;
+                case "sync.set":
+                    Shared.Sync.Configure(m.TryGetProperty("on", out var syncOn) && syncOn.ValueKind == JsonValueKind.True, S("folder").Length > 0 ? S("folder") : Shared.Sync.Config.Folder);
+                    App.SyncNow(); PostToPages(SyncMessage(), "settings");
+                    break;
+                case "sync.pick":
+                    {
+                        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Choose a folder to sync through (OneDrive, Dropbox, a shared disk)" };
+                        if (dlg.ShowDialog(this) == true) { Shared.Sync.Configure(true, dlg.FolderName); App.SyncNow(); }
+                        PostToPages(SyncMessage(), "settings");
+                    }
+                    break;
+                case "sync.now": App.SyncNow(); PostToPages(SyncMessage(), "settings"); break;
+                case "import.scan": Send(core, new { type = "import.sources", sources = Importer.Scan().Select(s => new { id = s.Id, label = s.Label, browser = s.Browser, firefox = s.Firefox }) }); break;
+                case "import.run":
+                    if (Importer.Scan().FirstOrDefault(s => s.Id == S("id")) is { } src)
+                    {
+                        bool Kind(string k) => m.TryGetProperty("kinds", out var ks) && ks.ValueKind == JsonValueKind.Array && ks.EnumerateArray().Any(x => x.GetString() == k);
+                        var wantBookmarks = Kind("bookmarks"); var wantHistory = Kind("history"); var wantPasswords = Kind("passwords");
+                        var wantSpaces = Kind("spaces");
+                        _ = Task.Run(() =>
+                        {
+                            (Search.Core.Import.ImportRead Read, List<string> Notes) got;
+                            try { got = Importer.Read(src, wantBookmarks, wantHistory, wantPasswords); }
+                            catch (Exception ex) { App.Log(ex); got = (new Search.Core.Import.ImportRead(), [$"{src.Browser} couldn't be read: {ex.Message}"]); }
+                            Dispatcher.BeginInvoke(() =>
+                            {
+                                ImportSummary sum;
+                                try { sum = Importer.Apply(got.Read, got.Notes, Marks, history, Shared.Vault); }
+                                catch (Exception ex) { App.Log(ex); sum = new ImportSummary(0, 0, 0, [.. got.Notes, $"Bringing it over stopped: {ex.Message}"]); }
+                                if (wantSpaces) { try { var sp = Importer.Spaces(src, Shared.Book, profileId); sum = sum with { Notes = [.. sum.Notes, .. sp.Notes], Spaces = sp.Spaces, Pins = sp.Pins }; } catch (Exception ex) { App.Log(ex); } }
+                                Send(core, new { type = "import.done", id = src.Id, bookmarks = sum.Bookmarks, visits = sum.Visits, logins = sum.Logins, spaces = sum.Spaces, pins = sum.Pins, notes = sum.Notes });
+                            });
+                        });
+                    }
+                    break;
+                case "vault.forget": Shared.Vault.Forget(S("host"), S("user")); break;
+                case "vault.forgetAll": Shared.Vault.ForgetAll(); break;
+                case "vault.never.forget": Shared.Vault.ForgetNever(S("host")); break;
+                case "vault.save":
+                    if (!Shared.Vault.Save(S("host").Trim().ToLowerInvariant(), S("user").Trim(), S("password"))) PostToPages(new { type = "vault.refused" }, "settings");
+                    break;
+                case "vault.reveal": _ = RevealPassword(core, S("host"), S("user"), copy: false); break;
+                case "vault.copy": _ = RevealPassword(core, S("host"), S("user"), copy: true); break;
                 case "styles.set": Shared.Styles.Set(S("host"), S("css")); break;
                 case "space.add": Shared.Book.AddSpace(G("profile") ?? profileId, S("name"), 1, true); break;
                 case "space.update" when G("id") is Guid sid:
@@ -210,6 +256,13 @@ public partial class MainWindow
 
     string? updateLine;
 
+    object SyncMessage()
+    {
+        var c = Shared.Sync.Config; var r = Shared.LastSync;
+        var status = !c.On ? "Off" : c.Folder.Length == 0 ? "Choose a folder" : r is null ? "Waiting for the first pass" : r.Problem ?? (r.Devices == 0 ? "Synced; no other PC has written here yet" : $"Synced with {r.Devices} other PC{(r.Devices == 1 ? "" : "s")}: " + string.Join(", ", r.Seen.Select(x => x.Name)));
+        return new { type = "sync", on = c.On, folder = c.Folder, status };
+    }
+
     object SettingsMessage()
     {
         var d = Shared.Prefs.Data;
@@ -219,7 +272,7 @@ public partial class MainWindow
             type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
             engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
             spacesOn = d.SpacesOn, closeIdleDays = d.CloseIdleDays, littleLinks = d.LittleLinks, peek = d.Peek, splitView = d.SplitView, altSplit = d.AltSplit, peekClick = d.PeekClick, peekStays = d.PeekStays, pinsPeek = d.PinsPeek, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
-            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer, proxyUser = d.ProxyUser, proxyHasPassword = ProxyVault.Has,
+            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer, proxyUser = d.ProxyUser, proxyHasPassword = ProxyVault.Has, askHello = d.AskHello, fillFromCard = d.FillFromCard,
             spaces = Shared.Book.Spaces.Select(sp => new { id = sp.Id, name = sp.Name, colour = sp.Colour, colour2 = sp.Colour2, strength = sp.Strength.ToString(), icon = sp.IconIndex, shares = sp.SharesSignIns, profile = sp.ProfileId, first = sp.IsFirst }),
             profiles = Shared.Book.Profiles.Select(pf => new { id = pf.Id, name = pf.Name, personal = pf.IsPersonal }),
             iconGlyphs = Spaces.Icons, iconNames = Spaces.IconNames, colourNames = Spaces.ColourNames,
@@ -254,6 +307,8 @@ public partial class MainWindow
                 case "blockTrackers": d.BlockTrackers = B(); break;
                 case "siteSearch": d.SiteSearch = B(); break;
                 case "siteStylesOn": d.SiteStylesOn = B(); break;
+                case "askHello": d.AskHello = B(); break;
+                case "fillFromCard": d.FillFromCard = B(); break;
                 case "proxyMode": if (Enum.TryParse<ProxyMode>(S(), out var pm)) d.ProxyMode = pm; break;
                 case "proxyServer": d.ProxyServer = S().Trim(); break;
                 case "proxyUser": d.ProxyUser = S().Trim(); if (d.ProxyUser.Length == 0) ProxyVault.Forget(); break;
