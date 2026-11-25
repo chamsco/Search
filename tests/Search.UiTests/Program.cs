@@ -690,6 +690,7 @@ try
     AutomationElement? OnPage(string name) { try { return window!.FindFirstDescendant(cf => cf.ByName(name)); } catch { return null; } }
     string Trace6() { try { using var fs = new FileStream(Path.Combine(data, "trace.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(fs); return r.ReadToEnd(); } catch { return ""; } }
     void ClickPage(string name) { if (OnPage(name) is { } el) { Mouse.Click(CentreOf(el)); } Thread.Sleep(1200); }
+    void ClickCardAway(string name, string title) { for (var i = 0; i < 3; i++) { ClickCard(name, 6000); if (Await(() => Anywhere(title) is null, 2500)) return; } }
     bool ClickCard(string name, int ms = 10000) { AutomationElement? el = null; Await(() => (el = Anywhere(name)) is not null, ms); if (el is not null) Mouse.Click(CentreOf(el)); Thread.Sleep(1200); return el is not null; }
 
     // Permissions
@@ -883,7 +884,7 @@ try
         if (OnPage("Choose a password") is { } newBox) Mouse.Click(CentreOf(newBox));
         offerStrong = Await(() => Anywhere("Use a strong password for localhost?") is not null, 6000);
     }
-    ClickCard("Use");
+    ClickCardAway("Use", "Use a strong password for localhost?");
     var strong = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "n:20:true"; } catch { return false; } }), 8000);
     Step("A sign-up's new-password box: a strong password is offered and fills both boxes", offerStrong && strong, $"card: {offerStrong}, both boxes hold the same 20 characters: {strong}, trace: {FormTrace()} · " + Shot("password-strong"));
 
@@ -898,7 +899,7 @@ try
         offerCard = Await(() => Anywhere("Fill in from your card at localhost?") is not null, 6000);
     }
     var cardShot = Shot("card-offer");
-    ClickCard("Fill");
+    ClickCardAway("Fill", "Fill in from your card at localhost?");
     var cardFilled = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "c:Ana|Diaz|ana@example.com|69001|Kept"; } catch { return false; } }), 8000);
     Step("A contact form's email box offers your card (Settings › Passwords › My card); Fill puts name, email and postal code in the empty boxes and leaves the one already typed alone", offerCard && cardFilled, $"card: {offerCard}, boxes: {cardFilled} · {cardShot} · " + Shot("card-filled"));
 

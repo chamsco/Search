@@ -125,7 +125,7 @@ const KEYS = [['New tab','Ctrl+T'],['New window','Ctrl+N'],['Reopen closed tab',
  ['Add this page to bookmarks','Ctrl+Shift+B'],['Show the bookmarks bar','Ctrl+Alt+B'],['History','Ctrl+Y'],['Downloads','Ctrl+Shift+J'],['Clear browsing data','Ctrl+Shift+Delete'],['Settings','Ctrl+,'],['Developer tools','F12 / Ctrl+Alt+I'],['Copy clean link','Ctrl+Alt+Shift+C'],['Reading mode','Ctrl+Alt+Shift+R'],['Picture in picture','Ctrl+Shift+P']];
 document.getElementById('keys').innerHTML = KEYS.map(([a, k]) => `<tr><td>${a}</td><td><kbd>${k}</kbd></td></tr>`).join('');
 document.getElementById('engine').innerHTML = ENGINES.map((e, i) => `<option value="${e}">${NAMES[i]}</option>`).join('');
-function show(id) { id = ['general','appearance','tabs','privacy','sites','keyboard','about'].includes(id) ? id : 'general';
+function show(id) { id = ['general','appearance','tabs','privacy','sites','passwords','import','keyboard','about'].includes(id) ? id : 'general';
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.s === id)); }
 window.addEventListener('hashchange', () => show(location.hash.slice(1))); show(location.hash.slice(1));
 const set = (key, value) => host.send('settings.set', { key, value });
