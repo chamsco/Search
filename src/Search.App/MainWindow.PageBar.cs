@@ -71,7 +71,7 @@ public partial class MainWindow
         var t = live;
         var page = t is { IsBlank: false, IsInternal: false };
         AddressText.Text = page ? Address.Pretty(t!.Url) : t is { IsInternal: true } ? t.Label : "Search or enter address";
-        AddressGlyph.Text = t is not null && t.Url.StartsWith("https:", StringComparison.OrdinalIgnoreCase) ? "" : "";
+        AddressGlyph.Text = t is not null && t.Url.StartsWith("https:", StringComparison.OrdinalIgnoreCase) ? "\uE72E" : "\uE785";
         PageActions.Visibility = page ? Visibility.Visible : Visibility.Collapsed;
         if (page) BookmarkDoor.Content = Marks.Contains(t!.Url) ? "" : "";
     }

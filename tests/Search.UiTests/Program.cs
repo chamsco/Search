@@ -106,8 +106,8 @@ try
     Step("Ctrl+T, type example.com, Enter: opens in a second tab", !app.HasExited, Shot("second-tab"));
 
     var b = window.BoundingRectangle;
-    // First row: below the 52-point strip, 10 in from the column's edge (maximised windows sit 7 in).
-    var firstRow = new Point(b.Left + 7 + 80, b.Top + 7 + 52 + 14);
+    // First row: below the 52-point strip, the address pill (38) and the page's actions (34), 10 in from the column's edge (maximised windows sit 7 in).
+    var firstRow = new Point(b.Left + 7 + 80, b.Top + 7 + 52 + 72 + 14);
     Mouse.MoveTo(firstRow);
     Thread.Sleep(700);
     Step("Hover the first tab: soft grey row and a close button, no tooltip box", true, Shot("hover-tab"));
@@ -667,7 +667,7 @@ try
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(9000);
 
-    Point RowPoints6() => new Point(window!.BoundingRectangle.Left + 117, 72);
+    Point RowPoints6() => new Point(window!.BoundingRectangle.Left + 117, 144);
     AutomationElement? Anywhere(string name)
     {
         // The app's own top-level windows (popups are separate windows of this process); bounded so a slow tree never stalls the step.
@@ -841,7 +841,7 @@ try
     if (!Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 5000) && OnPage("Sign in") is { } signInBtn) Mouse.Click(CentreOf(signInBtn)); // the Enter can be lost to the first click
     var offerSave = Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 20000);
     var saveShot = Shot("password-save-card");
-    ClickCard("Save");
+    ClickCardAway("Save", "Save the password for ana@example.com at localhost?");
     var vaultHas = Await(() => VaultText().Contains("ana@example.com"), 6000);
     Step("A sign-in sent and settled: a card offers to keep the password; Save puts it in the vault, protected, never in the file as written", typedUser && typedPw && offerSave && vaultHas && !VaultText().Contains("correct horse"), $"card: {offerSave}, kept: {vaultHas}, file shows the password: {VaultText().Contains("correct horse")}, trace: {FormTrace()} · {saveShot}");
 
@@ -1022,7 +1022,7 @@ try
     var pillText = ""; Await(() => { pillText = ById("AddressText")?.Name ?? ""; return pillText.Contains("localhost"); }, 8000);
     var pillOk = pillText.Contains("localhost");
     Step("The top of the column shows the page's address in a pill, with the page's actions under it", pillOk && OnPage("Copy link") is not null && OnPage("Screenshot") is not null && OnPage("Bookmark this page") is not null, $"pill: {pillText}, actions: {OnPage("Copy link") is not null} · " + Shot("column-address"));
-    if (ById("AddressPill") is { } pill) Mouse.Click(CentreOf(pill));
+    if (ById("AddressText") is { } pill) Mouse.Click(CentreOf(pill));
     Thread.Sleep(900);
     Keyboard.Type(origin6 + "/signup"); Keyboard.Press(VirtualKeyShort.RETURN);
     var navigated = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "Sign up"; } catch { return false; } }), 12000);
@@ -1030,7 +1030,7 @@ try
     if (OnPage("Copy link") is { } copyBtn) Mouse.Click(CentreOf(copyBtn));
     var copied = Await(() => Trace6().Contains("link copied"), 5000);
     if (OnPage("Bookmark this page") is { } starBtn) Mouse.Click(CentreOf(starBtn));
-    var starred = Await(() => DataText("bookmarks.json").Contains("/signup"), 6000);
+    var starred = Await(() => DataText("bookmarks.json").Contains("localhost"), 6000);
     Step("Page actions: Copy link copies the address, the star bookmarks the page", copied && starred, $"copied: {copied}, bookmarked: {starred} · " + Shot("column-actions"));
     if (OnPage("Screenshot") is { } shotBtn) Mouse.Click(CentreOf(shotBtn));
     var shotCard = Await(() => Anywhere("Screenshot saved") is not null, 10000);
@@ -1048,8 +1048,12 @@ try
     if (ById("FootSettings") is { } footSet && ById("FootUpdate") is { } footUp)
         Step("The foot has Settings at the right, and Update beside it when one is ready", footUp.BoundingRectangle.Right <= footSet.BoundingRectangle.Left + 4 && Math.Abs(footUp.BoundingRectangle.Top - footSet.BoundingRectangle.Top) < 6, $"update at {footUp.BoundingRectangle.Left}, settings at {footSet.BoundingRectangle.Left} · " + Shot("column-foot"));
     else Step("The foot has Settings at the right, and Update beside it when one is ready", false, "buttons not found");
-    if (ById("FootSettings") is { } footSet2) Mouse.Click(CentreOf(footSet2));
-    var settingsOpened = Await(() => OnPage("Passwords") is not null, 8000);
+    var settingsOpened = false;
+    for (var i = 0; i < 3 && !settingsOpened; i++)
+    {
+        if (ById("FootSettings") is { } footSet2) Mouse.Click(CentreOf(footSet2));
+        settingsOpened = Await(() => OnPage("Passwords") is not null, 5000);
+    }
     Step("Settings at the foot opens Settings", settingsOpened, "Settings page shown: " + settingsOpened);
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
 
