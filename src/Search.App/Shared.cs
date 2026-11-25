@@ -19,4 +19,6 @@ static class Shared
         bookmarks.TryGetValue(profile, out var b) ? b : bookmarks[profile] = Bookmarks.Load(SpaceBook.BookmarksFile(profile));
     public static readonly Prefs Prefs = Prefs.Load();
     public static readonly Downloads Downloads = new();
+    public static readonly SitePermissions Perms = SitePermissions.Load();
+    public static readonly SiteStyles Styles = SiteStyles.Load();
 }

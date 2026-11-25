@@ -55,6 +55,10 @@ public sealed class PinFolder
     /// <summary>The folder that holds this one; none at the top of the rows.</summary>
     public Guid? Parent { get; set; }
     public bool Collapsed { get; set; }
+    /// <summary>A live folder is filled from a web feed (LiveFolders.swift): the feed's address, and its latest posts.</summary>
+    public string? Feed { get; set; }
+    public List<FeedItem>? Items { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore] public bool IsLive => !string.IsNullOrEmpty(Feed);
 }
 
 /// <summary>The shape of the folders, worked out: what is drawn, what may go where. Pure, so tests can hold it.</summary>

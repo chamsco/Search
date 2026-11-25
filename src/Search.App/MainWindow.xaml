@@ -271,6 +271,19 @@
       </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!-- A post of a live folder: a line that opens its page. -->
+    <DataTemplate x:Key="FeedLine" DataType="{x:Type local:FeedRow}">
+      <Border x:Name="Post" AutomationProperties.Name="{Binding Title}" Height="28" CornerRadius="8" Background="Transparent" Margin="{Binding Indent}" ToolTip="{Binding Title}"
+              MouseLeftButtonDown="FeedRow_MouseDown">
+        <TextBlock Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource Ink}" VerticalAlignment="Center" Margin="10,0,8,0" TextTrimming="CharacterEllipsis" />
+      </Border>
+      <DataTemplate.Triggers>
+        <Trigger SourceName="Post" Property="IsMouseOver" Value="True">
+          <Setter TargetName="Post" Property="Background" Value="{DynamicResource Row.Hover}" />
+        </Trigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
     <!-- A group's name, or a folder among the pinned rows, as a line above what it holds (TabGroups.swift, PinFolderViews.swift). -->
     <DataTemplate x:Key="HeadingRow" DataType="{x:Type local:RowHeading}">
       <Border x:Name="Head" AutomationProperties.Name="{Binding Name}" Height="24" CornerRadius="8" Background="Transparent" Margin="{Binding Indent}"

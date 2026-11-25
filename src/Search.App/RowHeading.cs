@@ -61,9 +61,18 @@ public sealed class RowHeading : INotifyPropertyChanged
 }
 
 /// <summary>Picks a tab's template or a heading's for one line of the column.</summary>
+/// <summary>A post of a live folder, a line under its heading: it opens its page in a new tab, as a bookmark would.</summary>
+public sealed class FeedRow
+{
+    public FeedRow(FeedItem item, int depth) { Item = item; Indent = new System.Windows.Thickness(depth * 12 + 14, 0, 0, 2); }
+    public FeedItem Item { get; }
+    public string Title => Item.Title;
+    public System.Windows.Thickness Indent { get; }
+}
+
 public sealed class RowSelector : System.Windows.Controls.DataTemplateSelector
 {
-    readonly System.Windows.DataTemplate tab, heading;
-    public RowSelector(System.Windows.DataTemplate tab, System.Windows.DataTemplate heading) { this.tab = tab; this.heading = heading; }
-    public override System.Windows.DataTemplate SelectTemplate(object? item, System.Windows.DependencyObject container) => item is RowHeading ? heading : tab;
+    readonly System.Windows.DataTemplate tab, heading, feed;
+    public RowSelector(System.Windows.DataTemplate tab, System.Windows.DataTemplate heading, System.Windows.DataTemplate? feed = null) { this.tab = tab; this.heading = heading; this.feed = feed ?? heading; }
+    public override System.Windows.DataTemplate SelectTemplate(object? item, System.Windows.DependencyObject container) => item is RowHeading ? heading : item is FeedRow ? feed : tab;
 }

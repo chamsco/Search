@@ -44,7 +44,7 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Switch to an open tab | ✅ | |
 | Search engine choice (8 + custom) | ✅ | Settings › General |
 | Engine suggestions as you type | ✅ | All 8 engines; never for an address |
-| Commands (Arc command bar) | ✅ | Type `hist`, `dwn`, `settings`… to get the page. Site search with Tab ⬜ |
+| Commands (Arc command bar) | ✅ | Type `hist`, `dwn`, `settings`… to get the page. Site search with Tab ✅ (Settings › General) |
 | Bookmarks in suggestions | ✅ | |
 
 ## Pages
@@ -61,14 +61,17 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Find in page | ✅ | Ctrl+F, Ctrl+G, Shift+Enter; highlights with the page's CSS Custom Highlight API |
 | Print | ✅ | Ctrl+P |
 | Zoom (Ctrl +, −, 0) | ✅ | |
-| Permissions (camera, mic, location) remembered per site | ⬜ | WebView2 asks every time for now |
-| Reading mode, translation | ⬜ | Translation has no built-in Windows API |
-| Site styles, live folders | ⬜ | |
-| Picture in picture | 🟡 | Chromium's own |
+| Permissions (camera, mic, location, notifications) remembered per site | ✅ | A card over the page asks; Settings › Sites lists and forgets them; Site Information in the tab menu |
+| Web notifications | ✅ | Shown as a card with the site's name; Show brings its tab forward |
+| Reading mode | ✅ | Ctrl+Alt+Shift+R; the Mac's prose-minus-links heuristic. Markdown twins ⬜ |
+| Translation | ⛔ | Skipped by the owner's decision (wave 6) |
+| Site styles | ✅ | Settings › Sites; CSS only; off until turned on |
+| Live folders | ✅ | Pin folders filled from an RSS or Atom feed: latest 12 posts, refreshed every 30 minutes and on Refresh, a site address finds its feed; only with pins as rows |
+| Picture in picture | ✅ | Ctrl+Shift+P floats the playing video in Chromium's own window |
 | HTTPS upgrade | ✅ | Falls back to http if the site has no https; Settings › Privacy |
-| Tracker protection | ⬜ | |
-| Proxy | ⬜ | |
-| Client certificates | ⬜ | |
+| Tracker protection | ✅ | Settings › Privacy › Block trackers; known ad and tracking hosts are not asked |
+| Proxy | ✅ | Settings › Privacy › Proxy: Windows' own, none, or host:port / socks5://, with an optional user name and password (the password protected for the Windows account, answered only for the proxy). Takes effect at next start |
+| Client certificates | ✅ | A picker over the page when a site asks, remembered per site; CI runs it against a mutual-TLS server |
 
 ## Accounts and data
 | Feature | Status | Notes |

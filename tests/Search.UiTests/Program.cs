@@ -45,6 +45,7 @@ Application Launch()
     psi.Environment["SEARCH_DATA"] = data;
     psi.Environment["SEARCH_NO_UPDATES"] = "1";
     psi.Environment["SEARCH_SNAP"] = "1";
+    psi.Environment["SEARCH_TEST_TRUST_LOCALHOST"] = "1";
     return Application.Launch(psi);
 }
 
@@ -601,6 +602,373 @@ try
     var midSwitch = Shot("tab-switching");
     Thread.Sleep(800);
     Step("Ctrl+2: the page dips as the next tab comes up, its row takes the wash (a still straight after, then settled)", !app.HasExited, $"{midSwitch} · " + Shot("tab-switched"));
+
+    // ---- wave 6: page features and privacy ----
+    Quit();
+    // A site of our own on localhost (a secure origin for the engine), so permissions, notifications and the rest can be asked for.
+    var port = 18930 + Random.Shared.Next(0, 50);
+    var server = new System.Net.HttpListener();
+    server.Prefixes.Add($"http://localhost:{port}/");
+    server.Start();
+    const string indexPage = "<!doctype html><title>Wave six</title><body style='font:16px sans-serif'><h1>Wave six</h1>" +
+        "<button onclick=\"navigator.geolocation.getCurrentPosition(()=>{document.title='geo ok'},()=>{document.title='geo denied'})\">Ask location</button> " +
+        "<button onclick=\"Notification.requestPermission().then(p=>{document.title='note '+p; if(p==='granted') new Notification('Hello from a page',{body:'It works'})})\">Ask notifications</button> " +
+        "<button onclick=\"fetch('https://doubleclick.net/x',{mode:'no-cors'}).then(()=>document.title='probe done',()=>document.title='probe failed')\">Probe a tracker</button>";
+    const string articlePage = "<!doctype html><title>The Article</title><body><nav><a href='/'>Home</a> <a href='/x'>News</a> <a href='/y'>Sport</a></nav><aside><a href='/z'>Related story one</a> <a href='/w'>Related story two</a></aside>" +
+        "<article><h1>A long walk home</h1>" +
+        "<p>The evening came down slowly over the harbour, and the lamps along the quay were lit one by one, each with its small halo of mist, so that the whole waterfront seemed to be breathing in the cold.</p>" +
+        "<p>She had walked this way every night for eleven years and had never once noticed how the boats leaned toward each other at the turn of the tide, as if they were sharing a piece of news they could not say aloud.</p>" +
+        "<p>At the corner where the bakery used to be there was now a shop that sold only umbrellas, and in the window, among the black and the navy, hung a single yellow one, open, as though it had been waiting for her.</p></article>" +
+        "<footer><a href='/terms'>Terms</a> <a href='/privacy'>Privacy</a></footer>";
+    const string styledPage = "<!doctype html><title>Styled</title><body style='background:white'><h1>Styled</h1><script>setTimeout(()=>{document.title='bg='+getComputedStyle(document.body).backgroundColor},2000)</script>";
+    const string videoPage = "<!doctype html><title>Video</title><video id=v muted autoplay playsinline width=320 height=180></video><canvas id=c width=320 height=180 style='display:none'></canvas>" +
+        "<script>const c=document.getElementById('c'),x=c.getContext('2d');setInterval(()=>{x.fillStyle='hsl('+(Date.now()/10%360)+',70%,50%)';x.fillRect(0,0,320,180)},50);const v=document.getElementById('v');v.srcObject=c.captureStream(20);v.play();</script>";
+    const string feedXml = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Harbour News</title>" +
+        "<item><title>Post one</title><link>/post1</link></item><item><title>Post two &amp; more</title><link>/post2</link></item></channel></rss>";
+    var serving = Task.Run(async () =>
+    {
+        while (server.IsListening)
+        {
+            try
+            {
+                var ctx = await server.GetContextAsync();
+                var path = ctx.Request.Url!.AbsolutePath;
+                var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", _ => indexPage };
+                var bytes = System.Text.Encoding.UTF8.GetBytes(html);
+                ctx.Response.ContentType = path == "/feed.xml" ? "application/rss+xml; charset=utf-8" : "text/html; charset=utf-8";
+                ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+                ctx.Response.Close();
+            }
+            catch { }
+        }
+    });
+    var origin6 = $"http://localhost:{port}";
+    var site6 = $"localhost:{port}";
+
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"blockTrackers\":true,\"siteStylesOn\":true}");
+    File.WriteAllText(Path.Combine(data, "styles.json"), "{\"hosts\":{\"localhost\":\"body{background:rgb(1,2,3)!important}\"}}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/\",\"title\":\"Wave six\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(9000);
+
+    Point RowPoints6() => new Point(window!.BoundingRectangle.Left + 117, 72);
+    AutomationElement? Anywhere(string name)
+    {
+        // The app's own top-level windows (popups are separate windows of this process); bounded so a slow tree never stalls the step.
+        var task = Task.Run(() =>
+        {
+            try
+            {
+                foreach (var top in automation.GetDesktop().FindAllChildren())
+                {
+                    int pid; try { pid = top.Properties.ProcessId.ValueOrDefault; } catch { continue; }
+                    if (pid != app!.ProcessId) continue;
+                    var hit = top.FindFirstDescendant(cf => cf.ByName(name));
+                    if (hit is not null) return hit;
+                }
+            }
+            catch { }
+            return null;
+        });
+        try { return task.Wait(TimeSpan.FromSeconds(6)) ? task.Result : null; } catch { return null; }
+    }
+    bool Await(Func<bool> what, int ms = 8000) { var until = DateTime.UtcNow.AddMilliseconds(ms); while (DateTime.UtcNow < until) { if (what()) return true; Thread.Sleep(300); } return what(); }
+    AutomationElement? OnPage(string name) { try { return window!.FindFirstDescendant(cf => cf.ByName(name)); } catch { return null; } }
+    string Trace6() { try { using var fs = new FileStream(Path.Combine(data, "trace.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(fs); return r.ReadToEnd(); } catch { return ""; } }
+    void ClickPage(string name) { if (OnPage(name) is { } el) { Mouse.Click(CentreOf(el)); } Thread.Sleep(1200); }
+    bool ClickCard(string name, int ms = 10000) { AutomationElement? el = null; Await(() => (el = Anywhere(name)) is not null, ms); if (el is not null) Mouse.Click(CentreOf(el)); Thread.Sleep(1200); return el is not null; }
+
+    // Permissions
+    bool AskUntil(string button, string title) { for (var i = 0; i < 4; i++) { ClickPage(button); if (Await(() => Anywhere(title) is not null, 7000)) return true; } return false; }
+    var asked = AskUntil("Ask location", $"{site6} wants to know your location");
+    var askedShot = Shot("permission-card");
+    ClickCard("Allow");
+    var kept = Await(() => DataText("permissions.json").Contains("\"Location\":\"Allow\"") || DataText("permissions.json").Contains("\"Location\":0"), 5000);
+    Step("A page asks for your location: a card over the page asks, Allow is kept for that site", asked && kept, $"card shown: {asked}, kept: {DataText("permissions.json")} · {askedShot}");
+    ClickPage("geo denied"); ClickPage("geo ok"); ClickPage("Ask location");
+    Thread.Sleep(1500);
+    Step("Asked again: no card, the kept answer is used", Anywhere($"{site6} wants to know your location") is null, Shot("permission-remembered"));
+
+    // Notifications
+    var askedNote = AskUntil("Ask notifications", $"{site6} wants to show notifications");
+    ClickCard("Allow");
+    var shown = Await(() => Anywhere($"{site6}: Hello from a page") is not null, 8000);
+    Step("A page asks to show notifications, then sends one: the card names the site and the message", askedNote && shown, $"asked: {askedNote}, shown: {shown} · " + Shot("notification"));
+    ClickCard("Dismiss");
+
+    // Trackers
+    ClickPage("Probe a tracker");
+    Thread.Sleep(2500);
+    var blocked = Trace6().Contains("tracker blocked https://doubleclick.net");
+    Step("Block trackers on: a page asking for a doubleclick.net address is never sent it", blocked, $"trace: {(blocked ? "tracker blocked https://doubleclick.net/x" : "no line")}");
+
+    // Site Information
+    Mouse.Click(RowPoints6(), MouseButton.Right);
+    Thread.Sleep(900);
+    MenuEntry("Site Information")?.Click();
+    var info = Await(() => Anywhere("The connection is not secure: what you send can be read on the way.") is not null, 5000);
+    Step("Tab menu › Site Information: the site, how it is connected and what it may use", info && Anywhere(site6) is not null, Shot("site-information"));
+    ClickCard("Done");
+
+    // Settings › Sites
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var listed6 = false;
+    for (var i = 0; i < 4 && !listed6; i++)
+    {
+        if (i < 2 && OnPage("Sites") is { } nav) Mouse.Click(CentreOf(nav));
+        else Mouse.Click(new Point(window!.BoundingRectangle.Left + 293, window.BoundingRectangle.Top + 257)); // the nav entry in the 1024x768 layout
+        Thread.Sleep(1200);
+        listed6 = Await(() => OnPage("Location: allowed") is not null || OnPage(site6) is not null, 3000);
+    }
+    Step("Settings › Sites lists what the site was allowed", listed6, Shot("settings-sites"));
+    for (var i = 0; i < 4 && DataText("permissions.json").Contains(origin6); i++) // one row per thing the site was allowed
+    {
+        if (OnPage("Forget") is { } forget) Mouse.Click(CentreOf(forget));
+        Thread.Sleep(1500);
+    }
+    Step("Forget takes the answer back", !DataText("permissions.json").Contains(origin6), $"permissions.json: {DataText("permissions.json")}");
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+    Thread.Sleep(800);
+
+    // Copy Clean Link
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type($"{origin6}/?utm_source=news&id=7&fbclid=abc");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_C);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(4500);
+    var cleanSaved = Await(() => SessionText().Contains(origin6 + "/?id=7\"") || SessionText().Contains(origin6 + "/?id=7\\u0022"), 6000);
+    Step("Ctrl+Alt+Shift+C on a page with utm_ and fbclid in its address, pasted into a new tab: only id=7 is left", cleanSaved, "session: " + System.Text.RegularExpressions.Regex.Match(SessionText(), "[^\"]*\\?id=7[^\"]*").Value + " · " + Shot("clean-link"));
+
+    // Site search with Tab
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type("youtube");
+    Thread.Sleep(600);
+    Keyboard.Press(VirtualKeyShort.TAB);
+    Thread.Sleep(800);
+    var chipShot = Shot("site-search-chip");
+    Keyboard.Type("cats");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(6000);
+    var searched = Await(() => SessionText().Contains("youtube.com/results?search_query=cats"), 8000);
+    Step("Type youtube, Tab, cats, Enter: YouTube's own search for cats opens", searched, chipShot + " · " + Shot("site-search-result"));
+
+    // Site style
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type($"{origin6}/styled");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    var styled = Await(() => OnPage("bg=rgb(1, 2, 3)") is not null, 12000);
+    Step("A style kept for localhost (Settings › Sites) is on its pages: the background reads rgb(1, 2, 3)", styled, Shot("site-style"));
+
+    // Reading mode
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type($"{origin6}/article");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_R);
+    Thread.Sleep(1500);
+    var readerLine = System.Text.RegularExpressions.Regex.Match(Trace6(), "reader \"opened (\\d+)\"").Groups[1].Value;
+    Step("Ctrl+Alt+Shift+R on an article: reading mode opens with its three paragraphs, the links around it left out", readerLine == "3", $"paragraphs: {readerLine} · " + Shot("reading-mode"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_R);
+
+    // Picture in picture
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Keyboard.Type($"{origin6}/video");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_P);
+    Thread.Sleep(2500);
+    var pipTrace = Trace6().Split('\n').LastOrDefault(l => l.Contains("pip ")) ?? "";
+    Step("Ctrl+Shift+P on a page with a playing video: it floats in a picture-in-picture window", pipTrace.Contains("opened"), pipTrace.Trim().Replace("|", "/") + " · " + Shot("picture-in-picture"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_P);
+
+    // Live folders
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6-live-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"pinsAsRows\":true}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/\",\"title\":\"Wave six\"}],\"active\":0,\"folders\":[{\"id\":\"6f1b2c3d-0000-4000-8000-000000000001\",\"name\":\"Seeded live\",\"feed\":\"" + origin6 + "/feed.xml\"}]}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    var postOne = Await(() => OnPage("Post one") is not null || window!.FindFirstDescendant(cf => cf.ByName("Post one")) is not null, 25000);
+    Step("A live folder (pin folder with a feed address): its latest posts fill it a few seconds after launch", postOne && window.FindFirstDescendant(cf => cf.ByName("Post two & more")) is not null, "feed: " + origin6 + "/feed.xml · " + Shot("live-folder"));
+    if (window.FindFirstDescendant(cf => cf.ByName("Post one")) is { } post) Mouse.Click(CentreOf(post));
+    var opened = Await(() => SessionText().Contains("/post1"), 8000);
+    Step("Click a post: its page opens in a new tab", opened, "session has /post1: " + opened + " · " + Shot("live-folder-post"));
+    if (window.FindFirstDescendant(cf => cf.ByName("Seeded live")) is { } seeded) { Mouse.Click(CentreOf(seeded), MouseButton.Right); Thread.Sleep(900); MenuEntry("New Live Folder Inside…")?.Click(); }
+    var addressBox = Await(() => Anywhere("Feed address") is not null, 8000);
+    if (addressBox) { Keyboard.Type(origin6 + "/blog"); Thread.Sleep(300); Keyboard.Press(VirtualKeyShort.RETURN); }
+    var made = Await(() => window!.FindFirstDescendant(cf => cf.ByName("Harbour News")) is not null, 15000);
+    Step("Heading menu › New Live Folder Inside…, a site's address (not the feed's): the feed it points to is found and a folder named after it is made", addressBox && made, $"address box: {addressBox}, folder made: {made} · " + Shot("live-folder-new"));
+
+    // Proxy
+    Quit();
+    var proxyPort = port + 100;
+    var proxySaw = new List<string>();
+    var proxy = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, proxyPort);
+    proxy.Start();
+    var proxying = Task.Run(async () =>
+    {
+        while (true)
+        {
+            try
+            {
+                var client = await proxy.AcceptTcpClientAsync();
+                _ = Task.Run(() =>
+                {
+                    using var c = client;
+                    var stream = c.GetStream();
+                    var buf = new byte[8192];
+                    var n = stream.Read(buf, 0, buf.Length);
+                    var head = System.Text.Encoding.ASCII.GetString(buf, 0, n);
+                    var first = head.Split('\n')[0].Trim();
+                    lock (proxySaw) proxySaw.Add(first);
+                    if (!first.StartsWith("GET http://", StringComparison.Ordinal)) return;
+                    var body = "<!doctype html><title>Via the proxy</title><h1>Via the proxy</h1>";
+                    var reply = $"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}";
+                    var bytes = System.Text.Encoding.ASCII.GetBytes(reply);
+                    stream.Write(bytes, 0, bytes.Length);
+                });
+            }
+            catch { return; }
+        }
+    });
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6p-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"proxyMode\":2,\"proxyServer\":\"127.0.0.1:" + proxyPort + "\"}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"http://proxy-probe.test/\",\"title\":\"\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    var viaProxy = Await(() => OnPage("Via the proxy") is not null, 20000);
+    string saw; lock (proxySaw) saw = string.Join(" / ", proxySaw.Where(l => l.Contains("proxy-probe")).Take(2));
+    Step("Settings › Privacy › Proxy set to a server of its own: a page for a name that exists nowhere loads through it", viaProxy && saw.Length > 0, $"the proxy saw: {saw} · " + Shot("proxy"));
+    proxy.Stop();
+
+    // Proxy that asks who you are
+    Quit();
+    var authPort = port + 200;
+    var authSaw = new List<string>();
+    var authProxy = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, authPort);
+    authProxy.Start();
+    var expected = "Proxy-Authorization: Basic " + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("alice:s3cret"));
+    var authing = Task.Run(async () =>
+    {
+        while (true)
+        {
+            try
+            {
+                var client = await authProxy.AcceptTcpClientAsync();
+                _ = Task.Run(() =>
+                {
+                    using var c = client;
+                    var stream = c.GetStream();
+                    var buf = new byte[8192];
+                    var n = stream.Read(buf, 0, buf.Length);
+                    var head = System.Text.Encoding.ASCII.GetString(buf, 0, n);
+                    var first = head.Split('\n')[0].Trim();
+                    if (!first.StartsWith("GET http://proxy-auth.test", StringComparison.Ordinal)) return;
+                    var signedIn = head.Contains(expected, StringComparison.OrdinalIgnoreCase);
+                    lock (authSaw) authSaw.Add(signedIn ? "signed in" : "asked who");
+                    string reply;
+                    if (signedIn) { var body = "<!doctype html><title>Signed in at the proxy</title><h1>Signed in at the proxy</h1>"; reply = $"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}"; }
+                    else reply = "HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm=\"test\"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                    var bytes = System.Text.Encoding.ASCII.GetBytes(reply);
+                    stream.Write(bytes, 0, bytes.Length);
+                });
+            }
+            catch { return; }
+        }
+    });
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6a-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false,\"proxyMode\":2,\"proxyServer\":\"127.0.0.1:" + authPort + "\"}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3500);
+    var userBox = false;
+    for (var i = 0; i < 4 && !userBox; i++)
+    {
+        Mouse.Click(new Point(window.BoundingRectangle.Left + 293, window.BoundingRectangle.Top + 225)); // Privacy in the nav
+        Thread.Sleep(1200);
+        userBox = Await(() => OnPage("Proxy user name") is not null, 3000);
+    }
+    if (OnPage("Proxy user name") is { } userField) { Mouse.Click(CentreOf(userField)); Thread.Sleep(300); Keyboard.Type("alice"); Keyboard.Press(VirtualKeyShort.TAB); Thread.Sleep(900); }
+    if (OnPage("Proxy password") is { } pwField) { Mouse.Click(CentreOf(pwField)); Thread.Sleep(300); Keyboard.Type("s3cret"); Keyboard.Press(VirtualKeyShort.TAB); Thread.Sleep(1500); }
+    var vault = Path.Combine(data, "proxy-secret.bin");
+    var vaulted = File.Exists(vault) && !System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(vault)).Contains("s3cret") && !DataText("prefs.json").Contains("s3cret");
+    Step("Settings › Privacy › Proxy › User name and Password typed: the name is vaulted in prefs, the password protected in its own file and nowhere else", userBox && vaulted && DataText("prefs.json").Contains("alice"), $"settings has the fields: {userBox}, protected file: {File.Exists(vault)} · " + Shot("proxy-credentials"));
+    Quit();
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"http://proxy-auth.test/\",\"title\":\"\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    var signed = Await(() => OnPage("Signed in at the proxy") is not null, 25000);
+    string sawAuth; lock (authSaw) sawAuth = string.Join(" / ", authSaw);
+    Step("A proxy that answers 407: Search signs in with the kept name and password, and the page loads", signed, $"the proxy saw: {sawAuth} · " + Shot("proxy-signed-in"));
+    authProxy.Stop();
+
+    // A site that asks for a certificate (mutual TLS: openssl's own test server, a client certificate in this account's store)
+    Quit();
+    var certDir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-certs-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    using var caKey = System.Security.Cryptography.RSA.Create(2048);
+    var caReq = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=Search Test CA", caKey, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    caReq.CertificateExtensions.Add(new System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension(true, false, 0, true));
+    using var ca = caReq.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(2));
+    using var srvKey = System.Security.Cryptography.RSA.Create(2048);
+    var srvReq = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=localhost", srvKey, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    var san = new System.Security.Cryptography.X509Certificates.SubjectAlternativeNameBuilder(); san.AddDnsName("localhost");
+    srvReq.CertificateExtensions.Add(san.Build());
+    using var srvCert = srvReq.Create(ca, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1), Guid.NewGuid().ToByteArray());
+    using var cliKey = System.Security.Cryptography.RSA.Create(2048);
+    var cliReq = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=Test Client", cliKey, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    cliReq.CertificateExtensions.Add(new System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension(new System.Security.Cryptography.OidCollection { new System.Security.Cryptography.Oid("1.3.6.1.5.5.7.3.2") }, false));
+    using var cliCert = cliReq.Create(ca, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1), Guid.NewGuid().ToByteArray());
+    File.WriteAllText(Path.Combine(certDir, "ca.pem"), ca.ExportCertificatePem());
+    File.WriteAllText(Path.Combine(certDir, "srv.pem"), srvCert.ExportCertificatePem());
+    File.WriteAllText(Path.Combine(certDir, "srv.key"), srvKey.ExportPkcs8PrivateKeyPem());
+    var cliPfx = new System.Security.Cryptography.X509Certificates.X509Certificate2(System.Security.Cryptography.X509Certificates.RSACertificateExtensions.CopyWithPrivateKey(cliCert, cliKey).Export(System.Security.Cryptography.X509Certificates.X509ContentType.Pfx, "x"), "x",
+        System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.PersistKeySet | System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.UserKeySet);
+    using (var my = new System.Security.Cryptography.X509Certificates.X509Store(System.Security.Cryptography.X509Certificates.StoreName.My, System.Security.Cryptography.X509Certificates.StoreLocation.CurrentUser)) { my.Open(System.Security.Cryptography.X509Certificates.OpenFlags.ReadWrite); my.Add(cliPfx); }
+    var tlsPort = port + 300;
+    var openssl = File.Exists(@"C:\Program Files\Git\usr\bin\openssl.exe") ? @"C:\Program Files\Git\usr\bin\openssl.exe" : "openssl";
+    var tlsOut = new System.Text.StringBuilder();
+    Process? tls = null;
+    try
+    {
+        tls = Process.Start(new ProcessStartInfo(openssl, $"s_server -accept {tlsPort} -tls1_2 -cert srv.pem -key srv.key -Verify 1 -CAfile ca.pem -www") { WorkingDirectory = certDir, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true });
+        tls!.OutputDataReceived += (_, e) => { lock (tlsOut) tlsOut.AppendLine(e.Data); };
+        tls.ErrorDataReceived += (_, e) => { lock (tlsOut) tlsOut.AppendLine(e.Data); };
+        tls.BeginOutputReadLine(); tls.BeginErrorReadLine();
+    }
+    catch (Exception e) { tlsOut.AppendLine("could not start openssl: " + e.Message); }
+    Thread.Sleep(1500);
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-w6c-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"https://localhost:" + tlsPort + "/\",\"title\":\"\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    var certAsked = Await(() => Anywhere($"localhost:{tlsPort} asks who you are") is not null, 25000);
+    var certShot = Shot("client-certificate-card");
+    ClickCard("Continue");
+    Thread.Sleep(5000);
+    string said; lock (tlsOut) said = tlsOut.ToString();
+    var sent = said.Contains("Test Client");
+    var shownOnPage = window.FindAllDescendants().Any(el => { try { return el.Name?.Contains("Test Client") == true; } catch { return false; } });
+    Step("A site that asks for a certificate: a card lists yours, Continue sends it, and the site sees it", certAsked && (sent || shownOnPage), $"card: {certAsked}, server saw the certificate: {sent}, page shows it: {shownOnPage} · {certShot} · " + Shot("client-certificate-sent"));
+    try { tls?.Kill(true); } catch { }
+    try { using var my = new System.Security.Cryptography.X509Certificates.X509Store(System.Security.Cryptography.X509Certificates.StoreName.My, System.Security.Cryptography.X509Certificates.StoreLocation.CurrentUser); my.Open(System.Security.Cryptography.X509Certificates.OpenFlags.ReadWrite); my.Remove(cliPfx); } catch { }
+    server.Stop();
 }
 catch (Exception e)
 {

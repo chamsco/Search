@@ -120,6 +120,13 @@ public partial class MainWindow
                     break;
 
                 case "settings.get": Send(core, SettingsMessage()); break;
+                case "permissions.get": Send(core, PermissionsMessage()); break;
+                case "permissions.reset":
+                    if (Enum.TryParse<PermissionKind>(S("kind"), out var pk)) Shared.Perms.Reset(S("origin"), pk);
+                    break;
+                case "permissions.resetAll": Shared.Perms.ResetAll(); break;
+                case "styles.get": Send(core, StylesMessage()); break;
+                case "styles.set": Shared.Styles.Set(S("host"), S("css")); break;
                 case "space.add": Shared.Book.AddSpace(G("profile") ?? profileId, S("name"), 1, true); break;
                 case "space.update" when G("id") is Guid sid:
                     Shared.Book.UpdateSpace(sid, sp =>
@@ -189,6 +196,18 @@ public partial class MainWindow
         }),
     };
 
+    object PermissionsMessage() => new
+    {
+        type = "permissions",
+        items = Shared.Perms.All().Select(p => new { origin = p.Origin, kind = p.Kind.ToString(), choice = p.Choice.ToString() }),
+    };
+
+    object StylesMessage() => new
+    {
+        type = "styles",
+        items = Shared.Styles.Hosts.OrderBy(h => h.Key).Select(h => new { host = h.Key, css = h.Value }),
+    };
+
     string? updateLine;
 
     object SettingsMessage()
@@ -200,6 +219,7 @@ public partial class MainWindow
             type = "settings", engineSuggests = d.EngineSuggests, startFresh = d.StartFresh, bookmarksBar = d.BookmarksBar, httpsUpgrade = d.HttpsUpgrade,
             engine = d.Engine.ToString(), customEngine = d.CustomEngine, look = d.Look.ToString(), downloadFolder = Shared.Prefs.EffectiveDownloadFolder,
             spacesOn = d.SpacesOn, closeIdleDays = d.CloseIdleDays, littleLinks = d.LittleLinks, peek = d.Peek, splitView = d.SplitView, altSplit = d.AltSplit, peekClick = d.PeekClick, peekStays = d.PeekStays, pinsPeek = d.PinsPeek, layout = d.Layout.ToString(), pinsAsRows = d.PinsAsRows, currentProfile = profileId,
+            blockTrackers = d.BlockTrackers, siteSearch = d.SiteSearch, siteStylesOn = d.SiteStylesOn, proxyMode = d.ProxyMode.ToString(), proxyServer = d.ProxyServer, proxyUser = d.ProxyUser, proxyHasPassword = ProxyVault.Has,
             spaces = Shared.Book.Spaces.Select(sp => new { id = sp.Id, name = sp.Name, colour = sp.Colour, colour2 = sp.Colour2, strength = sp.Strength.ToString(), icon = sp.IconIndex, shares = sp.SharesSignIns, profile = sp.ProfileId, first = sp.IsFirst }),
             profiles = Shared.Book.Profiles.Select(pf => new { id = pf.Id, name = pf.Name, personal = pf.IsPersonal }),
             iconGlyphs = Spaces.Icons, iconNames = Spaces.IconNames, colourNames = Spaces.ColourNames,
@@ -211,6 +231,7 @@ public partial class MainWindow
     {
         bool B() => value.ValueKind == JsonValueKind.True;
         string S() => value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : "";
+        if (key == "proxyPassword") { ProxyVault.Write(S()); PostToPages(SettingsMessage(), "settings"); return; }
         Shared.Prefs.Update(d =>
         {
             switch (key)
@@ -230,6 +251,12 @@ public partial class MainWindow
                 case "peekClick": if (S() is "shift" or "altShift" or "altCtrl") d.PeekClick = S(); break;
                 case "layout": if (Enum.TryParse<TabsLayout>(S(), out var lay)) d.Layout = lay; break;
                 case "httpsUpgrade": d.HttpsUpgrade = B(); break;
+                case "blockTrackers": d.BlockTrackers = B(); break;
+                case "siteSearch": d.SiteSearch = B(); break;
+                case "siteStylesOn": d.SiteStylesOn = B(); break;
+                case "proxyMode": if (Enum.TryParse<ProxyMode>(S(), out var pm)) d.ProxyMode = pm; break;
+                case "proxyServer": d.ProxyServer = S().Trim(); break;
+                case "proxyUser": d.ProxyUser = S().Trim(); if (d.ProxyUser.Length == 0) ProxyVault.Forget(); break;
                 case "engine": if (Enum.TryParse<Engine>(S(), out var en)) d.Engine = en; break;
                 case "customEngine": d.CustomEngine = S(); break;
                 case "look": if (Enum.TryParse<LookChoice>(S(), out var lk)) d.Look = lk; break;
@@ -280,6 +307,8 @@ public partial class MainWindow
         var look = Shared.Prefs.Data.Look switch { LookChoice.Light => Palette.Look.Light, LookChoice.Dark => Palette.Look.Dark, _ => Palette.Look.System };
         if (App.Look != look) { App.Look = look; Palette.Apply(Application.Current.Resources, look); }
         foreach (var t in Ordered()) if (t.View?.CoreWebView2 is { } c) { ApplyColorScheme(c); _ = InstallLinkScript(t, c); }
+        SyncTrackerFilters();
+        ApplyStylesEverywhere();
         BarHost.Visibility = Shared.Prefs.Data.BookmarksBar && !fullScreen ? Visibility.Visible : Visibility.Collapsed;
         BuildBar();
         ApplyTabsLayout();
