@@ -653,7 +653,26 @@ try
     Thread.Sleep(9000);
 
     Point RowPoints6() => new Point(window!.BoundingRectangle.Left + 117, 72);
-    AutomationElement? Anywhere(string name) { try { return automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(name)); } catch { return null; } }
+    AutomationElement? Anywhere(string name)
+    {
+        // The app's own top-level windows (popups are separate windows of this process); bounded so a slow tree never stalls the step.
+        var task = Task.Run(() =>
+        {
+            try
+            {
+                foreach (var top in automation.GetDesktop().FindAllChildren())
+                {
+                    int pid; try { pid = top.Properties.ProcessId.ValueOrDefault; } catch { continue; }
+                    if (pid != app!.ProcessId) continue;
+                    var hit = top.FindFirstDescendant(cf => cf.ByName(name));
+                    if (hit is not null) return hit;
+                }
+            }
+            catch { }
+            return null;
+        });
+        try { return task.Wait(TimeSpan.FromSeconds(6)) ? task.Result : null; } catch { return null; }
+    }
     bool Await(Func<bool> what, int ms = 8000) { var until = DateTime.UtcNow.AddMilliseconds(ms); while (DateTime.UtcNow < until) { if (what()) return true; Thread.Sleep(300); } return what(); }
     AutomationElement? OnPage(string name) { try { return window!.FindFirstDescendant(cf => cf.ByName(name)); } catch { return null; } }
     string Trace6() { try { using var fs = new FileStream(Path.Combine(data, "trace.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(fs); return r.ReadToEnd(); } catch { return ""; } }
