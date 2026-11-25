@@ -90,6 +90,8 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
   <h3>Kept passwords</h3>
   <div class="group" id="vaultList"></div>
   <div class="group"><div class="line" style="flex-wrap:wrap;gap:8px"><div class="label" style="flex:1;display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="vaultHost" aria-label="Site" placeholder="example.com" style="width:170px"><input type="text" id="vaultUser" aria-label="Account" placeholder="Account" style="width:150px" autocomplete="off"><input type="password" id="vaultPassword" aria-label="Password" placeholder="Password" style="width:150px" autocomplete="off"></div><button id="vaultAdd">Keep</button></div></div>
+  <h3>Passkeys</h3>
+  <div class="group"><div class="line"><div class="label">Passkeys<small id="passkeyStatus">Checking…</small><small style="color:var(--muted)">A site that offers a passkey asks Windows for it: Windows Hello (face, fingerprint or PIN) or a security key signs you in, and the key never leaves this PC or the key. They are kept by Windows, not in Search's vault, and are managed in Windows Settings › Accounts › Passkeys</small></div><button id="passkeySettings" aria-label="Open Windows passkey settings">Open Windows settings</button></div></div>
   <h3>My card</h3>
   <div class="group"><div class="line"><div class="label">Fill in from my card<small>Under a name, email, phone or address box, offers the details below. Nothing goes in until you pick a row, and only the empty boxes of that form are filled. The details stay on this PC</small></div><div class="switch" id="fillFromCard"></div></div>
   <div class="line" style="flex-wrap:wrap;gap:8px"><div class="label" style="flex:1;display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="meGiven" aria-label="First name" placeholder="First name"><input type="text" id="meMiddle" aria-label="Middle name" placeholder="Middle name"><input type="text" id="meFamily" aria-label="Last name" placeholder="Last name"><input type="text" id="meOrg" aria-label="Company" placeholder="Company"></div></div>
@@ -259,5 +261,16 @@ host.on('sync', m => { syncOn.classList.toggle('on', m.on); syncFolder.textConte
 syncOn.onclick = () => { const on = !syncOn.classList.contains('on'); if (on && !syncFolder.textContent.match(/[\\/]/)) host.send('sync.pick'); else host.send('sync.set', { on }); };
 syncPick.onclick = () => host.send('sync.pick');
 syncNow.onclick = () => host.send('sync.now');
+
+(async () => {
+  const el = document.getElementById('passkeyStatus');
+  try {
+    if (!window.PublicKeyCredential) { el.textContent = 'Not available in this web engine'; return; }
+    const here = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    const auto = PublicKeyCredential.isConditionalMediationAvailable ? await PublicKeyCredential.isConditionalMediationAvailable() : false;
+    el.textContent = (here ? 'Ready: Windows Hello can hold and use passkeys on this PC' : 'Windows Hello is not set up on this PC; a security key still works') + (auto ? '. Passkeys are offered in sign-in boxes' : '');
+  } catch (e) { el.textContent = 'Could not check: ' + e; }
+})();
+document.getElementById('passkeySettings').onclick = () => host.send('passkeys.settings');
 host.send('sync.get'); host.send('mecard.get'); host.send('settings.get'); host.send('permissions.get'); host.send('styles.get'); host.send('vault.get'); host.send('import.scan');
 </script></body></html>

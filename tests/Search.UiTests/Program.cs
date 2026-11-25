@@ -641,6 +641,7 @@ try
             try
             {
                 var ctx = await server.GetContextAsync();
+                if (ctx.Request.HasEntityBody) ctx.Request.InputStream.CopyTo(Stream.Null);
                 var path = ctx.Request.Url!.AbsolutePath;
                 var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", "/login" => loginPage, "/signup" => signupPage, "/contact" => contactPage, "/welcome" => "<!doctype html><title>Welcome</title><h1>Welcome</h1>", _ => indexPage };
                 var bytes = System.Text.Encoding.UTF8.GetBytes(html);
@@ -829,15 +830,17 @@ try
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(7000);
     string VaultText() => DataText("vault.json");
+    string FormTrace() { try { using var fs = new FileStream(Path.Combine(data, "trace.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(fs); return string.Join(" / ", r.ReadToEnd().Split('\n').Where(l => l.Contains("form ") || l.Contains("password") || l.Contains("card fill")).TakeLast(8).Select(l => l[(l.IndexOf(']') + 2)..])); } catch { return "no trace"; } }
     bool TypeInto(string field, string text) { for (var i = 0; i < 4; i++) { if (OnPage(field) is { } el) { Mouse.Click(CentreOf(el)); Thread.Sleep(500); Keyboard.Type(text); Thread.Sleep(400); return true; } Thread.Sleep(1000); } return false; }
     var typedUser = TypeInto("Email address", "ana@example.com");
     var typedPw = TypeInto("Password field", "correct horse 42");
     Keyboard.Press(VirtualKeyShort.RETURN);
+    if (!Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 5000) && OnPage("Sign in") is { } signInBtn) Mouse.Click(CentreOf(signInBtn)); // the Enter can be lost to the first click
     var offerSave = Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 20000);
     var saveShot = Shot("password-save-card");
     ClickCard("Save");
     var vaultHas = Await(() => VaultText().Contains("ana@example.com"), 6000);
-    Step("A sign-in sent and settled: a card offers to keep the password; Save puts it in the vault, protected, never in the file as written", typedUser && typedPw && offerSave && vaultHas && !VaultText().Contains("correct horse"), $"card: {offerSave}, kept: {vaultHas}, file shows the password: {VaultText().Contains("correct horse")} · {saveShot}");
+    Step("A sign-in sent and settled: a card offers to keep the password; Save puts it in the vault, protected, never in the file as written", typedUser && typedPw && offerSave && vaultHas && !VaultText().Contains("correct horse"), $"card: {offerSave}, kept: {vaultHas}, file shows the password: {VaultText().Contains("correct horse")}, trace: {FormTrace()} · {saveShot}");
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
     Keyboard.Type(origin6 + "/login");
@@ -863,6 +866,9 @@ try
     if (OnPage("Show") is { } showBtn) { Mouse.Click(CentreOf(showBtn)); Thread.Sleep(2500); }
     var revealed = window.FindAllDescendants().Any(el => { try { return el.Name?.Contains("correct horse 42") == true; } catch { return false; } });
     Step("Settings › Passwords: the account is listed; Show (Windows Hello, or straight through where none is set up) reveals the password", listedPw && revealed, $"listed: {listedPw}, shown: {revealed} · " + Shot("settings-passwords"));
+    string passkeyLine = "";
+    Await(() => { passkeyLine = window!.FindAllDescendants().Select(el => { try { return el.Name ?? ""; } catch { return ""; } }).FirstOrDefault(n => n.StartsWith("Ready: Windows Hello") || n.StartsWith("Windows Hello is not set up") || n.StartsWith("Not available in this web engine") || n.StartsWith("Could not check")) ?? ""; return passkeyLine.Length > 0; }, 5000);
+    Step("Settings › Passwords › Passkeys reports whether this PC can hold passkeys (the web engine's WebAuthn answers; the signing itself needs a person at Windows Hello)", passkeyLine.Length > 0 && !passkeyLine.StartsWith("Not available") && !passkeyLine.StartsWith("Could not"), "status: " + passkeyLine.Replace("|", "/"));
     if (window.FindFirstDescendant(cf => cf.ByName("Forget the password for ana@example.com")) is { } forgetBtn) { Mouse.Click(CentreOf(forgetBtn)); Thread.Sleep(1500); }
     Step("Forget removes it from the vault", !VaultText().Contains("ana@example.com"), "vault.json: " + VaultText().Replace("\n", " ").Replace("|", "/")[..Math.Min(120, VaultText().Length)]);
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
@@ -879,7 +885,7 @@ try
     }
     ClickCard("Use");
     var strong = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "n:20:true"; } catch { return false; } }), 8000);
-    Step("A sign-up's new-password box: a strong password is offered and fills both boxes", offerStrong && strong, $"card: {offerStrong}, both boxes hold the same 20 characters: {strong} · " + Shot("password-strong"));
+    Step("A sign-up's new-password box: a strong password is offered and fills both boxes", offerStrong && strong, $"card: {offerStrong}, both boxes hold the same 20 characters: {strong}, trace: {FormTrace()} · " + Shot("password-strong"));
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
     Keyboard.Type(origin6 + "/contact");

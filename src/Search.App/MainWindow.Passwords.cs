@@ -111,6 +111,7 @@ public partial class MainWindow
             if (!TryWeb(core.Source, out var page) || !TryWeb(e.Source, out var from) || !string.Equals(page.Host, from.Host, StringComparison.OrdinalIgnoreCase) || page.Port != from.Port) return true;
             string S(string k) => m.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
             var host = page.Host.ToLowerInvariant();
+            App.Trace($"form {type} {S("kind")} {host}");
             switch (type)
             {
                 case "form.focus" when tab == live: OfferForField(tab, core, page, S("kind")); break;
@@ -142,7 +143,7 @@ public partial class MainWindow
 
     void OfferToSave(Tab t)
     {
-        if (!pendingLogin.Remove(t.Id, out var p) || DateTime.UtcNow - p.At > TimeSpan.FromSeconds(20)) return;
+        if (!pendingLogin.Remove(t.Id, out var p) || DateTime.UtcNow - p.At > TimeSpan.FromSeconds(20)) { App.Trace("form offer skipped"); return; }
         var vault = Shared.Vault;
         var same = vault.KeptFor(p.Host).FirstOrDefault(k => k.User == p.User);
         var who = p.User.Length > 0 ? p.User : "this sign-in";

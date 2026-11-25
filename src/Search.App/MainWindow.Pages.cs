@@ -127,6 +127,7 @@ public partial class MainWindow
                 case "permissions.resetAll": Shared.Perms.ResetAll(); break;
                 case "styles.get": Send(core, StylesMessage()); break;
                 case "vault.get": Send(core, VaultMessage()); break;
+                case "passkeys.settings": try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:savedpasskeys") { UseShellExecute = true }); } catch (Exception ex) { App.Log(ex); } break;
                 case "sync.get": Send(core, SyncMessage()); break;
                 case "sync.set":
                     Shared.Sync.Configure(m.TryGetProperty("on", out var syncOn) && syncOn.ValueKind == JsonValueKind.True, S("folder").Length > 0 ? S("folder") : Shared.Sync.Config.Folder);
