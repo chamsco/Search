@@ -65,6 +65,18 @@ public sealed class History
         v.Last = now();
     }
 
+    /// <summary>A visit read from another browser: kept as it was, the later time and the sum of the counts when the page is already here.</summary>
+    public bool Merge(string url, string title, int count, DateTime last)
+    {
+        if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return false;
+        var key = Identity(url);
+        if (!visits.TryGetValue(key, out var v)) { visits[key] = new Visit { Url = url, Title = title ?? "", Count = Math.Max(1, count), Last = last }; return true; }
+        if (string.IsNullOrWhiteSpace(v.Title) && !string.IsNullOrWhiteSpace(title)) v.Title = title;
+        v.Count += Math.Max(0, count);
+        if (last > v.Last) v.Last = last;
+        return false;
+    }
+
     public void Retitle(string url, string title)
     {
         if (visits.TryGetValue(Identity(url), out var v) && !string.IsNullOrWhiteSpace(title)) v.Title = title;
