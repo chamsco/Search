@@ -70,8 +70,8 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Picture in picture | ✅ | Ctrl+Shift+P floats the playing video in Chromium's own window |
 | HTTPS upgrade | ✅ | Falls back to http if the site has no https; Settings › Privacy |
 | Tracker protection | ✅ | Settings › Privacy › Block trackers; known ad and tracking hosts are not asked |
-| Proxy | ✅ | Settings › Privacy › Proxy: Windows' own, none, or host:port / socks5://. Takes effect at next start. Passwords ⬜ |
-| Client certificates | 🟡 | A picker over the page when a site asks, remembered per site. No CI step: it needs a server that demands one |
+| Proxy | ✅ | Settings › Privacy › Proxy: Windows' own, none, or host:port / socks5://, with an optional user name and password (the password protected for the Windows account, answered only for the proxy). Takes effect at next start |
+| Client certificates | ✅ | A picker over the page when a site asks, remembered per site; CI runs it against a mutual-TLS server |
 
 ## Accounts and data
 | Feature | Status | Notes |
