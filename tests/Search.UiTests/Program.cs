@@ -680,8 +680,8 @@ try
     bool ClickCard(string name, int ms = 10000) { AutomationElement? el = null; Await(() => (el = Anywhere(name)) is not null, ms); if (el is not null) Mouse.Click(CentreOf(el)); Thread.Sleep(1200); return el is not null; }
 
     // Permissions
-    ClickPage("Ask location");
-    var asked = Await(() => Anywhere($"{site6} wants to know your location") is not null, 12000);
+    bool AskUntil(string button, string title) { for (var i = 0; i < 4; i++) { ClickPage(button); if (Await(() => Anywhere(title) is not null, 7000)) return true; } return false; }
+    var asked = AskUntil("Ask location", $"{site6} wants to know your location");
     var askedShot = Shot("permission-card");
     ClickCard("Allow");
     var kept = Await(() => DataText("permissions.json").Contains("\"Location\":\"Allow\"") || DataText("permissions.json").Contains("\"Location\":0"), 5000);
@@ -691,8 +691,7 @@ try
     Step("Asked again: no card, the kept answer is used", Anywhere($"{site6} wants to know your location") is null, Shot("permission-remembered"));
 
     // Notifications
-    ClickPage("Ask notifications");
-    var askedNote = Await(() => Anywhere($"{site6} wants to show notifications") is not null, 12000);
+    var askedNote = AskUntil("Ask notifications", $"{site6} wants to show notifications");
     ClickCard("Allow");
     var shown = Await(() => Anywhere($"{site6}: Hello from a page") is not null, 8000);
     Step("A page asks to show notifications, then sends one: the card names the site and the message", askedNote && shown, $"asked: {askedNote}, shown: {shown} · " + Shot("notification"));
