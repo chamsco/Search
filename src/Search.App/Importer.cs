@@ -79,6 +79,13 @@ public static class Importer
     /// <summary>Read what the person asked for, and bring it in: bookmarks into folders of their own names, history merged, sign-ins into the vault.</summary>
     public static ImportSummary Run(ImportSource source, bool bookmarks, bool history, bool passwords, Bookmarks marks, History visits, PasswordVault vault)
     {
+        var (read, notes) = Read(source, bookmarks, history, passwords);
+        return Apply(read, notes, marks, visits, vault);
+    }
+
+    /// <summary>The slow half, safe off the UI thread: the other browser's files, read.</summary>
+    public static (ImportRead Read, List<string> Notes) Read(ImportSource source, bool bookmarks, bool history, bool passwords)
+    {
         var notes = new List<string>();
         var read = new ImportRead();
         string P(string name) => Path.Combine(source.Dir, name);
@@ -97,7 +104,12 @@ public static class Importer
             if (passwords) ReadLogins(source, read, notes);
         }
         catch (Exception e) { notes.Add($"{source.Browser} couldn't be read all the way: {e.Message}"); App.Log(e); }
+        return (read, notes);
+    }
 
+    /// <summary>The quick half, on the UI thread, where the bookmarks and history they feed are listened to.</summary>
+    public static ImportSummary Apply(ImportRead read, List<string> notes, Bookmarks marks, History visits, PasswordVault vault)
+    {
         var added = 0;
         var folders = marks.Folders.ToDictionary(f => f.Name, f => f.Id, StringComparer.OrdinalIgnoreCase);
         foreach (var b in read.Bookmarks)

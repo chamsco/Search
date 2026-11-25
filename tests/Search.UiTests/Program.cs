@@ -982,12 +982,12 @@ try
         var spaceId = "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"; var pinId = "6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b"; var markId = "7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c";
         var syncPersonal = Path.Combine(syncShared, "Search Sync", "profile-000000000000000000000000000000a1");
         Directory.CreateDirectory(syncPersonal); Directory.CreateDirectory(Path.Combine(syncShared, "Search Sync", "app"));
-        File.WriteAllText(Path.Combine(syncPersonal, "otherpc.json"), otherPc.Replace("SCOPE", "profile-000000000000000000000000000000a1").Replace("ITEMS", "{" + string.Join(",", new[] {
+        File.WriteAllText(Path.Combine(syncPersonal, "otherpc.json"), otherPc.Replace("SCOPE", "profile-000000000000000000000000000000a1").Replace("ITEMS", string.Join(",", new[] {
             "\"bm:" + markId + "\":" + E("{\"Title\":\"Synced Mark\",\"Url\":\"https://synced.example/\",\"Folder\":null}"),
             "\"space:" + spaceId + "\":" + E("{\"Name\":\"Synced Space\",\"Colour\":2,\"Colour2\":0,\"Icon\":null,\"Shares\":true,\"Strength\":0}"),
             "\"pin:" + spaceId + ":" + pinId + "\":" + E("{\"Url\":\"https://synced-pin.example/\",\"Title\":\"Synced Pin\",\"Name\":null,\"Folder\":null,\"Muted\":false}"),
-            "\"pinorder:" + spaceId + "\":" + E("[\"" + pinId + "\"]") }.Select(x => x)) + "}"));
-        File.WriteAllText(Path.Combine(syncShared, "Search Sync", "app", "otherpc.json"), otherPc.Replace("SCOPE", "app").Replace("ITEMS", "{\"set:search.suggest\":" + E("false") + "}"));
+            "\"pinorder:" + spaceId + "\":" + E("[\"" + pinId + "\"]") }.Select(x => x))));
+        File.WriteAllText(Path.Combine(syncShared, "Search Sync", "app", "otherpc.json"), otherPc.Replace("SCOPE", "app").Replace("ITEMS", "\"set:search.suggest\":" + E("false")));
         syncSpace = spaceId;
     }
     data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-sync-d-" + Guid.NewGuid().ToString("N")[..8])).FullName;

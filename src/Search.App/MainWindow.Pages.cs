@@ -150,18 +150,19 @@ public partial class MainWindow
                         var wantSpaces = Kind("spaces");
                         _ = Task.Run(() =>
                         {
-                            var sum = Importer.Run(src, wantBookmarks, wantHistory, wantPasswords, Marks, history, Shared.Vault);
+                            (Search.Core.Import.ImportRead Read, List<string> Notes) got;
+                            try { got = Importer.Read(src, wantBookmarks, wantHistory, wantPasswords); }
+                            catch (Exception ex) { App.Log(ex); got = (new Search.Core.Import.ImportRead(), [$"{src.Browser} couldn't be read: {ex.Message}"]); }
                             Dispatcher.BeginInvoke(() =>
                             {
-                                if (wantSpaces) { var sp = Importer.Spaces(src, Shared.Book, profileId); sum = sum with { Notes = [.. sum.Notes, .. sp.Notes] } with { Spaces = sp.Spaces, Pins = sp.Pins }; }
+                                ImportSummary sum;
+                                try { sum = Importer.Apply(got.Read, got.Notes, Marks, history, Shared.Vault); }
+                                catch (Exception ex) { App.Log(ex); sum = new ImportSummary(0, 0, 0, [.. got.Notes, $"Bringing it over stopped: {ex.Message}"]); }
+                                if (wantSpaces) { try { var sp = Importer.Spaces(src, Shared.Book, profileId); sum = sum with { Notes = [.. sum.Notes, .. sp.Notes], Spaces = sp.Spaces, Pins = sp.Pins }; } catch (Exception ex) { App.Log(ex); } }
                                 Send(core, new { type = "import.done", id = src.Id, bookmarks = sum.Bookmarks, visits = sum.Visits, logins = sum.Logins, spaces = sum.Spaces, pins = sum.Pins, notes = sum.Notes });
                             });
                         });
                     }
-                    break;
-                case "mecard.get": Send(core, new { type = "mecard", card = MeCard.Load() }); break;
-                case "mecard.save":
-                    if (m.TryGetProperty("card", out var cardJson) && cardJson.Deserialize<MeCardData>(Store.Json) is { } card) { MeCard.Save(card); Send(core, new { type = "mecard", card = MeCard.Load(), saved = true }); }
                     break;
                 case "vault.forget": Shared.Vault.Forget(S("host"), S("user")); break;
                 case "vault.forgetAll": Shared.Vault.ForgetAll(); break;

@@ -64,7 +64,7 @@ public partial class App : Application
     /// <summary>Folder sync (Settings › General › Sync with your other PCs): a pass at launch, every half minute, when Search comes forward, and a moment after a setting or space changes.</summary>
     public static void SyncNow()
     {
-        try { if (Shared.Sync.Config.On) Shared.LastSync = Shared.Sync.Run(); }
+        try { if (Shared.Sync.Config.On) { Shared.LastSync = Shared.Sync.Run(); Trace($"sync devices={Shared.LastSync.Devices} applied={Shared.LastSync.Applied} {Shared.LastSync.Problem}"); } }
         catch (Exception ex) { Log(ex); }
     }
 
