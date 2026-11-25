@@ -134,6 +134,7 @@ try
 
 
     // ---- wave 2 ----
+    Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "Example Domain"; } catch { return false; } }), 20000); // the page has to have arrived before it can be searched
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F);
     Keyboard.Type("domain");
     Thread.Sleep(1500);
@@ -1040,7 +1041,7 @@ try
 
     // The column never gets narrower than its top row.
     var hideBefore = ById("CollapseSidebar")?.BoundingRectangle.Right ?? 0;
-    var edgeAt = new Point(hideBefore + 10, window.BoundingRectangle.Top + 400);
+    var edgeAt = new Point(hideBefore + 7, window.BoundingRectangle.Top + 400); // the left half of the edge's grip: the right half is under the page
     Mouse.MoveTo(edgeAt); Thread.Sleep(300);
     Mouse.Down(MouseButton.Left);
     for (var dx = 0; dx <= 150; dx += 10) { Mouse.MoveTo(new Point(edgeAt.X - dx, edgeAt.Y)); Thread.Sleep(30); }
@@ -1056,7 +1057,8 @@ try
     var settingsOpened = false;
     for (var i = 0; i < 3 && !settingsOpened; i++)
     {
-        if (ById("FootSettings") is { } footSet2) Mouse.Click(CentreOf(footSet2));
+        // At this screen size the window's foot is behind the taskbar, out of a click's reach: the button is pressed the way assistive tools do.
+        if (ById("FootSettings") is { } footSet2) { try { footSet2.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(footSet2)); } }
         settingsOpened = Await(() => window!.FindAllDescendants().Count(el => { try { return el.Name == "Settings"; } catch { return false; } }) >= 2 || OnPage("Passwords") is not null, 5000);
     }
     Step("Settings at the foot opens Settings", settingsOpened, "Settings page shown: " + settingsOpened);
