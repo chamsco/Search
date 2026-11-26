@@ -118,4 +118,13 @@ public class ExtensionTests : IDisposable
         Assert.Equal(a.Revision + 1, b.Revision);
         Assert.Equal(a.Revision, b.Applied["Default"]);
     }
+
+    [Fact]
+    public void ZipWithOneFolderLevelInstallsAndLeavesNoTempBehind()
+    {
+        var ext = Extensions.Load();
+        var e = ext.InstallPackage(Zip(new() { ["inner/manifest.json"] = "{\"name\":\"Nested\",\"version\":\"1\"}", ["inner/a.js"] = "1" }));
+        Assert.True(File.Exists(Path.Combine(ext.PathOf(e), "a.js")));
+        Assert.Equal([ext.PathOf(e)], Directory.GetDirectories(Extensions.Folder));
+    }
 }

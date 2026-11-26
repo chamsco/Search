@@ -41,7 +41,12 @@ public sealed class Extensions
     /// <summary>Anything kept, or anything of ours that may still sit in a profile.</summary>
     public bool Any => file.Items.Count > 0 || file.OwnedIds.Count > 0;
 
-    public static Extensions Load() => new() { file = Store.Read<FileShape>(FileName) ?? new() };
+    public static Extensions Load()
+    {
+        // Half-made installs from a crash are not kept.
+        try { if (Directory.Exists(Folder)) foreach (var d in Directory.GetDirectories(Folder, ".new-*")) Directory.Delete(d, true); } catch { }
+        return new() { file = Store.Read<FileShape>(FileName) ?? new() };
+    }
     void Save() { Store.Write(FileName, file); Changed?.Invoke(); }
 
     public string PathOf(ExtensionEntry e) => Path.Combine(Folder, e.Key);
@@ -114,6 +119,7 @@ public sealed class Extensions
     ExtensionEntry Adopt(string temp, string? storeId, bool move)
     {
         // A zip made from a folder may hold everything one level down.
+        var outer = temp;
         var manifestAt = Path.Combine(temp, "manifest.json");
         if (!File.Exists(manifestAt))
         {
@@ -130,7 +136,7 @@ public sealed class Extensions
         if (same is not null) { try { Directory.Delete(dest, true); } catch { } entry.Enabled = same.Enabled; entry.Revision = same.Revision + 1; entry.Applied = same.Applied; file.Items.Remove(same); }
         Directory.CreateDirectory(Folder);
         Directory.Move(temp, dest);
-        var outer = Path.GetDirectoryName(temp);
+        if (outer != temp) { try { Directory.Delete(outer, true); } catch { } }
         entry.Key = key;
         file.Items.Add(entry);
         Save();
