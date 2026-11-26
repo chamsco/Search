@@ -119,21 +119,30 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 
 ## Keyboard
 
-The Mac app has a full, customisable shortcut list (`Shortcuts.swift`); only the ones below are ported so far.
-| Mac | Windows | Status |
+Every command has a name, a section and a key, as in the Mac's `Shortcuts.swift`; Settings › Keyboard & Mouse lists them with a search box. Click a key and press the new one (Backspace takes it away, the arrow beside it puts it back); a key given to a command is taken from whoever had it, and keys that would type into the page or edit it (a bare letter, Ctrl+C/V/X/A/Z) are refused. Changes are kept in `shortcuts.json`.
+
+| Mac | Windows default | Status |
 |---|---|---|
-| ⌘T | Ctrl+T | ✅ |
-| ⌘W | Ctrl+W, Ctrl+F4 | ✅ |
-| ⇧⌘T | Ctrl+Shift+T | ✅ |
-| ⌘L | Ctrl+L, Alt+D, F6 | ✅ |
-| ⌘R | Ctrl+R, F5 (Ctrl+F5 / Ctrl+Shift+R ignore cache) | ✅ |
-| ⌘[ ⌘] | Alt+Left, Alt+Right | ✅ |
-| ⌃Tab | Ctrl+Tab, Ctrl+PgUp/PgDn | ✅ |
-| ⌘1–⌘9 | Ctrl+1–Ctrl+9 | ✅ |
-| ⇧⌘C copy address | Ctrl+Shift+C | ✅ |
-| ⌘S toggle column | Ctrl+Shift+S | ✅ |
-| Pin Tab (no Mac shortcut) | Ctrl+Shift+D (added) | ✅ |
-| ⌃⌘F full screen | F11 | ✅ |
+| Settings ⌘, · Quit ⇧⌘Q | Ctrl+, · Ctrl+Shift+Q | ✅ changeable |
+| New Window / Tab ⌘N ⌘T, Reopen ⇧⌘T | Ctrl+N, Ctrl+T, Ctrl+Shift+T | ✅ changeable |
+| Open Address ⌘L, Open File ⌘O, Close Tab ⌘W, Close Window ⇧⌘W, Print ⌘P | Ctrl+L (also Alt+D, F6), Ctrl+O, Ctrl+W (also Ctrl+F4), Ctrl+Shift+W, Ctrl+P | ✅ changeable |
+| Find ⌘F, Next ⌘G, Previous ⇧⌘G, Copy Clean Link ⌥⇧⌘C | Ctrl+F, Ctrl+G, Ctrl+Shift+G, Ctrl+Alt+Shift+C | ✅ changeable |
+| Hide Sidebar ⌘S | Ctrl+Shift+S | ✅ changeable |
+| Reload ⌘R, from origin ⌥⌘R | Ctrl+R (also F5), Ctrl+Alt+R (also Ctrl+F5, Ctrl+Shift+R) | ✅ changeable |
+| Reading Mode, Float Video | Ctrl+Alt+Shift+R, Ctrl+Shift+P | ✅ changeable |
+| Zoom ⌘+ ⌘- ⌘0 | Ctrl+=, Ctrl+-, Ctrl+0 | ✅ changeable |
+| Web Inspector ⌥⌘I | Ctrl+Alt+I (also F12) | ✅ changeable |
+| Full screen ⌃⌘F | F11 | ✅ changeable |
+| Back ⌘[ · Forward ⌘] | Alt+Left · Alt+Right (also the mouse and browser keys) | ✅ changeable |
+| Next / Previous Tab | Ctrl+Tab, Ctrl+Shift+Tab (also Ctrl+PgDn/PgUp) | ✅ changeable |
+| Split ⌥⌘N, focus left/right page | Ctrl+Alt+N, Ctrl+Alt+Left, Ctrl+Alt+Right | ✅ changeable |
+| Pin Tab (no Mac key), Duplicate ⌘D, Copy Address ⇧⌘C, Paste and Go ⇧⌘V | Ctrl+Shift+D, Ctrl+D, Ctrl+Shift+C, Ctrl+Shift+V | ✅ changeable |
+| Add Bookmark ⇧⌘B, Bookmarks Bar | Ctrl+Shift+B, Ctrl+Alt+B | ✅ changeable |
+| History ⌘Y, Downloads ⇧⌘J, Clear Browsing Data ⇧⌘⌫ | Ctrl+Y, Ctrl+Shift+J, Ctrl+Shift+Delete | ✅ changeable |
+| Library, Extensions | Ctrl+Shift+L, Ctrl+Shift+E | ✅ changeable (Windows additions) |
+| Spaces ⌃1–⌃9 | Ctrl+Alt+1–9 | ✅ changeable |
+| ⌘1–⌘9 pick a tab by its place | Ctrl+1–Ctrl+9 | ✅ fixed, as in every browser |
+| Unbound Mac commands (Share, Save Page, Export as PDF, Rename Tab, Close Other Tabs, Next/Previous Space, profiles…) | | ⬜ not in the list yet |
 
 ## Motion
 | Feature | Status | Notes |

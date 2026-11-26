@@ -111,8 +111,11 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
   <div id="importList"></div>
   <div class="group" id="importNone" style="display:none"><div class="line"><div class="label" style="color:var(--muted)">No other browser was found: Chrome, Edge, Brave, Arc, Firefox and Zen are looked for</div></div></div>
 </section>
-<section id="keyboard"><h1>Keyboard &amp; Mouse</h1><p class="sub">The Mac's shortcuts with Ctrl in place of ⌘, and Windows' own where a Mac key is Windows' too.</p>
-  <div class="group"><table id="keys"></table></div>
+<section id="keyboard"><h1>Keyboard &amp; Mouse</h1><p class="sub">The Mac's shortcuts with Ctrl in place of ⌘, and Windows' own where a Mac key is Windows' too. Click a key, then press the one you want; Backspace takes it away.</p>
+  <div class="group"><div class="line"><input type="text" id="keyFind" placeholder="Search commands or keys" aria-label="Search commands or keys" style="width:100%"></div></div>
+  <p class="sub" id="keyNote" role="status" aria-live="polite"></p>
+  <div id="keyList"></div>
+  <div class="group"><div class="line"><div class="label">Every key as it came</div><button id="keysReset" aria-label="Put every key back">Put every key back</button></div></div>
   <div class="group"><table><tr><td>Back / forward</td><td><kbd>Mouse back</kbd> <kbd>Mouse forward</kbd></td></tr><tr><td>Close a tab</td><td><kbd>Middle click</kbd></td></tr><tr><td>Zoom</td><td><kbd>Ctrl + wheel</kbd></td></tr></table></div>
 </section>
 <section id="about"><h1>About</h1><p class="sub" id="aboutLine"></p>
@@ -124,11 +127,44 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
 <script src="bridge.js"></script>
 <script>
 const ENGINES = ['Google','DuckDuckGo','Bing','Ecosia','Startpage','Kagi','Brave','Qwant','Custom'], NAMES = ['Google','DuckDuckGo','Bing','Ecosia','Startpage','Kagi','Brave Search','Qwant','Custom…'];
-const KEYS = [['New tab','Ctrl+T'],['New window','Ctrl+N'],['Reopen closed tab','Ctrl+Shift+T'],['Close tab','Ctrl+W'],['Close window','Ctrl+Shift+W'],['Open address','Ctrl+L'],['Open file','Ctrl+O'],['Reload','Ctrl+R'],['Reload from origin','Ctrl+Alt+R'],
- ['Back / forward','Alt+← / Alt+→'],['Next / previous tab','Ctrl+Tab / Ctrl+Shift+Tab'],['Tab 1 to 9','Ctrl+1 … Ctrl+9'],['Find on page','Ctrl+F'],['Find next / previous','Ctrl+G / Ctrl+Shift+G'],['Print','Ctrl+P'],
- ['Zoom in / out / actual size','Ctrl+= / Ctrl+- / Ctrl+0'],['Hide or show the sidebar','Ctrl+Shift+S'],['Full screen','F11'],['Duplicate tab','Ctrl+D'],['Pin or unpin tab','Ctrl+Shift+D'],['Copy address','Ctrl+Shift+C'],['Paste and go','Ctrl+Shift+V'],
- ['Add this page to bookmarks','Ctrl+Shift+B'],['Show the bookmarks bar','Ctrl+Alt+B'],['History','Ctrl+Y'],['Downloads','Ctrl+Shift+J'],['Clear browsing data','Ctrl+Shift+Delete'],['Settings','Ctrl+,'],['Developer tools','F12 / Ctrl+Alt+I'],['Copy clean link','Ctrl+Alt+Shift+C'],['Reading mode','Ctrl+Alt+Shift+R'],['Picture in picture','Ctrl+Shift+P']];
-document.getElementById('keys').innerHTML = KEYS.map(([a, k]) => `<tr><td>${a}</td><td><kbd>${k}</kbd></td></tr>`).join('');
+let SC = [], capturing = null, scSpaces = false;
+const SECTIONS = ['App','File','Edit','View','Tabs','Bookmarks','History','Spaces'];
+function drawKeys() {
+  const q = document.getElementById('keyFind').value.trim().toLowerCase().replace(/\s+/g, '');
+  const rows = SC.filter(c => (c.section !== 'Spaces' || scSpaces) && (!q || c.title.toLowerCase().replace(/\s+/g, '').includes(q) || c.key.toLowerCase().replace(/\s+/g, '').includes(q)));
+  document.getElementById('keyList').innerHTML = rows.length ? SECTIONS.map(sec => { const mine = rows.filter(c => c.section === sec); return mine.length ? `<h2 class="h2">${sec}</h2><div class="group">${mine.map(c => `<div class="line" data-id="${c.id}"><div class="label">${esc(c.title)}</div>${c.changed ? `<button class="icon kreset" title="Put the key back" aria-label="Put ${esc(c.title)} back to ${esc(c.own) || 'no key'}">&#xE777;</button>` : ''}<button class="kkey" aria-label="${esc(c.title)} key">${capturing === c.id ? 'Press a key…' : (esc(c.key) || 'None')}</button></div>`).join('')}</div>` : ''; }).join('') : '<p class="sub">No command called that, or on that key.</p>';
+}
+function keyOf(e) {
+  const c = e.code;
+  if (/^Key[A-Z]$/.test(c)) return c[3];
+  if (/^Digit\d$/.test(c)) return c[5];
+  if (/^Numpad\d$/.test(c)) return c[6];
+  if (/^F([1-9]|1[0-2])$/.test(c)) return c;
+  return ({Comma:',',Period:'.',Equal:'=',Minus:'-',BracketLeft:'[',BracketRight:']',Semicolon:';',Quote:"'",Slash:'/',Backslash:'\\',Backquote:'`',Tab:'Tab',ArrowLeft:'Left',ArrowRight:'Right',ArrowUp:'Up',ArrowDown:'Down',Delete:'Delete',Enter:'Enter',Space:'Space',PageUp:'PageUp',PageDown:'PageDown',Home:'Home',End:'End',NumpadAdd:'=',NumpadSubtract:'-'})[c] || null;
+}
+function stopCapture() { if (capturing) { capturing = null; send('shortcuts.capture', { on: false }); drawKeys(); } }
+document.getElementById('keyList').addEventListener('click', e => {
+  const line = e.target.closest('.line'); if (!line) return;
+  if (e.target.closest('.kreset')) { send('shortcuts.reset', { id: line.dataset.id }); return; }
+  if (e.target.closest('.kkey')) { capturing = line.dataset.id; send('shortcuts.capture', { on: true }); document.getElementById('keyNote').textContent = ''; drawKeys(); line.querySelector('.kkey').focus(); }
+});
+document.addEventListener('keydown', e => {
+  if (!capturing) return;
+  e.preventDefault(); e.stopPropagation();
+  const bare = !e.ctrlKey && !e.altKey && !e.shiftKey;
+  if (e.key === 'Escape' && bare) { stopCapture(); return; }
+  const id = capturing;
+  if ((e.key === 'Backspace' || e.key === 'Delete') && bare) { stopCapture(); send('shortcuts.set', { id, key: '' }); return; }
+  const k = keyOf(e); if (!k) return;
+  stopCapture();
+  send('shortcuts.set', { id, key: (e.ctrlKey ? 'Ctrl+' : '') + (e.altKey ? 'Alt+' : '') + (e.shiftKey ? 'Shift+' : '') + k });
+}, true);
+document.addEventListener('focusout', e => { if (capturing && e.target.classList && e.target.classList.contains('kkey')) setTimeout(stopCapture, 150); });
+document.getElementById('keyFind').oninput = drawKeys;
+document.getElementById('keysReset').onclick = () => send('shortcuts.resetAll', {});
+host.on('shortcuts', m => { SC = m.items; scSpaces = m.spacesOn; drawKeys(); });
+host.on('shortcuts.note', m => { document.getElementById('keyNote').textContent = m.text; });
+window.addEventListener('load', () => send('shortcuts.get', {}));
 document.getElementById('engine').innerHTML = ENGINES.map((e, i) => `<option value="${e}">${NAMES[i]}</option>`).join('');
 function show(id) { id = ['general','appearance','tabs','spaces','privacy','sites','passwords','import','keyboard','about'].includes(id) ? id : 'general';
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.s === id)); }

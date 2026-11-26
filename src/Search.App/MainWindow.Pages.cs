@@ -127,6 +127,7 @@ public partial class MainWindow
                     break;
 
                 case "settings.get": Send(core, SettingsMessage()); break;
+                case var sk when sk.StartsWith("shortcuts."): ShortcutsMessageHandled(sk, m.Clone(), core); break;
                 case "permissions.get": Send(core, PermissionsMessage()); break;
                 case "permissions.reset":
                     if (Enum.TryParse<PermissionKind>(S("kind"), out var pk)) Shared.Perms.Reset(S("origin"), pk);

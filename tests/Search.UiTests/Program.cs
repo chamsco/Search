@@ -1062,6 +1062,39 @@ try
     var syncText = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name?.Contains("Synced with 1 other PC") == true; } catch { return false; } }), 6000);
     Step("Settings › General says who it synced with", syncText, "status shown: " + syncText + " · " + Shot("sync-settings"));
 
+    // Settings › Keyboard & Mouse: change a key, and it is the new one that works
+    {
+        var keyNav = window.FindAllDescendants().FirstOrDefault(el => { try { return el.Name.Contains("Keyboard & Mouse"); } catch { return false; } });
+        if (keyNav is not null) Mouse.Click(CentreOf(keyNav));
+        Thread.Sleep(1500);
+        var listedKey = Await(() => OnPage("New Tab key") is not null, 8000);
+        Step("Settings › Keyboard & Mouse lists the commands with their keys", listedKey, "New Tab listedKey: " + listedKey + " · " + Shot("shortcuts-page"));
+        if (OnPage("New Tab key") is { } newTabKey) Mouse.Click(CentreOf(newTabKey));
+        var pressing = Await(() => OnPage("Press a key…") is not null || window.FindAllDescendants().Any(el => { try { return el.Name.Contains("Press a key"); } catch { return false; } }), 5000);
+        Step("Click a key: the box waits for the new one", pressing, Shot("shortcuts-waiting"));
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_K);
+        var savedKey = Await(() => DataText("shortcuts.json").Contains("Ctrl+Alt+K"), 6000);
+        Step("Press Ctrl+Alt+K: New Tab is kept on that key, and the key is not taken as a command meanwhile", savedKey, "shortcuts.json: " + DataText("shortcuts.json") + " · " + Shot("shortcuts-changed"));
+        int Tabs() => window!.FindAllDescendants().Count(el => { try { return el.Name == "New Tab"; } catch { return false; } });
+        var beforeKey = Tabs();
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+        Thread.Sleep(1500);
+        var afterOld = Tabs();
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_K);
+        Thread.Sleep(2000);
+        var afterNew = Tabs();
+        Step("Ctrl+T no longer opens a tab; Ctrl+Alt+K does", afterOld == beforeKey && afterNew > afterOld, $"'New Tab' rows: {beforeKey} beforeKey, {afterOld} after Ctrl+T, {afterNew} after Ctrl+Alt+K · " + Shot("shortcuts-works"));
+        // Back to Settings (Ctrl+, is unchanged) and put the keys back so the rest of the run is as before.
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+        Thread.Sleep(2500);
+        var keyNav2 = window.FindAllDescendants().FirstOrDefault(el => { try { return el.Name.Contains("Keyboard & Mouse"); } catch { return false; } });
+        if (keyNav2 is not null) Mouse.Click(CentreOf(keyNav2));
+        Thread.Sleep(1500);
+        ClickPage("Put every key back");
+        var keysRestored = Await(() => !DataText("shortcuts.json").Contains("Ctrl+Alt+K"), 5000);
+        Step("Put every key back: the keys are as they came", keysRestored, "shortcuts.json: " + DataText("shortcuts.json"));
+    }
+
     // The column: address pill, page actions, hide, edge, foot
     Quit();
     data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-side-" + Guid.NewGuid().ToString("N")[..8])).FullName;

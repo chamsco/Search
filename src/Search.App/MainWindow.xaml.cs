@@ -951,55 +951,29 @@ public partial class MainWindow : Window
         var core = live?.View?.CoreWebView2;
         var handled = true;
 
-        if (ctrl && !alt && key == Key.T && shift) Reopen();
-        else if (ctrl && !alt && key == Key.T) NewTab();
-        else if (ctrl && !alt && !shift && key == Key.N) NewWindow();
-        else if (ctrl && alt && !shift && key == Key.N) SplitKey();
-        else if (ctrl && alt && !shift && key == Key.Left) FocusPane(-1);
-        else if (ctrl && alt && !shift && key == Key.Right) FocusPane(1);
-        else if (ctrl && shift && !alt && key == Key.Q) { App.Quitting = true; Application.Current.Shutdown(); }
-        else if (ctrl && !alt && key == Key.F) OpenFind();
-        else if (ctrl && !alt && key == Key.G) FindStep(shift ? -1 : 1);
-        else if (ctrl && !alt && !shift && key == Key.P) Print();
-        else if (ctrl && !alt && key is Key.OemPlus or Key.Add) Zoom(1);
-        else if (ctrl && !alt && key is Key.OemMinus or Key.Subtract) Zoom(-1);
-        else if (ctrl && !alt && key is Key.D0 or Key.NumPad0) Zoom(0);
-        else if (ctrl && !alt && !shift && key == Key.D && live is not null) DuplicateTab();
-        else if (ctrl && !alt && !shift && key == Key.OemComma) OpenPage("search://settings");
-        else if (ctrl && !alt && !shift && key == Key.Y) OpenPage("search://history");
-        else if (ctrl && shift && !alt && key == Key.J) OpenPage("search://downloads");
-        else if (ctrl && shift && !alt && key == Key.L) ToggleLibrary();
-        else if (ctrl && shift && !alt && key == Key.E) ToggleLibrary("extensions");
-        else if (key == Key.Escape && !ctrl && !alt && !shift && libraryOpen && Keyboard.FocusedElement is not System.Windows.Controls.TextBox) CloseLibrary();
-        else if (ctrl && shift && !alt && key == Key.Delete) ClearBrowsingDataPage();
-        else if (ctrl && !alt && !shift && key == Key.O) OpenFile();
-        else if (ctrl && shift && !alt && key == Key.W) Close();
-        else if (ctrl && shift && !alt && key == Key.V) PasteAndGo();
-        else if (ctrl && shift && !alt && key == Key.B) AddBookmark();
-        else if (ctrl && alt && key == Key.B) Shared.Prefs.Update(d => d.BookmarksBar = !d.BookmarksBar);
-        else if (key == Key.F12 || (ctrl && alt && key == Key.I)) ToggleDevTools();
-        else if (ctrl && alt && !shift && key == Key.R) core?.CallDevToolsProtocolMethodAsync("Page.reload", "{\"ignoreCache\":true}");
-        else if (ctrl && !alt && key is Key.W or Key.F4 && live is not null) Close(live);
-        else if ((ctrl && key == Key.L) || (alt && key == Key.D) || key == Key.F6) BeginEditing();
-        else if ((ctrl && !alt && key == Key.R) || key == Key.F5)
+        // A Settings key box is waiting for a key: it is the page's, not a command's.
+        if (capturingKey) return;
+
+        // The commands, on whatever keys they have now. Ctrl++ is Ctrl+Shift+= on many keyboards: the shift does not count for the plus.
+        if (KeyName(key) is { } name
+            && (Shared.Shortcuts.CommandFor(new KeyCombo(name, ctrl, alt, shift)) ?? (name == "=" && shift ? Shared.Shortcuts.CommandFor(new KeyCombo(name, ctrl, alt, false)) : null)) is { } command
+            && RunCommand(command.Id)) { e.Handled = true; return; }
+
+        // What no setting moves: Windows' and the engine's own keys.
+        if (key == Key.Escape && !ctrl && !alt && !shift && libraryOpen && Keyboard.FocusedElement is not System.Windows.Controls.TextBox) CloseLibrary();
+        else if (key == Key.F5 || (ctrl && !alt && shift && key == Key.R))
         {
-            if (shift || ctrl && key == Key.F5) core?.CallDevToolsProtocolMethodAsync("Page.reload", "{\"ignoreCache\":true}");
+            if (shift || ctrl) core?.CallDevToolsProtocolMethodAsync("Page.reload", "{\"ignoreCache\":true}");
             else core?.Reload();
         }
-        else if (alt && key == Key.Left || key == Key.BrowserBack) { if (core?.CanGoBack == true) core.GoBack(); }
-        else if (alt && key == Key.Right || key == Key.BrowserForward) { if (core?.CanGoForward == true) core.GoForward(); }
-        else if (ctrl && key == Key.Tab) Cycle(shift ? -1 : 1);
+        else if (key == Key.F12) ToggleDevTools();
+        else if (ctrl && !alt && key == Key.F4 && live is not null) Close(live);
+        else if ((alt && key == Key.D) || key == Key.F6) BeginEditing();
+        else if (key == Key.BrowserBack) { if (core?.CanGoBack == true) core.GoBack(); }
+        else if (key == Key.BrowserForward) { if (core?.CanGoForward == true) core.GoForward(); }
         else if (ctrl && key is Key.PageDown) Cycle(1);
         else if (ctrl && key is Key.PageUp) Cycle(-1);
-        else if (ctrl && alt && key >= Key.D1 && key <= Key.D9) SwitchSpaceBy(key - Key.D1);
-        else if (ctrl && key >= Key.D1 && key <= Key.D9) Jump(key - Key.D1);
-        else if (ctrl && shift && !alt && key == Key.D && live is not null) { if (live.IsPin) Unpin(live); else Pin(live); }
-        else if (ctrl && shift && alt && key == Key.C) CopyCleanLink();
-        else if (ctrl && shift && alt && key == Key.R) ToggleReader();
-        else if (ctrl && shift && !alt && key == Key.P) PictureInPicture();
-        else if (ctrl && shift && !alt && key == Key.C && live is { IsBlank: false }) Clipboard.SetText(live.Url);
-        else if (ctrl && key == Key.S && shift) ToggleSide();
-        else if (key == Key.F11) ToggleFullScreen();
+        else if (ctrl && !alt && key >= Key.D1 && key <= Key.D9) Jump(key - Key.D1);
         else if (key == Key.Escape && FindPopup.IsOpen) CloseFind();
         else if (key == Key.Escape && DownloadsPopup.IsOpen) DownloadsPopup.IsOpen = false;
         else if (key == Key.Escape && fullScreen && core?.ContainsFullScreenElement != true) ToggleFullScreen();
