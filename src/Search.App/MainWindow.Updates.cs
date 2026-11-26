@@ -4,7 +4,12 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using Ellipse = System.Windows.Shapes.Ellipse;
+using Shape = System.Windows.Shapes.Shape;
 using System.Windows.Threading;
 using Search.Core;
 
@@ -47,6 +52,7 @@ public partial class MainWindow
                 return;
             }
             stage = UpdateStage.Fetching;
+            ShowUpdateState();
             var path = Path.Combine(Path.GetTempPath(), $"Search-Setup-{found.Version}.exe");
             using (var response = await http.GetAsync(found.InstallerUrl, HttpCompletionOption.ResponseHeadersRead))
             {
@@ -62,17 +68,83 @@ public partial class MainWindow
         catch (Exception e)
         {
             stage = UpdateStage.None;
+            ShowUpdateState();
             App.Log(e);
             if (byHand) Say("Search couldn't check for updates. Check your connection and try again.", MessageBoxImage.Warning);
         }
     }
 
-    void ShowUpdateState()
+    enum UpdateLook { Fetching, Ready, Restarting }
+
+    void ShowUpdateState() => PaintUpdate(stage == UpdateStage.Ready ? UpdateLook.Ready : UpdateLook.Fetching, stage != UpdateStage.None);
+
+    /// <summary>
+    /// The update button is a disc in the page's ink with the glyph in its ground, so it reads on a light or a dark column.
+    /// Downloading: an outlined disc that breathes. Ready: a solid disc with a ring that pings outwards. Restarting: the glyph turns.
+    /// </summary>
+    void PaintUpdate(UpdateLook look, bool shown = true)
     {
-        FootUpdateDoor.Visibility = TopUpdateDoor.Visibility = stage == UpdateStage.Ready ? Visibility.Visible : Visibility.Collapsed;
-        if (found is not null) FootUpdateDoor.ToolTip = TopUpdateDoor.ToolTip = $"Restart to update to Search {found.Version}";
+        foreach (var b in new[] { FootUpdateDoor, TopUpdateDoor })
+        {
+            b.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            b.ToolTip = look switch
+            {
+                UpdateLook.Fetching => $"Downloading Search {found?.Version}…",
+                UpdateLook.Restarting => "Restarting to update…",
+                _ => $"Restart to update to Search {found?.Version}",
+            };
+            b.IsEnabled = look != UpdateLook.Restarting;
+            b.Content = UpdateFace(look);
+        }
     }
 
+    UIElement UpdateFace(UpdateLook look)
+    {
+        var grid = new Grid { Width = 22, Height = 22, RenderTransformOrigin = new Point(0.5, 0.5) };
+        var disc = new Ellipse { Width = 20, Height = 20 };
+        var glyph = new TextBlock { FontFamily = (FontFamily)FindResource("Glyphs"), FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, RenderTransformOrigin = new Point(0.5, 0.5) };
+        if (look == UpdateLook.Fetching)
+        {
+            disc.Fill = Brushes.Transparent; disc.StrokeThickness = 1.5; disc.SetResourceReference(Shape.StrokeProperty, "Ink");
+            glyph.Text = "\uE896"; glyph.SetResourceReference(TextBlock.ForegroundProperty, "Ink");
+            if (Moves) grid.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0.4, TimeSpan.FromMilliseconds(800)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
+        }
+        else
+        {
+            disc.SetResourceReference(Shape.FillProperty, "Ink");
+            glyph.Text = "\uE895"; glyph.SetResourceReference(TextBlock.ForegroundProperty, "Ground");
+        }
+        grid.Children.Add(disc);
+        if (look == UpdateLook.Ready && Moves)
+        {
+            var ring = new Ellipse { Width = 20, Height = 20, StrokeThickness = 1.5, Fill = Brushes.Transparent, IsHitTestVisible = false, RenderTransformOrigin = new Point(0.5, 0.5), RenderTransform = new ScaleTransform() };
+            ring.SetResourceReference(Shape.StrokeProperty, "Ink");
+            var cycle = new Duration(TimeSpan.FromMilliseconds(1800));
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            ((ScaleTransform)ring.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, 1.5, cycle) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = ease });
+            ((ScaleTransform)ring.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, 1.5, cycle) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = ease });
+            ring.BeginAnimation(OpacityProperty, new DoubleAnimation(0.6, 0, cycle) { RepeatBehavior = RepeatBehavior.Forever });
+            grid.Children.Add(ring);
+        }
+        grid.Children.Add(glyph);
+        if (look == UpdateLook.Restarting)
+        {
+            glyph.Text = "\uE72C";
+            glyph.RenderTransform = new RotateTransform();
+            ((RotateTransform)glyph.RenderTransform).BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(700)) { RepeatBehavior = RepeatBehavior.Forever });
+        }
+        return grid;
+    }
+
+    /// <summary>Click: the button turns to "restarting" for a beat so the pause before the window closes reads as work, not a freeze.</summary>
+    void TopUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (stage != UpdateStage.Ready) return;
+        PaintUpdate(UpdateLook.Restarting);
+        var wait = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(Moves ? 700 : 50) };
+        wait.Tick += (_, _) => { wait.Stop(); InstallUpdate(); };
+        wait.Start();
+    }
 
     /// <summary>The installer runs silently, closes this window, and opens Search again when it is done.</summary>
     void InstallUpdate()

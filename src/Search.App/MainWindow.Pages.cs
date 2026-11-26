@@ -406,8 +406,6 @@ public partial class MainWindow
         var any = Shared.Downloads.Items.Count > 0;
         DownloadsNone.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
         var busy = Shared.Downloads.Items.Any(i => i.InProgress);
-        DownloadsDoor.Content = busy ? "" : "";
-        DownloadsDoor.Opacity = busy ? 1 : 0.85;
         LibraryDownloads(busy);
         PostToPages(DownloadsMessage(), "downloads");
     }
@@ -424,18 +422,10 @@ public partial class MainWindow
         Shared.Downloads.Begin(e.DownloadOperation, path);
         if (IsActive || live?.View?.CoreWebView2 == sender)
         {
-            DownloadsPopup.PlacementTarget = TopLayout ? TopDownloadsDoor : DownloadsDoor;
+            DownloadsPopup.PlacementTarget = TopLayout ? TopLibraryDoor : LibraryDoor;
             DownloadsPopup.Placement = TopLayout ? PlacementMode.Bottom : PlacementMode.Top;
             DownloadsPopup.IsOpen = true;
         }
-    }
-
-    void DownloadsDoor_Click(object sender, RoutedEventArgs e)
-    {
-        if (Environment.TickCount64 - downloadsClosed < 250) return; // the click that just closed it
-        DownloadsPopup.PlacementTarget = (UIElement)sender;
-        DownloadsPopup.Placement = TopLayout ? PlacementMode.Bottom : PlacementMode.Top;
-        DownloadsPopup.IsOpen = true;
     }
 
     void DownloadsAll_Click(object sender, RoutedEventArgs e) { DownloadsPopup.IsOpen = false; OpenPage("search://downloads"); }
@@ -463,11 +453,6 @@ public partial class MainWindow
     }
 
     // MARK: - the column's foot
-
-    void Home_Click(object sender, RoutedEventArgs e)
-    {
-        if (live is { IsPin: true, Home: { Length: > 0 } home }) Navigate(home); else NewTab();
-    }
 
     void BookmarksDoor_Click(object sender, RoutedEventArgs e) => OpenPage("search://bookmarks");
 
@@ -771,11 +756,24 @@ public partial class MainWindow
 
 public partial class MainWindow
 {
+    /// <summary>
+    /// The strip's plus follows the last tab until the tabs run out of room; then it stays put at the strip's right edge,
+    /// so a new tab is always one click away without scrolling.
+    /// </summary>
+    void KeepPlusInReach()
+    {
+        var pinned = TopPlusPinned.Visibility == Visibility.Visible;
+        var room = TopScroll.ViewportWidth + (pinned ? TopPlusPinned.ActualWidth + TopPlusPinned.Margin.Left + TopPlusPinned.Margin.Right : 0);
+        var over = TopScroll.ExtentWidth > room + 0.5;
+        if (over == pinned) return;
+        TopPlusPinned.Visibility = over ? Visibility.Visible : Visibility.Collapsed;
+        TopPlusInline.Visibility = over ? Visibility.Hidden : Visibility.Visible;
+    }
+
     void TopScroll_Wheel(object sender, MouseWheelEventArgs e)
     {
         TopScroll.ScrollToHorizontalOffset(TopScroll.HorizontalOffset - e.Delta);
         e.Handled = true;
     }
 
-    void TopUpdate_Click(object sender, RoutedEventArgs e) => InstallUpdate();
 }

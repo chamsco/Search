@@ -215,6 +215,7 @@ public partial class MainWindow
     void LibraryDownloads(bool busy)
     {
         if (LibraryBadge is null) return;
+        if (TopLibraryBadge is not null) TopLibraryBadge.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         var was = LibraryBadge.Visibility == Visibility.Visible;
         LibraryBadge.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         if (busy && !was && Moves)

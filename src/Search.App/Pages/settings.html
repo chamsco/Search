@@ -16,6 +16,7 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
   <a href="#general" data-s="general"><i>&#xE713;</i>General</a>
   <a href="#appearance" data-s="appearance"><i>&#xE790;</i>Appearance</a>
   <a href="#tabs" data-s="tabs"><i>&#xE8A9;</i>Tabs</a>
+  <a href="#spaces" data-s="spaces"><i>&#xE80F;</i>Spaces &amp; Profiles</a>
   <a href="#privacy" data-s="privacy"><i>&#xE72E;</i>Privacy</a>
   <a href="#sites" data-s="sites"><i>&#xE774;</i>Sites</a>
   <a href="#passwords" data-s="passwords"><i>&#xE8D7;</i>Passwords</a>
@@ -53,6 +54,10 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
     <div class="line"><div class="label">Layout<small>The column of tabs at the side, or a strip along the top</small></div><div class="seg" id="layout"><button data-v="Sidebar">Sidebar</button><button data-v="Top">Top</button></div></div>
     <div class="line"><div class="label">Pins as rows<small>Instead of squares, four to a line</small></div><div class="switch" id="pinsAsRows"></div></div>
     <div class="line"><div class="label">Close tabs left alone<small>Tabs nobody has looked at for this long close themselves and wait in History › Archived Tabs</small></div><select id="closeIdleDays"><option value="0">Never</option><option value="1">After a day</option><option value="7">After a week</option><option value="30">After a month</option></select></div>
+  </div>
+</section>
+<section id="spaces"><h1>Spaces &amp; Profiles</h1><p class="sub">Separate rows of tabs in one window, and separate windows with their own history and bookmarks.</p>
+  <div class="group">
     <div class="line"><div class="label">Spaces<small>Separate rows of tabs in one window, each with sign-ins of its own if you like (Ctrl+Alt+1 to 9)</small></div><div class="switch" id="spacesOn"></div></div>
   </div>
   <div id="spacesBox"><h2 class="h2">Spaces</h2><div class="group" id="spaceList"></div>
@@ -125,7 +130,7 @@ const KEYS = [['New tab','Ctrl+T'],['New window','Ctrl+N'],['Reopen closed tab',
  ['Add this page to bookmarks','Ctrl+Shift+B'],['Show the bookmarks bar','Ctrl+Alt+B'],['History','Ctrl+Y'],['Downloads','Ctrl+Shift+J'],['Clear browsing data','Ctrl+Shift+Delete'],['Settings','Ctrl+,'],['Developer tools','F12 / Ctrl+Alt+I'],['Copy clean link','Ctrl+Alt+Shift+C'],['Reading mode','Ctrl+Alt+Shift+R'],['Picture in picture','Ctrl+Shift+P']];
 document.getElementById('keys').innerHTML = KEYS.map(([a, k]) => `<tr><td>${a}</td><td><kbd>${k}</kbd></td></tr>`).join('');
 document.getElementById('engine').innerHTML = ENGINES.map((e, i) => `<option value="${e}">${NAMES[i]}</option>`).join('');
-function show(id) { id = ['general','appearance','tabs','privacy','sites','passwords','import','keyboard','about'].includes(id) ? id : 'general';
+function show(id) { id = ['general','appearance','tabs','spaces','privacy','sites','passwords','import','keyboard','about'].includes(id) ? id : 'general';
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.s === id)); }
 window.addEventListener('hashchange', () => show(location.hash.slice(1))); show(location.hash.slice(1));
 const set = (key, value) => host.send('settings.set', { key, value });

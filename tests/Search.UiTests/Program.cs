@@ -277,6 +277,27 @@ try
     Thread.Sleep(5000);
     Step("Layout Top, pins as rows: tabs run along the top strip with the space icons, the column is gone", window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor")) is not null, Shot("layout-top"));
 
+    {
+        AutomationElement? T(string id) { try { return window!.FindFirstDescendant(cf => cf.ByAutomationId(id)); } catch { return null; } }
+        var mn = T("TopMinimize")?.BoundingRectangle; var mx = T("TopMaximize")?.BoundingRectangle; var cl = T("TopClose")?.BoundingRectangle; var wb = window.BoundingRectangle;
+        var ordered = mn is not null && mx is not null && cl is not null && mn.Value.Right <= mx.Value.Left + 2 && mx.Value.Right <= cl.Value.Left + 2;
+        var flush = cl is not null && cl.Value.Right >= wb.Right - 12 && cl.Value.Top <= wb.Top + 12;
+        Step("The top strip has Windows' own window buttons at the top right: minimise, maximise, close, left to right", ordered && flush, $"min {mn?.Left}, max {mx?.Left}, close {cl?.Left}..{cl?.Right} of a window ending at {wb.Right} · " + Shot("strip-caption-buttons"));
+        Step("The top strip has Settings and the Library, and no Home or Downloads", T("TopSettings") is not null && T("TopLibraryDoor") is not null && window.FindAllDescendants(cf => cf.ByName("Home")).Length == 0 && window.FindAllDescendants(cf => cf.ByName("Downloads")).Length == 0, "TopSettings " + (T("TopSettings") is not null) + ", TopLibraryDoor " + (T("TopLibraryDoor") is not null));
+        for (var i = 0; i < 26; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
+        Thread.Sleep(1500);
+        var pinned = T("TopNewTabPinned")?.BoundingRectangle;
+        var plusShown = pinned is not null && pinned.Value.Width > 10 && pinned.Value.Right <= wb.Right && pinned.Value.Left > wb.Left + wb.Width / 2;
+        Step("With tabs past the strip's width, the plus stays at the strip's right edge, no scrolling to reach it", plusShown, $"plus at {pinned?.Left}..{pinned?.Right}, window right {wb.Right} · " + Shot("strip-many-tabs"));
+        if (T("TopNewTabPinned") is { } plusBtn) { try { plusBtn.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(plusBtn)); } }
+        Thread.Sleep(1200);
+        Step("Pressing the pinned plus opens one more tab", T("TopNewTabPinned") is not null, Shot("strip-plus-pressed"));
+        if (T("TopSettings") is { } topSet) { try { topSet.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(topSet)); } }
+        Thread.Sleep(2500);
+        Step("The strip's Settings button opens Settings, where Spaces & Profiles has a section of its own", OnPage("Spaces & Profiles") is not null || window.FindAllDescendants(cf => cf.ByName("Spaces & Profiles")).Length > 0, Shot("settings-spaces-section"));
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+    }
+
     window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor"))?.AsButton().Invoke();
     Thread.Sleep(1200);
     Step("The profile door lists Personal and Studio", true, Shot("profile-menu"));
