@@ -449,14 +449,7 @@
         <Button Style="{StaticResource Door}" x:Name="TopUpdateDoor" Content="&#xE895;" ToolTip="Restart to Update" Click="TopUpdate_Click" Visibility="Collapsed" />
         <Button Style="{StaticResource Door}" Content="&#xE80F;" ToolTip="Home" Click="Home_Click" />
         <Button Style="{StaticResource Door}" x:Name="TopDownloadsDoor" Content="&#xE896;" ToolTip="Downloads (Ctrl+Shift+J)" Click="DownloadsDoor_Click" />
-        <Grid>
-          <Button Style="{StaticResource Door}" x:Name="LibraryDoor" AutomationProperties.AutomationId="LibraryDoor" AutomationProperties.Name="Library" Content="&#xE8F1;" ToolTip="Library: spaces, history, downloads, bookmarks (Ctrl+Shift+L)" Click="LibraryDoor_Click" RenderTransformOrigin="0.5,0.5">
-            <Button.RenderTransform><RotateTransform x:Name="LibraryTilt" /></Button.RenderTransform>
-          </Button>
-          <Ellipse x:Name="LibraryBadge" Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Visibility="Collapsed" IsHitTestVisible="False" Fill="{DynamicResource Ink}">
-            <Ellipse.RenderTransform><TranslateTransform x:Name="LibraryBadgeDrop" /></Ellipse.RenderTransform>
-          </Ellipse>
-        </Grid>
+        <Button Style="{StaticResource Door}" x:Name="TopLibraryDoor" Content="&#xE8F1;" ToolTip="Library (Ctrl+Shift+L)" Click="LibraryDoor_Click" />
         <Button Style="{StaticResource Door}" x:Name="TopProfileDoor" AutomationProperties.AutomationId="ProfileDoor" Content="&#xE77B;" ToolTip="Profiles" Click="ProfileDoor_Click" Visibility="Collapsed" />
       </StackPanel>
     </Grid>
@@ -495,7 +488,14 @@
       <StackPanel Orientation="Horizontal">
         <Button Style="{StaticResource Door}" Content="&#xE80F;" ToolTip="Home" Click="Home_Click" />
         <Button Style="{StaticResource Door}" x:Name="DownloadsDoor" Content="&#xE896;" ToolTip="Downloads (Ctrl+Shift+J)" Click="DownloadsDoor_Click" />
-        <Button Style="{StaticResource Door}" Content="&#xE8A4;" ToolTip="Bookmarks" Click="BookmarksDoor_Click" />
+        <Grid>
+          <Button Style="{StaticResource Door}" x:Name="LibraryDoor" AutomationProperties.AutomationId="LibraryDoor" AutomationProperties.Name="Library" Content="&#xE8F1;" ToolTip="Library: spaces, history, downloads, bookmarks (Ctrl+Shift+L)" Click="LibraryDoor_Click" RenderTransformOrigin="0.5,0.5">
+            <Button.RenderTransform><RotateTransform x:Name="LibraryTilt" /></Button.RenderTransform>
+          </Button>
+          <Ellipse x:Name="LibraryBadge" Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Visibility="Collapsed" IsHitTestVisible="False" Fill="{DynamicResource Ink}">
+            <Ellipse.RenderTransform><TranslateTransform x:Name="LibraryBadgeDrop" /></Ellipse.RenderTransform>
+          </Ellipse>
+        </Grid>
         <Button Style="{StaticResource Door}" x:Name="ProfileDoor" AutomationProperties.AutomationId="ProfileDoor" Content="&#xE77B;" ToolTip="Profiles" Click="ProfileDoor_Click" Visibility="Collapsed" />
       </StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
