@@ -45,7 +45,10 @@ public sealed class Extensions
     {
         // Half-made installs from a crash are not kept.
         try { if (Directory.Exists(Folder)) foreach (var d in Directory.GetDirectories(Folder, ".new-*")) Directory.Delete(d, true); } catch { }
-        return new() { file = Store.Read<FileShape>(FileName) ?? new() };
+        var read = Store.Read<FileShape>(FileName);
+        var all = new Extensions { file = read ?? new() };
+        if (read is not null) all.Sweep(); // never from an unreadable list: that would take every folder
+        return all;
     }
     void Save() { Store.Write(FileName, file); Changed?.Invoke(); }
 
@@ -243,5 +246,21 @@ public sealed class Extensions
         file.Items.Remove(e);
         try { Directory.Delete(PathOf(e), true); } catch { }
         Save();
+    }
+
+    /// <summary>
+    /// The engine keeps an extension's files open until it has let go of it, so a folder may refuse to go the moment it is
+    /// removed. Whatever folder no entry owns is cleared here, after the engine is done and again at start-up.
+    /// </summary>
+    public void Sweep()
+    {
+        try
+        {
+            if (!Directory.Exists(Folder)) return;
+            var kept = file.Items.Select(e => Path.GetFullPath(PathOf(e)).TrimEnd(Path.DirectorySeparatorChar)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var d in Directory.GetDirectories(Folder))
+                if (!kept.Contains(Path.GetFullPath(d).TrimEnd(Path.DirectorySeparatorChar))) { try { Directory.Delete(d, true); } catch { } }
+        }
+        catch { }
     }
 }
