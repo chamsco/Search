@@ -38,6 +38,8 @@ public sealed class Extensions
 
     public static string Folder => Path.Combine(Store.Root, "Extensions");
     public IReadOnlyList<ExtensionEntry> Items => file.Items;
+    /// <summary>Anything kept, or anything of ours that may still sit in a profile.</summary>
+    public bool Any => file.Items.Count > 0 || file.OwnedIds.Count > 0;
 
     public static Extensions Load() => new() { file = Store.Read<FileShape>(FileName) ?? new() };
     void Save() { Store.Write(FileName, file); Changed?.Invoke(); }

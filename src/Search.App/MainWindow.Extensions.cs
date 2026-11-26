@@ -30,6 +30,8 @@ public partial class MainWindow
         if (loaded.ContainsKey(name)) return;
         loaded[name] = [];
         extProfiles[name] = profile;
+        // With nothing kept there is nothing to wait for: the first page is not held up, and the first install reaches this profile through the change event.
+        if (!Shared.Extensions.Any) return;
         await ApplyExtensions(name, profile);
     }
 
@@ -160,6 +162,8 @@ public partial class MainWindow
         if (page is null) return;
         var w = await Mini("about:blank", little: true, place: win => { win.Width = popup ? 380 : 720; win.Height = popup ? 560 : 640; win.WindowStartupLocation = WindowStartupLocation.CenterOwner; });
         if (w?.View.CoreWebView2 is not { } core) return;
+        w.Shut.Click += (_, _) => w.Close();
+        w.OpenInSearch.Visibility = Visibility.Collapsed;
         await EnsureExtensions(core);
         if (loaded.TryGetValue(core.Profile.ProfileName, out var have) && have.TryGetValue(key, out var ext))
         {
