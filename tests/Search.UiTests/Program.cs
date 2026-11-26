@@ -1076,15 +1076,20 @@ try
 
     // The Library: the column widens, a rail of sections, the section beside it
     var railBefore = ById("ReloadDoor")?.BoundingRectangle.Left ?? 0;
+    var doorNote = "";
     for (var i = 0; i < 3 && ById("LibraryTitle") is null; i++)
     {
-        if (ById("LibraryDoor") is { } libDoor) { try { libDoor.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(libDoor)); } }
+        var libDoor = ById("LibraryDoor");
+        if (libDoor is null) { doorNote += "door not found; "; Thread.Sleep(1000); continue; }
+        try { libDoor.Patterns.Invoke.Pattern.Invoke(); doorNote += "invoked at " + libDoor.BoundingRectangle + "; "; }
+        catch (Exception ex) { doorNote += "invoke failed: " + ex.Message + "; "; }
         Await(() => ById("LibraryTitle") is not null, 5000);
     }
+    doorNote += "trace: " + string.Join(" / ", Trace6().Split('\n').Where(l => l.Contains("library")).TakeLast(3));
     var railCount = new[] { "spaces", "history", "downloads", "bookmarks", "sites", "archive" }.Count(id => ById("Lib-" + id) is not null);
     var cardShown = Await(() => OnPage("Personal") is not null, 8000);
     var wide = (ById("Lib-spaces")?.BoundingRectangle.Right ?? 0) > 0 && (window.FindFirstDescendant(cf => cf.ByName("Spaces").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text))) is not null || cardShown);
-    Step("The Library door in the foot widens the column: a rail of six sections down its left, Spaces first with the space as a card", railCount == 6 && cardShown && wide, $"rail buttons: {railCount}, space card: {cardShown} · " + Shot("library-spaces"));
+    Step("The Library door in the foot widens the column: a rail of six sections down its left, Spaces first with the space as a card", railCount == 6 && cardShown && wide, $"rail buttons: {railCount}, space card: {cardShown}, {doorNote} · " + Shot("library-spaces"));
     if (ById("Lib-history") is { } hBtn) { try { hBtn.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(hBtn)); } }
     var histShown = Await(() => OnPage("Search history") is not null, 8000);
     Step("History in the rail: the history list shows inside the column, no tab opened", histShown && ById("LibraryTitle")?.Name == "History", "search box shown: " + histShown + " · " + Shot("library-history"));
