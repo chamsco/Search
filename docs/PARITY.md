@@ -94,11 +94,12 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Toolbar buttons, side panels | ⛔ | The engine has no toolbar or side panel to draw them in: popups open from Library › Extensions or the tab menu › Extensions |
 
 ## AI
+The Mac app ships with the AI add-on switched off (`AI.shipped = false` in `AI.swift`, held back since 1.0.5): no Settings page, menu items or shortcuts. Left out here to match, by decision on 2026-11-26.
 | Feature | Status | Notes |
 |---|---|---|
-| Assistant (OpenAI, Anthropic, Gemini, OpenRouter, Ollama, LM Studio) | ⬜ | |
-| On-device model (Qwen3 1.7B) | ⬜ | `Engine/search-ai-engine.cpp` uses llama.cpp, portable |
-| Agent controlling pages | ⬜ | |
+| Assistant (OpenAI, Anthropic, Gemini, OpenRouter, Ollama, LM Studio) | ➖ | Held back upstream |
+| On-device model (Qwen3 1.7B) | ➖ | Held back upstream |
+| Agent controlling pages | ➖ | Held back upstream |
 
 ## System
 | Feature | Status | Notes |
