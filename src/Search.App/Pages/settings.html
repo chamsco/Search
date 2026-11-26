@@ -140,6 +140,7 @@ function keyOf(e) {
   if (/^Digit\d$/.test(c)) return c[5];
   if (/^Numpad\d$/.test(c)) return c[6];
   if (/^F([1-9]|1[0-2])$/.test(c)) return c;
+  if (!c) { const k = e.key; if (k && k.length === 1 && k !== ' ') return k.toUpperCase(); return ({ArrowLeft:'Left',ArrowRight:'Right',ArrowUp:'Up',ArrowDown:'Down',Tab:'Tab',Delete:'Delete',Enter:'Enter',PageUp:'PageUp',PageDown:'PageDown',Home:'Home',End:'End'})[k] || (/^F([1-9]|1[0-2])$/.test(k) ? k : null); }
   return ({Comma:',',Period:'.',Equal:'=',Minus:'-',BracketLeft:'[',BracketRight:']',Semicolon:';',Quote:"'",Slash:'/',Backslash:'\\',Backquote:'`',Tab:'Tab',ArrowLeft:'Left',ArrowRight:'Right',ArrowUp:'Up',ArrowDown:'Down',Delete:'Delete',Enter:'Enter',Space:'Space',PageUp:'PageUp',PageDown:'PageDown',Home:'Home',End:'End',NumpadAdd:'=',NumpadSubtract:'-'})[c] || null;
 }
 function stopCapture() { if (capturing) { capturing = null; send('shortcuts.capture', { on: false }); drawKeys(); } }
