@@ -31,6 +31,14 @@ public partial class MainWindow
 
     bool capturingKey;
 
+    /// <summary>Next or previous space, stopping at the ends.</summary>
+    void StepSpace(int by)
+    {
+        var mine = Shared.Book.In(profileId).ToList();
+        var here = mine.FindIndex(x => x.Id == space.Id);
+        if (here >= 0) SwitchSpaceBy(Math.Clamp(here + by, 0, mine.Count - 1));
+    }
+
     /// <summary>Does what the command says; false when it has nothing to do just now, so the key goes on to the page.</summary>
     bool RunCommand(string id)
     {
@@ -41,6 +49,7 @@ public partial class MainWindow
             case "app.quit": App.Quitting = true; Application.Current.Shutdown(); break;
             case "app.library": ToggleLibrary(); break;
             case "app.extensions": ToggleLibrary("extensions"); break;
+            case "app.passwords": OpenPage("search://settings/passwords"); break;
 
             case "file.newWindow": NewWindow(); break;
             case "file.newTab": NewTab(); break;
@@ -50,6 +59,8 @@ public partial class MainWindow
             case "file.closeTab": if (live is null) return false; Close(live); break;
             case "file.closeWindow": Close(); break;
             case "file.print": Print(); break;
+            case "file.share": Share_Click(this, new RoutedEventArgs()); break;
+            case "file.import": OpenPage("search://settings/import"); break;
 
             case "edit.find": OpenFind(); break;
             case "edit.findNext": FindStep(1); break;
@@ -66,6 +77,8 @@ public partial class MainWindow
             case "view.actualSize": Zoom(0); break;
             case "view.inspector": ToggleDevTools(); break;
             case "view.fullScreen": ToggleFullScreen(); break;
+            case "view.screenshot": Shot_Click(this, new RoutedEventArgs()); break;
+            case "view.style": OpenPage("search://settings/sites"); break;
 
             case "tabs.back": if (core?.CanGoBack == true) core.GoBack(); break;
             case "tabs.forward": if (core?.CanGoForward == true) core.GoForward(); break;
@@ -78,6 +91,9 @@ public partial class MainWindow
             case "tabs.duplicate": if (live is null) return false; DuplicateTab(); break;
             case "tabs.copyAddress": if (live is not { IsBlank: false }) return false; Clipboard.SetText(live.Url); break;
             case "tabs.pasteAndGo": PasteAndGo(); break;
+            case "tabs.rename": if (live is null) return false; BeginRenaming(live); break;
+            case "tabs.copyMarkdown": if (live is not { IsBlank: false }) return false; Clipboard.SetText($"[{live.Label}]({live.Url})"); break;
+            case "tabs.closeOthers": if (live is null) return false; foreach (var o in tabs.Where(o => o != live).ToList()) Close(o); break;
 
             case "bookmarks.add": AddBookmark(); break;
             case "bookmarks.bar": Shared.Prefs.Update(d => d.BookmarksBar = !d.BookmarksBar); break;
@@ -85,6 +101,9 @@ public partial class MainWindow
             case "history.show": OpenPage("search://history"); break;
             case "history.downloads": OpenPage("search://downloads"); break;
             case "history.clearData": ClearBrowsingDataPage(); break;
+
+            case "spaces.next": StepSpace(1); break;
+            case "spaces.previous": StepSpace(-1); break;
 
             default:
                 if (id.StartsWith("spaces.") && int.TryParse(id[7..], out var n)) { SwitchSpaceBy(n - 1); break; }

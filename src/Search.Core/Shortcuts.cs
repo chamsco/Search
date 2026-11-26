@@ -49,6 +49,7 @@ public static class Commands
         new("app.quit", "Quit Search", CommandSection.App, K("Q", shift: true)),
         new("app.library", "Library", CommandSection.App, K("L", shift: true)),
         new("app.extensions", "Extensions", CommandSection.App, K("E", shift: true)),
+        new("app.passwords", "Passwords…", CommandSection.App, null),
 
         new("file.newWindow", "New Window", CommandSection.File, K("N")),
         new("file.newTab", "New Tab", CommandSection.File, K("T")),
@@ -58,6 +59,8 @@ public static class Commands
         new("file.closeTab", "Close Tab", CommandSection.File, K("W")),
         new("file.closeWindow", "Close Window", CommandSection.File, K("W", shift: true)),
         new("file.print", "Print…", CommandSection.File, K("P")),
+        new("file.share", "Share…", CommandSection.File, null),
+        new("file.import", "Bring Things Over…", CommandSection.File, null),
 
         new("edit.find", "Find on Page…", CommandSection.Edit, K("F")),
         new("edit.findNext", "Find Next", CommandSection.Edit, K("G")),
@@ -74,6 +77,8 @@ public static class Commands
         new("view.actualSize", "Actual Size", CommandSection.View, K("0")),
         new("view.inspector", "Web Inspector", CommandSection.View, K("I", alt: true)),
         new("view.fullScreen", "Full Screen", CommandSection.View, K("F11", ctrl: false)),
+        new("view.screenshot", "Take Screenshot", CommandSection.View, null),
+        new("view.style", "Edit Site Style…", CommandSection.View, null),
 
         new("tabs.back", "Back", CommandSection.Tabs, K("Left", ctrl: false, alt: true)),
         new("tabs.forward", "Forward", CommandSection.Tabs, K("Right", ctrl: false, alt: true)),
@@ -86,6 +91,9 @@ public static class Commands
         new("tabs.duplicate", "Duplicate Tab", CommandSection.Tabs, K("D")),
         new("tabs.copyAddress", "Copy Address", CommandSection.Tabs, K("C", shift: true)),
         new("tabs.pasteAndGo", "Paste and Go", CommandSection.Tabs, K("V", shift: true)),
+        new("tabs.rename", "Rename Tab", CommandSection.Tabs, null),
+        new("tabs.copyMarkdown", "Copy as Markdown Link", CommandSection.Tabs, null),
+        new("tabs.closeOthers", "Close Other Tabs", CommandSection.Tabs, null),
 
         new("bookmarks.add", "Add This Page", CommandSection.Bookmarks, K("B", shift: true)),
         new("bookmarks.bar", "Show Bookmarks Bar", CommandSection.Bookmarks, K("B", alt: true)),
@@ -94,7 +102,12 @@ public static class Commands
         new("history.downloads", "Downloads…", CommandSection.History, K("J", shift: true)),
         new("history.clearData", "Clear Browsing Data…", CommandSection.History, K("Delete", shift: true)),
     }.Concat(Enumerable.Range(1, 9).Select(n =>
-        new Command($"spaces.{n}", $"Space {n}", CommandSection.Spaces, K(n.ToString(), alt: true)))).ToList();
+        new Command($"spaces.{n}", $"Space {n}", CommandSection.Spaces, K(n.ToString(), alt: true))))
+        .Concat(new[]
+        {
+            new Command("spaces.next", "Next Space", CommandSection.Spaces, null),
+            new Command("spaces.previous", "Previous Space", CommandSection.Spaces, null),
+        }).ToList();
 
     public static Command? Find(string id) => All.FirstOrDefault(c => c.Id == id);
 }

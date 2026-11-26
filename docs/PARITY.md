@@ -142,7 +142,8 @@ Every command has a name, a section and a key, as in the Mac's `Shortcuts.swift`
 | Library, Extensions | Ctrl+Shift+L, Ctrl+Shift+E | ✅ changeable (Windows additions) |
 | Spaces ⌃1–⌃9 | Ctrl+Alt+1–9 | ✅ changeable |
 | ⌘1–⌘9 pick a tab by its place | Ctrl+1–Ctrl+9 | ✅ fixed, as in every browser |
-| Unbound Mac commands (Share, Save Page, Export as PDF, Rename Tab, Close Other Tabs, Next/Previous Space, profiles…) | | ⬜ not in the list yet |
+| Commands with no key until you give one: Passwords, Share, Bring Things Over, Take Screenshot, Edit Site Style, Rename Tab, Copy as Markdown Link, Close Other Tabs, Next/Previous Space | | ✅ changeable |
+| Mac-only commands with no Windows counterpart yet (Save Page As, Export as PDF, Reading list, profile switching keys) | | ⬜ |
 
 ## Motion
 | Feature | Status | Notes |
