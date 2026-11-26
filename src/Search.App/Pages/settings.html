@@ -146,7 +146,7 @@ function stopCapture() { if (capturing) { capturing = null; send('shortcuts.capt
 document.getElementById('keyList').addEventListener('click', e => {
   const line = e.target.closest('.line'); if (!line) return;
   if (e.target.closest('.kreset')) { send('shortcuts.reset', { id: line.dataset.id }); return; }
-  if (e.target.closest('.kkey')) { capturing = line.dataset.id; send('shortcuts.capture', { on: true }); document.getElementById('keyNote').textContent = ''; drawKeys(); line.querySelector('.kkey').focus(); }
+  if (e.target.closest('.kkey')) { capturing = line.dataset.id; send('shortcuts.capture', { on: true }); document.getElementById('keyNote').textContent = ''; drawKeys(); const now = document.querySelector('.line[data-id="' + capturing + '"] .kkey'); if (now) now.focus(); }
 });
 document.addEventListener('keydown', e => {
   if (!capturing) return;
@@ -159,7 +159,8 @@ document.addEventListener('keydown', e => {
   stopCapture();
   send('shortcuts.set', { id, key: (e.ctrlKey ? 'Ctrl+' : '') + (e.altKey ? 'Alt+' : '') + (e.shiftKey ? 'Shift+' : '') + k });
 }, true);
-document.addEventListener('focusout', e => { if (capturing && e.target.classList && e.target.classList.contains('kkey')) setTimeout(stopCapture, 150); });
+document.addEventListener('mousedown', e => { if (capturing && !e.target.closest('.kkey')) stopCapture(); });
+window.addEventListener('blur', stopCapture);
 document.getElementById('keyFind').oninput = drawKeys;
 document.getElementById('keysReset').onclick = () => send('shortcuts.resetAll', {});
 host.on('shortcuts', m => { SC = m.items; scSpaces = m.spacesOn; drawKeys(); });
