@@ -149,7 +149,6 @@ document.getElementById('keyList').addEventListener('click', e => {
   if (e.target.closest('.kkey')) { capturing = line.dataset.id; send('shortcuts.capture', { on: true }); document.getElementById('keyNote').textContent = ''; drawKeys(); const now = document.querySelector('.line[data-id="' + capturing + '"] .kkey'); if (now) now.focus(); }
 });
 document.addEventListener('keydown', e => {
-  send('shortcuts.debug', { code: e.code, key: e.key, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, capturing: !!capturing });
   if (!capturing) return;
   e.preventDefault(); e.stopPropagation();
   const bare = !e.ctrlKey && !e.altKey && !e.shiftKey;

@@ -1078,7 +1078,7 @@ try
         Step("Click a key: the box waits for the new one", pressing, Shot("shortcuts-waiting"));
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_K);
         var savedKey = Await(() => DataText("shortcuts.json").Replace("\\u002B", "+").Contains("Ctrl+Alt+K"), 6000);
-        Step("Press Ctrl+Alt+K: New Tab is kept on that key, and the key is not taken as a command meanwhile", savedKey, "shortcuts.json: " + DataText("shortcuts.json") + " · trace: " + string.Join(" | ", Trace6().Split('\n').Where(l => l.Contains("shortcuts.")).TakeLast(4)) + " · " + Shot("shortcuts-changed"));
+        Step("Press Ctrl+Alt+K: New Tab is kept on that key, and the key is not taken as a command meanwhile", savedKey, "shortcuts.json: " + DataText("shortcuts.json") + " · " + Shot("shortcuts-changed"));
         // A new tab hides the Settings page: its nav is gone from the tree while the blank page is in front.
         bool OnSettings() => window!.FindAllDescendants().Any(el => { try { return el.Name.Contains("Keyboard & Mouse"); } catch { return false; } });
         var wasOnSettings = OnSettings();
