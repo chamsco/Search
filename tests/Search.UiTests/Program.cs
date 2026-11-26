@@ -1169,8 +1169,8 @@ try
     if (window.FindAllDescendants(cf => cf.ByName("Open")).FirstOrDefault(el => el.ControlType == FlaUI.Core.Definitions.ControlType.Button) is { } openBtn) Mouse.Click(CentreOf(openBtn));
     var popupShown = Await(() => Anywhere("Popup of Test Ext") is not null, 15000);
     Step("Open: the extension's popup appears in a small window", popupShown, "popup text shown: " + popupShown + " · " + Shot("extension-popup"));
-    if (Anywhere("✕") is { } shut) Mouse.Click(CentreOf(shut)); else Chord(VirtualKeyShort.ALT, VirtualKeyShort.F4);
-    Thread.Sleep(1000);
+    ClickCardAway("✕", "Popup of Test Ext");
+    Thread.Sleep(500);
     if (OnPage("Chrome Web Store link or id") is { } linkBox) { Mouse.Click(CentreOf(linkBox)); Thread.Sleep(300); Keyboard.Type(origin6 + "/linked.crx"); }
     if (OnPage("Add extension") is { } addBtn) Mouse.Click(CentreOf(addBtn));
     var linked = Await(() => OnPage("Linked Ext on or off") is not null, 15000);
