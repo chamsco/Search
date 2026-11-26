@@ -1175,11 +1175,22 @@ try
     if (OnPage("Add extension") is { } addBtn) Mouse.Click(CentreOf(addBtn));
     var linked = Await(() => OnPage("Linked Ext on or off") is not null, 15000);
     Step("An address to a .crx in the box, Add: the package is downloaded, unpacked and listed", linked && DataText("extensions.json").Contains("Linked Ext"), $"listed: {linked} · " + Shot("extension-added"));
+    // The real Chrome Web Store: uBlock Origin Lite, by its id
+    if (OnPage("Chrome Web Store link or id") is { } storeBox) { Mouse.Click(CentreOf(storeBox)); Thread.Sleep(300); Keyboard.Press(VirtualKeyShort.CONTROL); Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A); Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Type("https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh"); }
+    if (OnPage("Add extension") is { } addStore) Mouse.Click(CentreOf(addStore));
+    var storeAdded = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name.Contains("uBlock") && el.Name.EndsWith("on or off"); } catch { return false; } }), 60000);
+    var storeNote = storeAdded ? "listed" : (OnPage("Added") is null ? "not listed; page says: " + string.Join(" | ", window.FindAllDescendants(cf => cf.ByAutomationId("status")).Select(el => el.Name)) : "not listed");
+    Step("A Chrome Web Store link in the box, Add: the real store's package is downloaded, unpacked and listed", storeAdded, storeNote + " · " + Shot("extension-store"));
     if (OnPage("Test Ext on or off") is { } sw) Mouse.Click(CentreOf(sw));
     var off = Await(() => DataText("extensions.json").Contains("\"enabled\":false"), 6000);
     Step("The switch turns an extension off", off, "kept as off: " + off + " · " + Shot("extension-off"));
-    if (window.FindAllDescendants(cf => cf.ByName("Remove")).Where(el => el.ControlType == FlaUI.Core.Definitions.ControlType.Button).LastOrDefault() is { } rm) Mouse.Click(CentreOf(rm));
-    var removed = Await(() => !DataText("extensions.json").Contains("Linked Ext") && !Directory.EnumerateDirectories(Path.Combine(data, "Extensions")).Skip(1).Any(), 8000);
+    for (var i = 0; i < 2; i++)
+    {
+        var before = DataText("extensions.json").Length;
+        if (window.FindAllDescendants(cf => cf.ByName("Remove")).Where(el => el.ControlType == FlaUI.Core.Definitions.ControlType.Button).LastOrDefault() is { } rm) Mouse.Click(CentreOf(rm));
+        Await(() => DataText("extensions.json").Length != before, 6000);
+    }
+    var removed = Await(() => !DataText("extensions.json").Contains("Linked Ext") && !DataText("extensions.json").Contains("uBlock") && !Directory.EnumerateDirectories(Path.Combine(data, "Extensions")).Skip(1).Any(), 8000);
     Step("Remove takes the extension and its folder away", removed, $"gone: {removed} · " + Shot("extension-removed"));
 
     // Proxy
