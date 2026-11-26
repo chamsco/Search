@@ -84,7 +84,7 @@ public partial class MainWindow
         {
             Tabs = all.Select(t => t.ToEntry()).ToList(),
             Active = liveTab is null ? 0 : Math.Max(0, all.IndexOf(liveTab)),
-            SideWidth = SideColumn.Width.Value,
+            SideWidth = libraryOpen ? libBefore : SideColumn.Width.Value,
             Groups = [.. StateOf(s).Groups],
             Folders = [.. StateOf(s).Folders],
             Splits = StateOf(s).Splits.Where(x => x.IsValid && x.Tabs.All(id => all.Any(t => t.Id == id)))
@@ -144,6 +144,7 @@ public partial class MainWindow
         RebuildStrip();
         SwipeRows(swipe);
         SaveSoon();
+        PostToPages(SpacesMessage(), "spaces");
     }
 
     void SwitchSpaceBy(int index)
@@ -171,6 +172,7 @@ public partial class MainWindow
             ApplyWash();
             RebuildStrip();
             PostToPages(SettingsMessage(), "settings");
+            PostToPages(SpacesMessage(), "spaces");
         });
     }
 

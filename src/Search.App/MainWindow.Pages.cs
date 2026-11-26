@@ -82,7 +82,7 @@ public partial class MainWindow
             {
                 case "navigate":
                     if (S("url") is { Length: > 0 } to && (InternalPages.Parse(to) is not null || to.StartsWith("http", StringComparison.OrdinalIgnoreCase)))
-                        { if (tab == live) Navigate(to); }
+                        { if (tab == libraryTab) Open(to); else if (tab == live) Navigate(to); }
                     break;
 
                 case "history.query":
@@ -107,6 +107,11 @@ public partial class MainWindow
                         Marks.Reorder(mv, at < 0 ? int.MaxValue : at);
                     }
                     break;
+
+                case "spaces.get": Send(core, SpacesMessage()); break;
+                case "spaces.switch": if (G("id") is Guid spaceId && Shared.Book.In(profileId).FirstOrDefault(x => x.Id == spaceId) is { } sp) { SwitchSpace(sp); Send(core, SpacesMessage()); } break;
+                case "spaces.new": NewSpacePopup(libraryOpen ? LibraryRail : Side); break;
+                case "spaces.on": Shared.Prefs.Update(d => d.SpacesOn = true); RebuildStrip(); Send(core, SpacesMessage()); break;
 
                 case "archive.get": Send(core, ArchiveMessage()); break;
                 case "archive.open": if (G("id") is Guid ao && Shared.ArchiveOf(profileId).Items.FirstOrDefault(i => i.Id == ao) is { } kept) { Open(kept.Url); Shared.ArchiveOf(profileId).Remove(ao); } break;
@@ -213,6 +218,7 @@ public partial class MainWindow
     /// <summary>To every one of this window's pages of ours that is open.</summary>
     void PostToPages(object message, string? kind = null)
     {
+        if (libraryView?.CoreWebView2 is { } lib && PageUrl(lib.Source) is { } there && (kind is null || InternalPages.Parse(there)?.Kind == kind)) Send(lib, message);
         foreach (var t in Ordered())
             if (t.View?.CoreWebView2 is { } c && PageUrl(c.Source) is { } own && (kind is null || InternalPages.Parse(own)?.Kind == kind))
                 Send(c, message);
@@ -400,6 +406,7 @@ public partial class MainWindow
         var busy = Shared.Downloads.Items.Any(i => i.InProgress);
         DownloadsDoor.Content = busy ? "" : "";
         DownloadsDoor.Opacity = busy ? 1 : 0.85;
+        LibraryDownloads(busy);
         PostToPages(DownloadsMessage(), "downloads");
     }
 

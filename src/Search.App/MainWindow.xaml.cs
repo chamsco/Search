@@ -956,6 +956,8 @@ public partial class MainWindow : Window
         else if (ctrl && !alt && !shift && key == Key.OemComma) OpenPage("search://settings");
         else if (ctrl && !alt && !shift && key == Key.Y) OpenPage("search://history");
         else if (ctrl && shift && !alt && key == Key.J) OpenPage("search://downloads");
+        else if (ctrl && shift && !alt && key == Key.L) ToggleLibrary();
+        else if (key == Key.Escape && !ctrl && !alt && !shift && libraryOpen && Keyboard.FocusedElement is not System.Windows.Controls.TextBox) CloseLibrary();
         else if (ctrl && shift && !alt && key == Key.Delete) ClearBrowsingDataPage();
         else if (ctrl && !alt && !shift && key == Key.O) OpenFile();
         else if (ctrl && shift && !alt && key == Key.W) Close();
@@ -1019,7 +1021,7 @@ public partial class MainWindow : Window
     // MARK: - the column's edge
 
     void SideEdge_DragDelta(object sender, DragDeltaEventArgs e) =>
-        SideColumn.Width = new GridLength(Math.Clamp(SideColumn.ActualWidth + e.HorizontalChange, SideMin, SideMax));
+        SideColumn.Width = new GridLength(Math.Clamp(SideColumn.ActualWidth + e.HorizontalChange, libraryOpen ? 360 : SideMin, libraryOpen ? 720 : SideMax));
 
     void SideEdge_DragCompleted(object sender, DragCompletedEventArgs e) => SaveSoon();
 
@@ -1028,6 +1030,7 @@ public partial class MainWindow : Window
     {
         if (TopLayout) return;
         peeking = false;
+        if (libraryOpen) { CloseLibrary(animate: false); Root.UpdateLayout(); }
         if (Side.Visibility == Visibility.Visible)
         {
             sideBefore = SideColumn.ActualWidth;

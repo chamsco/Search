@@ -67,3 +67,14 @@ kbd { font: 12px "Segoe UI Variable Text","Segoe UI"; padding: 1px 6px; border: 
 .h2 { font-size: 15px; font-weight: 600; margin: 26px 0 10px; }
 .dots { display: flex; gap: 6px; } .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: default; display: inline-block; } .dot.on { border-color: var(--ink); }
 .sn, .pn { font-size: 13px; }
+
+/* In the Library (the column widened): no page margins, no page title. */
+html.embed .page { max-width: none; padding: 12px 10px 40px; }
+html.embed h1, html.embed .sub { display: none; }
+html.embed .shell { display: block; } html.embed nav { display: none; } html.embed main { padding: 12px 12px 40px; max-width: none; }
+.card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--hairline); margin: 0 0 8px; background: var(--ground); transition: transform .2s, box-shadow .2s, background .12s; cursor: default; }
+.card:hover { transform: scale(1.015); background: var(--hover); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.card.on { background: var(--wash); }
+.card .sw { width: 28px; height: 28px; border-radius: 8px; flex: none; display: grid; place-items: center; color: #fff; font-size: 12px; background: var(--faint); }
+.card .t { font-weight: 500; } .card .u { margin-left: 0; }
+@media (prefers-reduced-motion: reduce) { .card, .card:hover { transition: none; transform: none; } }

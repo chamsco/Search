@@ -22,6 +22,8 @@ public sealed class PrefsData
     public double SideWidth { get; set; } = 232;
     /// <summary>Settings › Tabs › Spaces: off until turned on, as on the Mac; until then there is one space and nothing about it shows.</summary>
     public bool SpacesOn { get; set; }
+    /// <summary>The Library section last shown in the column.</summary>
+    public string LibrarySection { get; set; } = "spaces";
     /// <summary>Settings › Tabs › Layout: the column of tabs at the side, or a strip along the top.</summary>
     public TabsLayout Layout { get; set; } = TabsLayout.Sidebar;
     /// <summary>Settings › Tabs › Pins as rows instead of squares.</summary>

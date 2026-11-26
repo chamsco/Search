@@ -449,7 +449,14 @@
         <Button Style="{StaticResource Door}" x:Name="TopUpdateDoor" Content="&#xE895;" ToolTip="Restart to Update" Click="TopUpdate_Click" Visibility="Collapsed" />
         <Button Style="{StaticResource Door}" Content="&#xE80F;" ToolTip="Home" Click="Home_Click" />
         <Button Style="{StaticResource Door}" x:Name="TopDownloadsDoor" Content="&#xE896;" ToolTip="Downloads (Ctrl+Shift+J)" Click="DownloadsDoor_Click" />
-        <Button Style="{StaticResource Door}" Content="&#xE8A4;" ToolTip="Bookmarks" Click="BookmarksDoor_Click" />
+        <Grid>
+          <Button Style="{StaticResource Door}" x:Name="LibraryDoor" AutomationProperties.AutomationId="LibraryDoor" AutomationProperties.Name="Library" Content="&#xE8F1;" ToolTip="Library: spaces, history, downloads, bookmarks (Ctrl+Shift+L)" Click="LibraryDoor_Click" RenderTransformOrigin="0.5,0.5">
+            <Button.RenderTransform><RotateTransform x:Name="LibraryTilt" /></Button.RenderTransform>
+          </Button>
+          <Ellipse x:Name="LibraryBadge" Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Visibility="Collapsed" IsHitTestVisible="False" Fill="{DynamicResource Ink}">
+            <Ellipse.RenderTransform><TranslateTransform x:Name="LibraryBadgeDrop" /></Ellipse.RenderTransform>
+          </Ellipse>
+        </Grid>
         <Button Style="{StaticResource Door}" x:Name="TopProfileDoor" AutomationProperties.AutomationId="ProfileDoor" Content="&#xE77B;" ToolTip="Profiles" Click="ProfileDoor_Click" Visibility="Collapsed" />
       </StackPanel>
     </Grid>
@@ -521,6 +528,19 @@
         </StackPanel>
       </ScrollViewer>
     </DockPanel>
+
+    <!-- The Library: the column widened, a rail of sections down its left, the section beside it. -->
+    <Grid x:Name="LibraryHost" Grid.Column="0" Grid.RowSpan="3" Margin="0,52,0,0" Background="{DynamicResource Frame}" Visibility="Collapsed">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+      <StackPanel x:Name="LibraryRail" Margin="8,2,0,0" />
+      <Border x:Name="LibraryFrame" Grid.Column="1" Margin="0,0,8,0" CornerRadius="10" Background="{DynamicResource Ground}" BorderBrush="{DynamicResource Hairline}" BorderThickness="0.5" ClipToBounds="True" />
+      <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="10,6,10,8" Height="30">
+        <Button Style="{StaticResource Door}" AutomationProperties.AutomationId="LibraryBack" AutomationProperties.Name="Back to tabs" Content="&#xE72B;" HorizontalAlignment="Left" Click="LibraryBack_Click" ToolTip="Back to tabs (Esc)" />
+        <TextBlock x:Name="LibraryTitle" AutomationProperties.AutomationId="LibraryTitle" FontSize="12.5" Margin="40,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Row.Muted}" />
+        <Button Style="{StaticResource Door}" AutomationProperties.AutomationId="LibraryTab" AutomationProperties.Name="Open in a tab" Content="&#xE8A7;" HorizontalAlignment="Right" Margin="0" Click="LibraryTab_Click" ToolTip="Open in a tab" />
+      </Grid>
+    </Grid>
 
     <!-- The column's edge, dragged to make it wider (176 to 440, as on the Mac). -->
     <Thumb Grid.Column="0" Grid.RowSpan="3" HorizontalAlignment="Right" Width="6" Margin="0,52,-3,0" Cursor="SizeWE"

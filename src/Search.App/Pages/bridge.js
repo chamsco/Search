@@ -1,3 +1,5 @@
+// In the column's Library the page is one section among several: less chrome, tighter margins.
+if (new URLSearchParams(location.search).has('embed')) document.documentElement.classList.add('embed');
 // The page's door to Search. Only pages served from search.internal are listened to (checked on the other side too).
 const handlers = {};
 const host = {

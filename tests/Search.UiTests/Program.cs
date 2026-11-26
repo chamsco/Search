@@ -1074,6 +1074,36 @@ try
     Step("Settings at the foot opens Settings", settingsOpened, "Settings page shown: " + settingsOpened);
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
 
+    // The Library: the column widens, a rail of sections, the section beside it
+    var railBefore = ById("ReloadDoor")?.BoundingRectangle.Left ?? 0;
+    for (var i = 0; i < 3 && ById("LibraryTitle") is null; i++)
+    {
+        if (ById("LibraryDoor") is { } libDoor) { try { libDoor.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(libDoor)); } }
+        Await(() => ById("LibraryTitle") is not null, 5000);
+    }
+    var railCount = new[] { "spaces", "history", "downloads", "bookmarks", "sites", "archive" }.Count(id => ById("Lib-" + id) is not null);
+    var cardShown = Await(() => OnPage("Personal") is not null, 8000);
+    var wide = (ById("Lib-spaces")?.BoundingRectangle.Right ?? 0) > 0 && (window.FindFirstDescendant(cf => cf.ByName("Spaces").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text))) is not null || cardShown);
+    Step("The Library door in the foot widens the column: a rail of six sections down its left, Spaces first with the space as a card", railCount == 6 && cardShown && wide, $"rail buttons: {railCount}, space card: {cardShown} · " + Shot("library-spaces"));
+    if (ById("Lib-history") is { } hBtn) { try { hBtn.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(hBtn)); } }
+    var histShown = Await(() => OnPage("Search history") is not null, 8000);
+    Step("History in the rail: the history list shows inside the column, no tab opened", histShown && ById("LibraryTitle")?.Name == "History", "search box shown: " + histShown + " · " + Shot("library-history"));
+    if (ById("Lib-downloads") is { } dBtn) { try { dBtn.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(dBtn)); } }
+    var downShown = Await(() => OnPage("Search downloads") is not null, 8000);
+    Step("Downloads in the rail: the downloads list shows inside the column", downShown, "search box shown: " + downShown + " · " + Shot("library-downloads"));
+    if (ById("Lib-bookmarks") is { } bBtn) { try { bBtn.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(bBtn)); } }
+    var markShown = Await(() => OnPage("Search bookmarks") is not null, 8000);
+    Step("Bookmarks in the rail: the saved page is listed inside the column", markShown, "search box shown: " + markShown + " · " + Shot("library-bookmarks"));
+    if (ById("LibraryBack") is { } backBtn) { try { backBtn.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(backBtn)); } }
+    var closed = Await(() => ById("LibraryTitle") is null && ById("Lib-history") is null, 5000);
+    var reloadAfter = ById("ReloadDoor")?.BoundingRectangle.Left ?? 0;
+    Step("The back arrow closes the Library: the column narrows to what it was and the tabs are back", closed && Math.Abs(reloadAfter - railBefore) < 3, $"closed: {closed}, reload at {railBefore} then {reloadAfter} · " + Shot("library-closed"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_L);
+    var viaKey = Await(() => ById("LibraryTitle") is not null, 5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_L);
+    var keyClosed = Await(() => ById("LibraryTitle") is null, 5000);
+    Step("Ctrl+Shift+L opens the Library at the section it was left on, and again closes it", viaKey && keyClosed, $"opened: {viaKey}, closed: {keyClosed}");
+
     // Hide, edge, keep
     if (ById("CollapseSidebar") is { } hide) Mouse.Click(CentreOf(hide));
     var hidden = Await(() => ById("CollapseSidebar") is null, 4000);
