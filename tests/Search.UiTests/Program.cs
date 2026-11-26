@@ -1079,8 +1079,12 @@ try
     var doorNote = "";
     for (var i = 0; i < 3 && ById("LibraryTitle") is null; i++)
     {
-        var libDoor = ById("LibraryDoor");
-        if (libDoor is null) { doorNote += "door not found; "; Thread.Sleep(1000); continue; }
+        var libDoor = ById("LibraryDoor") ?? OnPage("Library");
+        if (libDoor is null)
+        {
+            var seen = window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)).Select(b => { try { return b.AutomationId + "|" + b.Name + "@" + b.BoundingRectangle.Left + "," + b.BoundingRectangle.Top; } catch { return "?"; } }).Where(x => !x.StartsWith("|") || x.Length > 1).Take(40);
+            doorNote += "door not found among: " + string.Join(" ", seen) + "; "; Thread.Sleep(1000); continue;
+        }
         try { libDoor.Patterns.Invoke.Pattern.Invoke(); doorNote += "invoked at " + libDoor.BoundingRectangle + "; "; }
         catch (Exception ex) { doorNote += "invoke failed: " + ex.Message + "; "; }
         Await(() => ById("LibraryTitle") is not null, 5000);
