@@ -1186,9 +1186,9 @@ try
     Step("The switch turns an extension off", off, "kept as off: " + off + " · " + Shot("extension-off"));
     for (var i = 0; i < 2; i++)
     {
-        var before = DataText("extensions.json").Length;
+        var sizeBefore = DataText("extensions.json").Length;
         if (window.FindAllDescendants(cf => cf.ByName("Remove")).Where(el => el.ControlType == FlaUI.Core.Definitions.ControlType.Button).LastOrDefault() is { } rm) Mouse.Click(CentreOf(rm));
-        Await(() => DataText("extensions.json").Length != before, 6000);
+        Await(() => DataText("extensions.json").Length != sizeBefore, 6000);
     }
     var removed = Await(() => !DataText("extensions.json").Contains("Linked Ext") && !DataText("extensions.json").Contains("uBlock") && !Directory.EnumerateDirectories(Path.Combine(data, "Extensions")).Skip(1).Any(), 8000);
     Step("Remove takes the extension and its folder away", removed, $"gone: {removed} · " + Shot("extension-removed"));
