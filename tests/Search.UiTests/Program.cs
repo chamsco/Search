@@ -1212,7 +1212,7 @@ try
         Await(() => DataText("extensions.json").Length != sizeBefore, 6000);
     }
     var removed = Await(() => !DataText("extensions.json").Contains("Linked Ext") && !DataText("extensions.json").Contains("uBlock") && !Directory.EnumerateDirectories(Path.Combine(data, "Extensions")).Skip(1).Any(), 8000);
-    Step("Remove takes the extension and its folder away", removed, $"gone: {removed} · " + Shot("extension-removed"));
+    Step("Remove takes the extension and its folder away", removed, $"gone: {removed}; folders left: {string.Join(", ", Directory.EnumerateDirectories(Path.Combine(data, "Extensions")).Select(Path.GetFileName))} · " + Shot("extension-removed"));
 
     // Proxy
     Quit();

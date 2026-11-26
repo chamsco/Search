@@ -38,6 +38,9 @@ public partial class MainWindow
     async Task SyncExtensionsAsync()
     {
         foreach (var (name, profile) in extProfiles.ToList()) await ApplyExtensions(name, profile);
+        // The engine may hold a removed extension's files a moment longer: clear what no one owns now and once more shortly after.
+        await Task.Run(Shared.Extensions.Sweep);
+        _ = Task.Delay(2000).ContinueWith(_ => Shared.Extensions.Sweep());
     }
 
     async Task ApplyExtensions(string name, CoreWebView2Profile profile)
