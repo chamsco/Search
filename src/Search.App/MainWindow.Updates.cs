@@ -69,11 +69,10 @@ public partial class MainWindow
 
     void ShowUpdateState()
     {
-        UpdatePill.Visibility = TopUpdateDoor.Visibility = stage == UpdateStage.Ready ? Visibility.Visible : Visibility.Collapsed;
-        if (found is not null) UpdatePill.ToolTip = $"Search {found.Version} is ready";
+        FootUpdateDoor.Visibility = TopUpdateDoor.Visibility = stage == UpdateStage.Ready ? Visibility.Visible : Visibility.Collapsed;
+        if (found is not null) FootUpdateDoor.ToolTip = TopUpdateDoor.ToolTip = $"Restart to update to Search {found.Version}";
     }
 
-    void UpdatePill_Click(object sender, MouseButtonEventArgs e) => InstallUpdate();
 
     /// <summary>The installer runs silently, closes this window, and opens Search again when it is done.</summary>
     void InstallUpdate()

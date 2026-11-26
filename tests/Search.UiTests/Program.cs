@@ -40,6 +40,7 @@ string Shot(string name)
 }
 
 string? importLocal = null, importRoaming = null;
+bool showUpdate = false;
 Application Launch()
 {
     var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
@@ -47,6 +48,7 @@ Application Launch()
     psi.Environment["SEARCH_NO_UPDATES"] = "1";
     psi.Environment["SEARCH_SNAP"] = "1";
     psi.Environment["SEARCH_TEST_TRUST_LOCALHOST"] = "1";
+    if (showUpdate) psi.Environment["SEARCH_TEST_SHOW_UPDATE"] = "1";
     if (importLocal is not null) psi.Environment["SEARCH_IMPORT_LOCALAPPDATA"] = importLocal;
     if (importRoaming is not null) psi.Environment["SEARCH_IMPORT_APPDATA"] = importRoaming;
     return Application.Launch(psi);
@@ -104,7 +106,7 @@ try
     Step("Ctrl+T, type example.com, Enter: opens in a second tab", !app.HasExited, Shot("second-tab"));
 
     var b = window.BoundingRectangle;
-    // First row: below the 52-point strip, 10 in from the column's edge (maximised windows sit 7 in).
+    // First row: below the 52-point strip, the address pill (38) and the page's actions (34), 10 in from the column's edge (maximised windows sit 7 in).
     var firstRow = new Point(b.Left + 7 + 80, b.Top + 7 + 52 + 14);
     Mouse.MoveTo(firstRow);
     Thread.Sleep(700);
@@ -132,6 +134,7 @@ try
 
 
     // ---- wave 2 ----
+    Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "Example Domain"; } catch { return false; } }), 20000); // the page has to have arrived before it can be searched
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F);
     Keyboard.Type("domain");
     Thread.Sleep(1500);
@@ -839,7 +842,7 @@ try
     if (!Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 5000) && OnPage("Sign in") is { } signInBtn) Mouse.Click(CentreOf(signInBtn)); // the Enter can be lost to the first click
     var offerSave = Await(() => Anywhere("Save the password for ana@example.com at localhost?") is not null, 20000);
     var saveShot = Shot("password-save-card");
-    ClickCard("Save");
+    ClickCardAway("Save", "Save the password for ana@example.com at localhost?");
     var vaultHas = Await(() => VaultText().Contains("ana@example.com"), 6000);
     Step("A sign-in sent and settled: a card offers to keep the password; Save puts it in the vault, protected, never in the file as written", typedUser && typedPw && offerSave && vaultHas && !VaultText().Contains("correct horse"), $"card: {offerSave}, kept: {vaultHas}, file shows the password: {VaultText().Contains("correct horse")}, trace: {FormTrace()} · {saveShot}");
 
@@ -1005,6 +1008,90 @@ try
     Thread.Sleep(3500);
     var syncText = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name?.Contains("Synced with 1 other PC") == true; } catch { return false; } }), 6000);
     Step("Settings › General says who it synced with", syncText, "status shown: " + syncText + " · " + Shot("sync-settings"));
+
+    // The column: address pill, page actions, hide, edge, foot
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-side-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/login\",\"title\":\"\"}],\"active\":0}");
+    showUpdate = true;
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(7000);
+    AutomationElement? ById(string id) { try { return window!.FindFirstDescendant(cf => cf.ByAutomationId(id)); } catch { return null; } }
+    // The page's actions live in the tab's own menu; the row itself is the address.
+    Mouse.MoveTo(RowPoints6()); Thread.Sleep(500);
+    var copyOnRow = OnPage("Copy link");
+    Step("Hover the tab: a copy-link button sits at the far right of the row, no second address bar above the pages", copyOnRow is not null && ById("AddressPill") is null && ById("AddressText") is null, $"copy button on row: {copyOnRow is not null} · " + Shot("column-address"));
+    if (copyOnRow is not null) Mouse.Click(CentreOf(copyOnRow));
+    var copied = Await(() => Trace6().Contains("link copied"), 5000);
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 700, window.BoundingRectangle.Top + 400)); Thread.Sleep(300);
+    // A plain click on the tab you are on edits its address where it is.
+    Mouse.Click(new Point(RowPoints6().X + 20, RowPoints6().Y));
+    Thread.Sleep(900);
+    Keyboard.Type(origin6 + "/signup"); Keyboard.Press(VirtualKeyShort.RETURN);
+    var navigated = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name == "Sign up"; } catch { return false; } }), 12000);
+    Step("Clicking the tab you are on changes its address right there, no new tab; Copy link copied it", navigated && copied, $"tab titled Sign up: {navigated}, copied: {copied} · " + Shot("column-address-edit"));
+    Mouse.Click(RowPoints6(), MouseButton.Right);
+    Thread.Sleep(900);
+    var menuHas = new[] { "Bookmark This Page", "Take Screenshot", "Share", "Style This Site" }.All(n => MenuEntry(n) is not null);
+    var menuShot = Shot("column-actions");
+    MenuEntry("Bookmark This Page")?.Click();
+    var starred = Await(() => DataText("bookmarks.json").Contains("localhost"), 8000);
+    Keyboard.Press(VirtualKeyShort.ESCAPE); Thread.Sleep(500);
+    Step("The tab's right-click menu has Bookmark, Screenshot, Share and Style This Site; Bookmark saves the page", menuHas && starred, $"items: {menuHas}, bookmarked: {starred} · " + menuShot);
+    Mouse.Click(RowPoints6(), MouseButton.Right);
+    Thread.Sleep(900);
+    MenuEntry("Take Screenshot")?.Click();
+    var shotCard = Await(() => Anywhere("Screenshot saved") is not null, 10000);
+    var shotFile = Directory.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots")) && Directory.EnumerateFiles(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots"), "Search *.png").Any(f => (DateTime.Now - File.GetLastWriteTime(f)).TotalMinutes < 5);
+    Step("Take Screenshot from the tab menu: the page is saved to Pictures › Screenshots and a card says so", shotCard && shotFile, $"card: {shotCard}, file: {shotFile} · " + Shot("column-screenshot"));
+    ClickCard("Done");
+
+    // The column never gets narrower than its top row.
+    var hideBefore = ById("CollapseSidebar")?.BoundingRectangle.Right ?? 0;
+    var edgeAt = new Point(hideBefore + 7, window.BoundingRectangle.Top + 400); // the left half of the edge's grip: the right half is under the page
+    Mouse.MoveTo(edgeAt); Thread.Sleep(300);
+    Mouse.Down(MouseButton.Left);
+    for (var dx = 0; dx <= 150; dx += 10) { Mouse.MoveTo(new Point(edgeAt.X - dx, edgeAt.Y)); Thread.Sleep(30); }
+    Mouse.Up(MouseButton.Left);
+    Thread.Sleep(1000);
+    var reload = ById("ReloadDoor")?.BoundingRectangle; var hideBtn = ById("CollapseSidebar")?.BoundingRectangle;
+    var gap = hideBtn is null || reload is null ? -999 : hideBtn.Value.Left - reload.Value.Right;
+    Step("Dragging the column's edge as narrow as it goes: the reload button stays whole with a little space before the next one", gap >= 0 && gap < 40 && reload is not null && reload.Value.Width > 20 && (hideBtn?.Right ?? hideBefore) < hideBefore - 2, $"column's right button moved from {hideBefore} to {hideBtn?.Right}, gap after reload: {gap}px · " + Shot("column-narrowest"));
+
+    if (ById("FootSettings") is { } footSet && ById("FootUpdate") is { } footUp)
+        Step("The foot has Settings at the right, and Update beside it when one is ready", footUp.BoundingRectangle.Right <= footSet.BoundingRectangle.Left + 4 && Math.Abs(footUp.BoundingRectangle.Top - footSet.BoundingRectangle.Top) < 6, $"update at {footUp.BoundingRectangle.Left}, settings at {footSet.BoundingRectangle.Left} · " + Shot("column-foot"));
+    else Step("The foot has Settings at the right, and Update beside it when one is ready", false, "buttons not found");
+    var settingsOpened = false;
+    for (var i = 0; i < 3 && !settingsOpened; i++)
+    {
+        // At this screen size the window's foot is behind the taskbar, out of a click's reach: the button is pressed the way assistive tools do.
+        if (ById("FootSettings") is { } footSet2) { try { footSet2.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(footSet2)); } }
+        settingsOpened = Await(() => window!.FindAllDescendants().Count(el => { try { return el.Name == "Settings"; } catch { return false; } }) >= 2 || OnPage("Passwords") is not null, 5000);
+    }
+    Step("Settings at the foot opens Settings", settingsOpened, "Settings page shown: " + settingsOpened);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+
+    // Hide, edge, keep
+    if (ById("CollapseSidebar") is { } hide) Mouse.Click(CentreOf(hide));
+    var hidden = Await(() => ById("CollapseSidebar") is null, 4000);
+    var hiddenShot = Shot("column-hidden");
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 700, window.BoundingRectangle.Top + 400)); Thread.Sleep(300);
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 3, window.BoundingRectangle.Top + 400));
+    var peeked = Await(() => ById("CollapseSidebar") is not null, 4000);
+    var peekShot = Shot("column-edge");
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 800, window.BoundingRectangle.Top + 400));
+    var gone = Await(() => ById("CollapseSidebar") is null, 4000);
+    Step("The hide button takes the column away; the pointer at the window's edge brings it back and it leaves again with the pointer", hidden && peeked && gone, $"hidden: {hidden}, shown from the edge: {peeked}, left again: {gone} · {hiddenShot} · {peekShot}");
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 3, window.BoundingRectangle.Top + 400));
+    Await(() => ById("CollapseSidebar") is not null, 4000);
+    if (ById("CollapseSidebar") is { } keep) Mouse.Click(CentreOf(keep));
+    Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 800, window.BoundingRectangle.Top + 400)); Thread.Sleep(2000);
+    var stayed = ById("CollapseSidebar") is not null;
+    Step("Pressing the button while the column is out from the edge keeps it open", stayed, "still there after the pointer left: " + stayed + " · " + Shot("column-kept"));
+    showUpdate = false;
 
     // Proxy
     Quit();

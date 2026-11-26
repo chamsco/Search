@@ -133,14 +133,17 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <ContentPresenter x:Name="MarkHost" Content="{Binding}" ContentTemplate="{StaticResource Mark}" Margin="0,0,8,0" VerticalAlignment="Center" />
           <TextBlock x:Name="Title" Grid.Column="1" Text="{Binding Label}" FontSize="12.5" VerticalAlignment="Center"
                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Row.Muted}" />
+          <Button x:Name="CopyLink" Grid.Column="2" Style="{StaticResource Door}" Width="15" Height="15" Margin="8,0,0,0" FontSize="9" Content="&#xE8C8;"
+                  Visibility="Collapsed" Click="CopyRowLink_Click" ToolTip="Copy link" AutomationProperties.Name="Copy link" />
           <TextBox x:Name="Field" Grid.Column="0" Grid.ColumnSpan="2" Visibility="Collapsed" FontSize="12.5" BorderThickness="0" Background="Transparent"
                    Foreground="{DynamicResource Ink}" CaretBrush="{DynamicResource Ink}" VerticalContentAlignment="Center" Padding="-2,0,0,0"
                    PreviewKeyDown="InlineField_PreviewKeyDown" TextChanged="InlineField_TextChanged" LostKeyboardFocus="InlineField_LostFocus" />
-          <Grid Grid.Column="2" Width="15" Height="15" Margin="8,0,0,0">
+          <Grid Grid.Column="3" Width="15" Height="15" Margin="8,0,0,0">
             <ContentControl x:Name="Ring" Template="{StaticResource Ring}" Visibility="Collapsed" />
             <Button x:Name="Close" Style="{StaticResource Door}" Width="15" Height="15" Margin="0" FontSize="8" Content="&#xE8BB;"
                     Visibility="Hidden" Click="CloseTab_Click" ToolTip="Close tab (Ctrl+W)" />
@@ -159,6 +162,7 @@
           <Trigger.EnterActions><BeginStoryboard Storyboard="{StaticResource HoverIn}" /></Trigger.EnterActions>
           <Trigger.ExitActions><BeginStoryboard Storyboard="{StaticResource HoverOut}" /></Trigger.ExitActions>
           <Setter TargetName="Close" Property="Visibility" Value="Visible" />
+          <Setter TargetName="CopyLink" Property="Visibility" Value="Visible" />
           <Setter TargetName="Ring" Property="Visibility" Value="Collapsed" />
         </Trigger>
         <DataTrigger Binding="{Binding InSplit}" Value="True">
@@ -454,14 +458,15 @@
     <DockPanel x:Name="Side" Grid.Column="0" Grid.RowSpan="3">
       <!-- The strip: the window's own doors where the Mac has its lights, in the lights' order (close, minimise, zoom), then back, forward and reload. -->
       <Grid DockPanel.Dock="Top" Height="52">
-        <StackPanel Orientation="Horizontal" Margin="10,0,10,0" VerticalAlignment="Center">
+        <Button Style="{StaticResource Door}" x:Name="CollapseDoor" AutomationProperties.AutomationId="CollapseSidebar" AutomationProperties.Name="Hide sidebar" Content="&#xE89F;" FontSize="11" HorizontalAlignment="Right" Margin="0,0,10,0" Click="CollapseDoor_Click" ToolTip="Hide sidebar (Ctrl+Shift+S)" />
+        <StackPanel x:Name="SideDoors" Orientation="Horizontal" Margin="10,0,10,0" VerticalAlignment="Center" HorizontalAlignment="Left">
           <Button Style="{StaticResource CloseDoor}" Content="&#xE8BB;" FontSize="9" Click="CloseWindow_Click" ToolTip="Close" />
           <Button Style="{StaticResource Door}" Content="&#xE921;" FontSize="9" Click="Minimize_Click" ToolTip="Minimize" />
           <Button Style="{StaticResource Door}" x:Name="MaxDoor" Content="&#xE922;" FontSize="9" Click="Maximize_Click" ToolTip="Maximize" />
           <Border Width="8" />
           <Button Style="{StaticResource Door}" x:Name="BackDoor" Content="&#xE76B;" Click="Back_Click" ToolTip="Back (Alt+Left)" />
           <Button Style="{StaticResource Door}" x:Name="ForwardDoor" Content="&#xE76C;" Click="Forward_Click" ToolTip="Forward (Alt+Right)" />
-          <Button Style="{StaticResource Door}" x:Name="ReloadDoor" Content="&#xE72C;" FontSize="10" Click="Reload_Click" ToolTip="Reload (Ctrl+R)" />
+          <Button Style="{StaticResource Door}" x:Name="ReloadDoor" AutomationProperties.AutomationId="ReloadDoor" Content="&#xE72C;" FontSize="10" Click="Reload_Click" ToolTip="Reload (Ctrl+R)" />
         </StackPanel>
       </Grid>
 
@@ -479,22 +484,20 @@
       </ItemsControl>
 
       <!-- The foot of the column: home, downloads, bookmarks. -->
-      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="10,0,10,8" Height="30">
+      <Grid DockPanel.Dock="Bottom" Margin="10,0,10,8" Height="30">
+      <StackPanel Orientation="Horizontal">
         <Button Style="{StaticResource Door}" Content="&#xE80F;" ToolTip="Home" Click="Home_Click" />
         <Button Style="{StaticResource Door}" x:Name="DownloadsDoor" Content="&#xE896;" ToolTip="Downloads (Ctrl+Shift+J)" Click="DownloadsDoor_Click" />
         <Button Style="{StaticResource Door}" Content="&#xE8A4;" ToolTip="Bookmarks" Click="BookmarksDoor_Click" />
         <Button Style="{StaticResource Door}" x:Name="ProfileDoor" AutomationProperties.AutomationId="ProfileDoor" Content="&#xE77B;" ToolTip="Profiles" Click="ProfileDoor_Click" Visibility="Collapsed" />
       </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button Style="{StaticResource Door}" x:Name="FootUpdateDoor" AutomationProperties.AutomationId="FootUpdate" AutomationProperties.Name="Restart to update" Content="&#xE895;" ToolTip="Restart to Update" Click="TopUpdate_Click" Visibility="Collapsed" />
+          <Button Style="{StaticResource Door}" x:Name="FootSettingsDoor" AutomationProperties.AutomationId="FootSettings" AutomationProperties.Name="Settings" Content="&#xE713;" ToolTip="Settings (Ctrl+,)" Margin="0" Click="FootSettings_Click" />
+        </StackPanel>
+      </Grid>
       <!-- Spaces: one icon each, above the foot. Shown once spaces are turned on in Settings › Tabs. -->
       <WrapPanel x:Name="SpaceStrip" DockPanel.Dock="Bottom" Margin="10,0,10,4" Visibility="Collapsed" />
-      <!-- An update downloaded and ready (Updater.swift's "Restart to Update"). -->
-      <Border x:Name="UpdatePill" DockPanel.Dock="Bottom" Margin="10,0,10,10" Height="30" CornerRadius="9" Visibility="Collapsed"
-              Background="{DynamicResource Row.Wash}" Cursor="Hand" MouseLeftButtonUp="UpdatePill_Click">
-        <StackPanel Orientation="Horizontal" Margin="10,0">
-          <TextBlock Text="&#xE896;" FontFamily="{StaticResource Glyphs}" FontSize="11" Margin="0,0,8,0" VerticalAlignment="Center" Foreground="{DynamicResource Ink}" />
-          <TextBlock x:Name="UpdateText" Text="Restart to Update" FontSize="12.5" VerticalAlignment="Center" Foreground="{DynamicResource Ink}" />
-        </StackPanel>
-      </Border>
       <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="10,0,10,10">
         <StackPanel>
           <ItemsControl x:Name="TabList" ItemTemplate="{StaticResource TabRow}" AllowDrop="True" />
@@ -524,6 +527,9 @@
            DragDelta="SideEdge_DragDelta" DragCompleted="SideEdge_DragCompleted" Opacity="0">
       <Thumb.Template><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Thumb.Template>
     </Thumb>
+
+    <!-- While the column is hidden, its edge: the pointer there brings it back for as long as it stays. -->
+    <Border x:Name="EdgeHot" Grid.Column="0" Grid.ColumnSpan="2" Grid.RowSpan="3" HorizontalAlignment="Left" Width="8" Background="Transparent" Visibility="Collapsed" MouseEnter="EdgeHot_MouseEnter" />
 
     <!-- The page's card: 8 from the window's edges, corners of 10. -->
     <!-- The bookmarks bar: loose bookmarks as chips, folders as menus. -->

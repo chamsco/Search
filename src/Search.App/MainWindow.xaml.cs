@@ -21,7 +21,7 @@ namespace Search.App;
 /// </summary>
 public partial class MainWindow : Window
 {
-    const double SideMin = 176, SideMax = 440, CardRadius = 10;
+    const double SideMin = 224, SideMax = 440, CardRadius = 10;
 
     ObservableCollection<Tab> pins = [];
     ObservableCollection<Tab> tabs = [];
@@ -66,7 +66,7 @@ public partial class MainWindow : Window
 
         SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
-        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); };
+        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); if (Environment.GetEnvironmentVariable("SEARCH_TEST_SHOW_UPDATE") == "1") FootUpdateDoor.Visibility = Visibility.Visible; };
         Closing += (_, _) => { SaveAllSpaces(); history.Save(); Windows_Closing(); };
         Shared.Prefs.Changed += ApplyPrefs;
         Shared.Perms.Changed += OnPermsChanged;
@@ -464,6 +464,7 @@ public partial class MainWindow : Window
         BackDoor.IsEnabled = TopBackDoor.IsEnabled = core?.CanGoBack ?? false;
         ForwardDoor.IsEnabled = TopForwardDoor.IsEnabled = core?.CanGoForward ?? false;
         ReloadDoor.IsEnabled = TopReloadDoor.IsEnabled = core is not null && live is { IsBlank: false };
+        RefreshPageBar();
     }
 
     // MARK: - the page's corners
@@ -738,10 +739,18 @@ public partial class MainWindow : Window
     // MARK: - rows and pins
 
     Point pressAt;
+    bool wasLive;
+    static bool InButton(DependencyObject o)
+    {
+        for (var d = o; d is not null; d = d is Visual or System.Windows.Media.Media3D.Visual3D ? System.Windows.Media.VisualTreeHelper.GetParent(d) : null)
+            if (d is System.Windows.Controls.Primitives.ButtonBase) return true;
+        return false;
+    }
 
     void Row_MouseDown(object sender, MouseButtonEventArgs e)
     {
         pressAt = e.GetPosition(this); App.Trace($"row press {e.ClickCount} at {pressAt}");
+        wasLive = e.ClickCount == 1 && (sender as FrameworkElement)?.DataContext is Tab w && w == live;
         if ((sender as FrameworkElement)?.DataContext is Tab t && e.ClickCount == 1)
         {
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && SplitOn && !t.IsBlank) OpenInSplit(t);
@@ -755,6 +764,11 @@ public partial class MainWindow : Window
     {
         // The middle button closes, as in every browser.
         if (e.ChangedButton == MouseButton.Middle && (sender as FrameworkElement)?.DataContext is Tab t) { Close(t); e.Handled = true; }
+        // A plain click on the page you are already on changes its address where it is.
+        else if (e.ChangedButton == MouseButton.Left && wasLive && (sender as FrameworkElement)?.DataContext is Tab c && c == live && !c.Editing
+                 && (e.GetPosition(this) - pressAt).Length < 4 && e.OriginalSource is DependencyObject o && !InButton(o))
+            BeginEditing();
+        wasLive = false;
     }
 
     void CloseTab_Click(object sender, RoutedEventArgs e)
@@ -799,6 +813,12 @@ public partial class MainWindow : Window
         menu.Items.Add(Item("Copy as Markdown Link", () => Clipboard.SetText($"[{t.Label}]({t.Url})"), enabled: !t.IsBlank));
         menu.Items.Add(Item("Copy Clean Link", () => CopyCleanLink(t), "Ctrl+Alt+Shift+C", enabled: !t.IsBlank));
         menu.Items.Add(Item("Site Information", () => ShowSiteInfo(t), enabled: !t.IsBlank));
+        var isPage = !t.IsBlank && !t.IsInternal;
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(Marks.Contains(t.Url) ? "Edit Bookmark" : "Bookmark This Page", () => { if (t != live) Select(t); AddBookmark(); }, "Ctrl+Shift+B", enabled: isPage));
+        menu.Items.Add(Item("Take Screenshot", () => { if (t != live) Select(t); Shot_Click(this, new RoutedEventArgs()); }, enabled: isPage));
+        menu.Items.Add(Item("Share", () => { if (t != live) Select(t); Share_Click(this, new RoutedEventArgs()); }, enabled: isPage));
+        menu.Items.Add(Item("Style This Site", () => OpenPage("search://settings/sites"), enabled: isPage));
         var others = Shared.Book.In(profileId).Where(s => s.Id != space.Id).ToList();
         if (SpacesOn && others.Count > 0)
         {
@@ -1007,14 +1027,16 @@ public partial class MainWindow : Window
     void ToggleSide()
     {
         if (TopLayout) return;
+        peeking = false;
         if (Side.Visibility == Visibility.Visible)
         {
             sideBefore = SideColumn.ActualWidth;
-            FoldColumn(sideBefore, 0, () => { Side.Visibility = Visibility.Collapsed; SideColumn.Width = new GridLength(0); ApplyLayout(); });
+            FoldColumn(sideBefore, 0, () => { Side.Visibility = Visibility.Collapsed; SideColumn.Width = new GridLength(0); SideHidden(true); ApplyLayout(); });
         }
         else
         {
             Side.Visibility = Visibility.Visible;
+            SideHidden(false);
             ApplyLayout();
             FoldColumn(0, sideBefore > 0 ? sideBefore : 232, () => { SideColumn.Width = new GridLength(sideBefore > 0 ? sideBefore : 232); ApplyLayout(); });
         }
