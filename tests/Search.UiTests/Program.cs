@@ -271,6 +271,7 @@ try
     var spacesNow = DataText("spaces.json").TrimEnd(']') + ",{\"id\":\"" + Guid.NewGuid() + "\",\"name\":\"Personal\",\"profile\":\"" + other + "\"}]";
     File.WriteAllText(Path.Combine(data, "spaces.json"), spacesNow);
     File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"spacesOn\":true,\"layout\":1,\"pinsAsRows\":true}");
+    showUpdate = true;
     app = Launch();
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
@@ -278,6 +279,9 @@ try
     Step("Layout Top, pins as rows: tabs run along the top strip with the space icons, the column is gone", window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor")) is not null, Shot("layout-top"));
 
     {
+        var upd = window.FindFirstDescendant(cf => cf.ByAutomationId("TopUpdate"))?.BoundingRectangle; var setb = window.FindFirstDescendant(cf => cf.ByAutomationId("TopSettings"))?.BoundingRectangle;
+        Step("An update that is ready shows as a disc in the strip, just before Settings", upd is not null && setb is not null && upd.Value.Width > 15 && upd.Value.Right <= setb.Value.Left + 4, $"update {upd?.Left}..{upd?.Right}, settings at {setb?.Left} · " + Shot("strip-update-ready"));
+        showUpdate = false;
         AutomationElement? T(string id) { try { return window!.FindFirstDescendant(cf => cf.ByAutomationId(id)); } catch { return null; } }
         var mn = T("TopMinimize")?.BoundingRectangle; var mx = T("TopMaximize")?.BoundingRectangle; var cl = T("TopClose")?.BoundingRectangle; var wb = window.BoundingRectangle;
         var ordered = mn is not null && mx is not null && cl is not null && mn.Value.Right <= mx.Value.Left + 2 && mx.Value.Right <= cl.Value.Left + 2;
