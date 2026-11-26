@@ -30,7 +30,7 @@ public sealed class ExtensionEntry
 /// </summary>
 public sealed class Extensions
 {
-    sealed class FileShape { public List<ExtensionEntry> Items { get; set; } = []; public DateTime LastUpdateCheck { get; set; } }
+    sealed class FileShape { public List<ExtensionEntry> Items { get; set; } = []; public DateTime LastUpdateCheck { get; set; } public List<string> OwnedIds { get; set; } = []; }
 
     const string FileName = "extensions.json";
     FileShape file = new();
@@ -203,6 +203,11 @@ public sealed class Extensions
         e.Applied[profile] = revision;
         Store.Write(FileName, file);
     }
+
+    /// <summary>The engine's ids of extensions Search itself added (anything else in a profile is not ours to remove).</summary>
+    public bool Owns(string engineId) => file.OwnedIds.Contains(engineId);
+    public void Own(string engineId) { if (!file.OwnedIds.Contains(engineId)) { file.OwnedIds.Add(engineId); Store.Write(FileName, file); } }
+    public void Disown(string engineId) { if (file.OwnedIds.Remove(engineId)) Store.Write(FileName, file); }
 
     public bool UpdateDue(DateTime now) => now - file.LastUpdateCheck > TimeSpan.FromHours(20);
     public void CheckedNow(DateTime now) { file.LastUpdateCheck = now; Store.Write(FileName, file); }

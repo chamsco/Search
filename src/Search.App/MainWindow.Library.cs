@@ -23,6 +23,7 @@ public partial class MainWindow
         ("downloads", "Downloads", "", "downloads.html"),
         ("bookmarks", "Bookmarks", "", "bookmarks.html"),
         ("sites", "Site styles", "", "settings.html#sites"),
+        ("extensions", "Extensions", "\uE943", "extensions.html"),
         ("archive", "Archived Tabs", "", "archive.html"),
     ];
 

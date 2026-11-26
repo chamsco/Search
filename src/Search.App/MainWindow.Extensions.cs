@@ -47,7 +47,10 @@ public partial class MainWindow
             var wanted = Shared.Extensions.Items.ToList();
             // Gone from Search: gone from the engine.
             foreach (var e in inEngine)
-                if (wanted.All(w => w.Name != e.Name)) { try { await e.RemoveAsync(); } catch (Exception ex) { App.Log(ex); } }
+                if (Shared.Extensions.Owns(e.Id) && wanted.All(w => w.Name != e.Name))
+                {
+                    try { await e.RemoveAsync(); Shared.Extensions.Disown(e.Id); } catch (Exception ex) { App.Trace("extension remove failed: " + ex.Message); }
+                }
             have.Clear();
             foreach (var w in wanted)
             {
@@ -55,20 +58,20 @@ public partial class MainWindow
                 // Its files were replaced (an update) since this profile loaded it: swap it.
                 if (ext is not null && w.Applied.TryGetValue(name, out var was) && was != w.Revision)
                 {
-                    try { await ext.RemoveAsync(); } catch (Exception ex) { App.Log(ex); }
+                    try { await ext.RemoveAsync(); Shared.Extensions.Disown(ext.Id); } catch (Exception ex) { App.Trace("extension swap failed: " + ex.Message); }
                     ext = null;
                 }
                 if (ext is null)
                 {
-                    try { ext = await profile.AddBrowserExtensionAsync(Shared.Extensions.PathOf(w)); App.Trace($"extension added {w.Name} {ext.Id}"); }
-                    catch (Exception ex) { App.Log(ex); App.Trace($"extension failed {w.Name}: {ex.Message}"); continue; }
+                    try { ext = await profile.AddBrowserExtensionAsync(Shared.Extensions.PathOf(w)); Shared.Extensions.Own(ext.Id); App.Trace($"extension added {w.Name} {ext.Id}"); }
+                    catch (Exception ex) { App.Trace($"extension failed {w.Name}: {ex.Message}"); continue; }
                 }
-                if (ext.IsEnabled != w.Enabled) { try { await ext.EnableAsync(w.Enabled); } catch (Exception ex) { App.Log(ex); } }
+                if (ext.IsEnabled != w.Enabled) { try { await ext.EnableAsync(w.Enabled); } catch (Exception ex) { App.Trace("extension switch failed: " + ex.Message); } }
                 have[w.Key] = ext;
                 Shared.Extensions.MarkApplied(w.Key, name, w.Revision);
             }
         }
-        catch (Exception ex) { App.Log(ex); }
+        catch (Exception ex) { App.Trace("extensions: " + ex.Message); }
     }
 
     // MARK: - what the Library page shows and asks

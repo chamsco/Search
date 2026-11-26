@@ -162,7 +162,7 @@ public static class InternalPages
     /// <summary>The Segoe Fluent glyph a tab wears instead of a site's icon.</summary>
     public static string Glyph(string kind) => kind switch
     {
-        "settings" => "\uE713", "history" => "\uE81C", "downloads" => "\uE896", "bookmarks" => "\uE8A4", "archive" => "\uE7B8", "spaces" => "\uE7C4", "extensions" => "\uEA86", _ => "\uE774",
+        "settings" => "\uE713", "history" => "\uE81C", "downloads" => "\uE896", "bookmarks" => "\uE8A4", "archive" => "\uE7B8", "spaces" => "\uE7C4", "extensions" => "\uE943", _ => "\uE774",
     };
 
     /// <summary>Commands in the address field, as Arc's Command Bar: type a word, get the page.</summary>
