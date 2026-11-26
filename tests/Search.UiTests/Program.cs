@@ -1069,7 +1069,11 @@ try
         Thread.Sleep(1500);
         var listedKey = Await(() => OnPage("New Tab key") is not null, 8000);
         Step("Settings › Keyboard & Mouse lists the commands with their keys", listedKey, "New Tab listedKey: " + listedKey + " · " + Shot("shortcuts-page"));
-        if (OnPage("New Tab key") is { } newTabKey) Mouse.Click(CentreOf(newTabKey));
+        for (var tries = 0; tries < 3 && window.FindAllDescendants().All(el => { try { return !el.Name.Contains("Press a key"); } catch { return true; } }); tries++)
+        {
+            if (OnPage("New Tab key") is { } newTabKey) Mouse.Click(CentreOf(newTabKey));
+            Thread.Sleep(1200);
+        }
         var pressing = Await(() => OnPage("Press a key…") is not null || window.FindAllDescendants().Any(el => { try { return el.Name.Contains("Press a key"); } catch { return false; } }), 5000);
         Step("Click a key: the box waits for the new one", pressing, Shot("shortcuts-waiting"));
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_K);
