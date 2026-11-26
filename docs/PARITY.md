@@ -29,6 +29,7 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 | Archive of auto-closed tabs | ✅ | Settings › Close tabs left alone; search://archive and a button on History |
 | Multiple windows (Ctrl+N) | ✅ | Every window, with its place and tabs, comes back next time. Close one on purpose and it is forgotten; Ctrl+Shift+Q quits and keeps them all |
 | Bookmarks bar, bookmarks, folders | ✅ | Ctrl+Shift+B card, Ctrl+Alt+B bar, folders, drag to order on the Bookmarks page |
+| Library in the column (Zen): rail of Spaces, History, Downloads, Bookmarks, Site styles, Archived Tabs; widens over 0.3s; Ctrl+Shift+L | ✅ | Foot door; opens as a page instead when the column is hidden or tabs run along the top |
 | Footer (home, downloads, bookmarks) | ✅ | |
 
 ## Address field
