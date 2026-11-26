@@ -366,6 +366,8 @@ public partial class MainWindow : Window
         catch (Exception e) { App.Log(e); return null; }
     }
 
+    internal static ImageSource? IconOf(string url) => string.IsNullOrEmpty(url) ? null : CachedIcon(url);
+
     /// <summary>The icon this site had last time, if Search has seen it.</summary>
     static ImageSource? CachedIcon(string url)
     {
