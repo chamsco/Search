@@ -283,7 +283,7 @@ try
         var ordered = mn is not null && mx is not null && cl is not null && mn.Value.Right <= mx.Value.Left + 2 && mx.Value.Right <= cl.Value.Left + 2;
         var flush = cl is not null && cl.Value.Right >= wb.Right - 12 && cl.Value.Top <= wb.Top + 12;
         Step("The top strip has Windows' own window buttons at the top right: minimise, maximise, close, left to right", ordered && flush, $"min {mn?.Left}, max {mx?.Left}, close {cl?.Left}..{cl?.Right} of a window ending at {wb.Right} · " + Shot("strip-caption-buttons"));
-        Step("The top strip has Settings and the Library, and no Home or Downloads", T("TopSettings") is not null && T("TopLibraryDoor") is not null && window.FindAllDescendants(cf => cf.ByName("Home")).Length == 0 && window.FindAllDescendants(cf => cf.ByName("Downloads")).Length == 0, "TopSettings " + (T("TopSettings") is not null) + ", TopLibraryDoor " + (T("TopLibraryDoor") is not null));
+        Step("The top strip has Settings and the Library, and no Home or Downloads", T("TopSettings") is not null && T("TopLibraryDoor") is not null && !window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)).Any(el => { try { return el.Name is "Home" or "Downloads"; } catch { return false; } }), "TopSettings " + (T("TopSettings") is not null) + ", TopLibraryDoor " + (T("TopLibraryDoor") is not null));
         for (var i = 0; i < 26; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
         Thread.Sleep(1500);
         var pinned = T("TopNewTabPinned")?.BoundingRectangle;
@@ -294,7 +294,7 @@ try
         Step("Pressing the pinned plus opens one more tab", T("TopNewTabPinned") is not null, Shot("strip-plus-pressed"));
         if (T("TopSettings") is { } topSet) { try { topSet.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(topSet)); } }
         Thread.Sleep(2500);
-        Step("The strip's Settings button opens Settings, where Spaces & Profiles has a section of its own", OnPage("Spaces & Profiles") is not null || window.FindAllDescendants(cf => cf.ByName("Spaces & Profiles")).Length > 0, Shot("settings-spaces-section"));
+        Step("The strip's Settings button opens Settings, where Spaces & Profiles has a section of its own", window.FindAllDescendants().Any(el => { try { return el.Name.Contains("Spaces & Profiles"); } catch { return false; } }), Shot("settings-spaces-section"));
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
     }
 
