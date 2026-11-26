@@ -1,0 +1,13 @@
+[2026-11-26 12:21:15] 1.0.19.83
+System.Runtime.InteropServices.COMException (0x80004005): Class not registered
+
+   at System.Runtime.InteropServices.Marshal.ThrowExceptionForHR(Int32 errorCode)
+   at Microsoft.Web.WebView2.Core.CoreWebView2BrowserExtension.RemoveAsync()
+   at Search.App.MainWindow.ApplyExtensions(String name, CoreWebView2Profile profile) in D:\a\Search\Search\src\Search.App\MainWindow.Extensions.cs:line 50
+
+[2026-11-26 12:21:15] 1.0.19.83
+System.Runtime.InteropServices.COMException (0x80004005): Error HRESULT E_FAIL has been returned from a call to a COM component.
+   at System.Runtime.InteropServices.Marshal.ThrowExceptionForHR(Int32 errorCode)
+   at Microsoft.Web.WebView2.Core.CoreWebView2BrowserExtension.RemoveAsync()
+   at Search.App.MainWindow.ApplyExtensions(String name, CoreWebView2Profile profile) in D:\a\Search\Search\src\Search.App\MainWindow.Extensions.cs:line 50
+
