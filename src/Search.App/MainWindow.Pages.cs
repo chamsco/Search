@@ -108,6 +108,8 @@ public partial class MainWindow
                     }
                     break;
 
+                case "extensions.get" or "extensions.update" or "extensions.add" or "extensions.pick" or "extensions.toggle" or "extensions.remove" or "extensions.popup" or "extensions.options":
+                    ExtensionsMessageHandled(type, m.Clone(), core); break;
                 case "spaces.get": Send(core, SpacesMessage()); break;
                 case "spaces.switch": if (G("id") is Guid spaceId && Shared.Book.In(profileId).FirstOrDefault(x => x.Id == spaceId) is { } sp) { SwitchSpace(sp); Send(core, SpacesMessage()); } break;
                 case "spaces.new": NewSpacePopup(libraryOpen ? LibraryRail : Side); break;

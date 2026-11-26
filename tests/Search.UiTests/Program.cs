@@ -637,6 +637,18 @@ try
         "<script>const t=()=>{document.title='c:'+g.value+'|'+f.value+'|'+m.value+'|'+z.value+'|'+o.value};for(const i of document.querySelectorAll('input'))i.oninput=t</script>";
     const string feedXml = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Harbour News</title>" +
         "<item><title>Post one</title><link>/post1</link></item><item><title>Post two &amp; more</title><link>/post2</link></item></channel></rss>";
+    byte[] linkedCrx;
+    {
+        var ms = new MemoryStream();
+        using (var z = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, true))
+        {
+            using (var w = new StreamWriter(z.CreateEntry("manifest.json").Open())) w.Write("{\"manifest_version\":3,\"name\":\"Linked Ext\",\"version\":\"1.0\",\"description\":\"Came from an address\"}");
+        }
+        var zip = ms.ToArray();
+        var crx = new List<byte>("Cr24"u8.ToArray());
+        crx.AddRange(BitConverter.GetBytes(3u)); crx.AddRange(BitConverter.GetBytes(4u)); crx.AddRange(new byte[] { 1, 2, 3, 4 }); crx.AddRange(zip);
+        linkedCrx = [.. crx];
+    }
     var serving = Task.Run(async () =>
     {
         while (server.IsListening)
@@ -646,6 +658,7 @@ try
                 var ctx = await server.GetContextAsync();
                 if (ctx.Request.HasEntityBody) ctx.Request.InputStream.CopyTo(Stream.Null);
                 var path = ctx.Request.Url!.AbsolutePath;
+                if (path == "/linked.crx") { ctx.Response.ContentType = "application/x-chrome-extension"; ctx.Response.OutputStream.Write(linkedCrx, 0, linkedCrx.Length); ctx.Response.Close(); continue; }
                 var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", "/login" => loginPage, "/signup" => signupPage, "/contact" => contactPage, "/welcome" => "<!doctype html><title>Welcome</title><h1>Welcome</h1>", _ => indexPage };
                 var bytes = System.Text.Encoding.UTF8.GetBytes(html);
                 ctx.Response.ContentType = path == "/feed.xml" ? "application/rss+xml; charset=utf-8" : "text/html; charset=utf-8";
@@ -1131,6 +1144,43 @@ try
     var stayed = ById("CollapseSidebar") is not null;
     Step("Pressing the button while the column is out from the edge keeps it open", stayed, "still there after the pointer left: " + stayed + " · " + Shot("column-kept"));
     showUpdate = false;
+
+    // Extensions
+    Quit();
+    data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-ext-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+    File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
+    File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/login\",\"title\":\"\"}],\"active\":0}");
+    var extDir = Directory.CreateDirectory(Path.Combine(data, "Extensions", "seeded0001")).FullName;
+    File.WriteAllText(Path.Combine(extDir, "manifest.json"), "{\"manifest_version\":3,\"name\":\"Test Ext\",\"version\":\"1.0\",\"description\":\"Marks pages\",\"action\":{\"default_popup\":\"popup.html\"},\"content_scripts\":[{\"matches\":[\"http://localhost/*\"],\"js\":[\"c.js\"],\"run_at\":\"document_idle\"}]}");
+    File.WriteAllText(Path.Combine(extDir, "c.js"), "document.title = document.title + ' [ext]';");
+    File.WriteAllText(Path.Combine(extDir, "popup.html"), "<!doctype html><title>Popup</title><body style='font:16px sans-serif;padding:20px'><h2>Popup of Test Ext</h2>");
+    File.WriteAllText(Path.Combine(data, "extensions.json"), "{\"items\":[{\"key\":\"seeded0001\",\"name\":\"Test Ext\",\"version\":\"1.0\",\"description\":\"Marks pages\",\"popup\":\"popup.html\",\"enabled\":true,\"permissions\":[],\"sites\":[\"http://localhost/*\"]}]}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(7000);
+    AutomationElement? ExtById(string id) { try { return window!.FindFirstDescendant(cf => cf.ByAutomationId(id)); } catch { return null; } }
+    var marked = Await(() => window!.FindAllDescendants().Any(el => { try { return el.Name.Contains("[ext]"); } catch { return false; } }), 25000);
+    Step("An extension kept in Search's folder is loaded: its content script has marked the page's title", marked, "tab shows [ext]: " + marked + " · " + Shot("extension-content-script"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_E);
+    var hubOpen = Await(() => ExtById("LibraryTitle")?.Name == "Extensions", 6000);
+    var card = Await(() => OnPage("Test Ext on or off") is not null, 8000);
+    Step("Ctrl+Shift+E opens the Library at Extensions: the extension is listed with its switch", hubOpen && card, $"library at Extensions: {hubOpen}, listed: {card} · " + Shot("extension-hub"));
+    if (window.FindAllDescendants(cf => cf.ByName("Open")).FirstOrDefault(el => el.ControlType == FlaUI.Core.Definitions.ControlType.Button) is { } openBtn) Mouse.Click(CentreOf(openBtn));
+    var popupShown = Await(() => Anywhere("Popup of Test Ext") is not null, 15000);
+    Step("Open: the extension's popup appears in a small window", popupShown, "popup text shown: " + popupShown + " · " + Shot("extension-popup"));
+    if (Anywhere("✕") is { } shut) Mouse.Click(CentreOf(shut)); else Chord(VirtualKeyShort.ALT, VirtualKeyShort.F4);
+    Thread.Sleep(1000);
+    if (OnPage("Chrome Web Store link or id") is { } linkBox) { Mouse.Click(CentreOf(linkBox)); Thread.Sleep(300); Keyboard.Type(origin6 + "/linked.crx"); }
+    if (OnPage("Add extension") is { } addBtn) Mouse.Click(CentreOf(addBtn));
+    var linked = Await(() => OnPage("Linked Ext on or off") is not null, 15000);
+    Step("An address to a .crx in the box, Add: the package is downloaded, unpacked and listed", linked && DataText("extensions.json").Contains("Linked Ext"), $"listed: {linked} · " + Shot("extension-added"));
+    if (OnPage("Test Ext on or off") is { } sw) Mouse.Click(CentreOf(sw));
+    var off = Await(() => DataText("extensions.json").Contains("\"enabled\":false"), 6000);
+    Step("The switch turns an extension off", off, "kept as off: " + off + " · " + Shot("extension-off"));
+    if (window.FindAllDescendants(cf => cf.ByName("Remove")).Where(el => el.ControlType == FlaUI.Core.Definitions.ControlType.Button).LastOrDefault() is { } rm) Mouse.Click(CentreOf(rm));
+    var removed = Await(() => !DataText("extensions.json").Contains("Linked Ext") && !Directory.EnumerateDirectories(Path.Combine(data, "Extensions")).Skip(1).Any(), 8000);
+    Step("Remove takes the extension and its folder away", removed, $"gone: {removed} · " + Shot("extension-removed"));
 
     // Proxy
     Quit();

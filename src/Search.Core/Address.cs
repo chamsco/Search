@@ -140,7 +140,7 @@ public static class InternalPages
 {
     public const string Scheme = "search";
     public const string NewTab = "";
-    public static readonly string[] Kinds = ["settings", "history", "downloads", "bookmarks", "archive", "spaces"];
+    public static readonly string[] Kinds = ["settings", "history", "downloads", "bookmarks", "archive", "spaces", "extensions"];
 
     /// <summary>search://settings/privacy → ("settings", "privacy").</summary>
     public static (string Kind, string? Detail)? Parse(string url)
@@ -156,13 +156,13 @@ public static class InternalPages
 
     public static string Title(string kind) => kind switch
     {
-        "settings" => "Settings", "history" => "History", "downloads" => "Downloads", "bookmarks" => "Bookmarks", "archive" => "Archived Tabs", "spaces" => "Spaces", _ => kind,
+        "settings" => "Settings", "history" => "History", "downloads" => "Downloads", "bookmarks" => "Bookmarks", "archive" => "Archived Tabs", "spaces" => "Spaces", "extensions" => "Extensions", _ => kind,
     };
 
     /// <summary>The Segoe Fluent glyph a tab wears instead of a site's icon.</summary>
     public static string Glyph(string kind) => kind switch
     {
-        "settings" => "\uE713", "history" => "\uE81C", "downloads" => "\uE896", "bookmarks" => "\uE8A4", "archive" => "\uE7B8", "spaces" => "\uE7C4", _ => "\uE774",
+        "settings" => "\uE713", "history" => "\uE81C", "downloads" => "\uE896", "bookmarks" => "\uE8A4", "archive" => "\uE7B8", "spaces" => "\uE7C4", "extensions" => "\uEA86", _ => "\uE774",
     };
 
     /// <summary>Commands in the address field, as Arc's Command Bar: type a word, get the page.</summary>

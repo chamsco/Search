@@ -66,7 +66,7 @@ public partial class MainWindow : Window
 
         SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
-        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); if (Environment.GetEnvironmentVariable("SEARCH_TEST_SHOW_UPDATE") == "1") FootUpdateDoor.Visibility = Visibility.Visible; };
+        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); StartExtensionUpdates(); if (Environment.GetEnvironmentVariable("SEARCH_TEST_SHOW_UPDATE") == "1") FootUpdateDoor.Visibility = Visibility.Visible; };
         Closing += (_, _) => { SaveAllSpaces(); history.Save(); Windows_Closing(); };
         Shared.Prefs.Changed += ApplyPrefs;
         Shared.Perms.Changed += OnPermsChanged;
@@ -243,6 +243,7 @@ public partial class MainWindow : Window
             await view.EnsureCoreWebView2Async(environment, options);
         }
         var core = view.CoreWebView2;
+        await EnsureExtensions(core);
         void Focused(object? _, RoutedEventArgs __) { if ((DateTime.UtcNow - settled).TotalMilliseconds < 500) return; if (t != live && t.View == view && SplitOf(t) is { } own && live is not null && own.Holds(live.Id)) Select(t); }
         view.GotFocus += Focused;
         view.GotKeyboardFocus += (a, b) => Focused(a, b);
@@ -815,6 +816,11 @@ public partial class MainWindow : Window
         menu.Items.Add(Item("Site Information", () => ShowSiteInfo(t), enabled: !t.IsBlank));
         var isPage = !t.IsBlank && !t.IsInternal;
         menu.Items.Add(new Separator());
+        var exts = new MenuItem { Header = "Extensions" };
+        foreach (var x in Shared.Extensions.Items.Where(x => x.Enabled && x.Popup is not null)) { var key = x.Key; var it = new MenuItem { Header = x.Name }; it.Click += (_, _) => _ = OpenExtensionPage(key, popup: true); exts.Items.Add(it); }
+        if (exts.Items.Count > 0) exts.Items.Add(new Separator());
+        var manage = new MenuItem { Header = "Manage Extensions" }; manage.Click += (_, _) => ToggleLibrary("extensions"); exts.Items.Add(manage);
+        menu.Items.Add(exts);
         menu.Items.Add(Item(Marks.Contains(t.Url) ? "Edit Bookmark" : "Bookmark This Page", () => { if (t != live) Select(t); AddBookmark(); }, "Ctrl+Shift+B", enabled: isPage));
         menu.Items.Add(Item("Take Screenshot", () => { if (t != live) Select(t); Shot_Click(this, new RoutedEventArgs()); }, enabled: isPage));
         menu.Items.Add(Item("Share", () => { if (t != live) Select(t); Share_Click(this, new RoutedEventArgs()); }, enabled: isPage));
@@ -957,6 +963,7 @@ public partial class MainWindow : Window
         else if (ctrl && !alt && !shift && key == Key.Y) OpenPage("search://history");
         else if (ctrl && shift && !alt && key == Key.J) OpenPage("search://downloads");
         else if (ctrl && shift && !alt && key == Key.L) ToggleLibrary();
+        else if (ctrl && shift && !alt && key == Key.E) ToggleLibrary("extensions");
         else if (key == Key.Escape && !ctrl && !alt && !shift && libraryOpen && Keyboard.FocusedElement is not System.Windows.Controls.TextBox) CloseLibrary();
         else if (ctrl && shift && !alt && key == Key.Delete) ClearBrowsingDataPage();
         else if (ctrl && !alt && !shift && key == Key.O) OpenFile();
