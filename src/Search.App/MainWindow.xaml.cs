@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         windowId = window ?? Guid.Empty;
         profileId = profile ?? Spaces.PersonalId;
         InitializeComponent();
+        TopScroll.ScrollChanged += (_, _) => KeepPlusInReach();
         PreviewDragOver += (_, e) =>
         {
             var at = e.GetPosition(this);
@@ -66,7 +67,7 @@ public partial class MainWindow : Window
 
         SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
-        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); StartExtensionUpdates(); if (Environment.GetEnvironmentVariable("SEARCH_TEST_SHOW_UPDATE") == "1") FootUpdateDoor.Visibility = Visibility.Visible; };
+        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); StartExtensionUpdates(); if (Environment.GetEnvironmentVariable("SEARCH_TEST_SHOW_UPDATE") == "1") PaintUpdate(UpdateLook.Ready); };
         Closing += (_, _) => { SaveAllSpaces(); history.Save(); Windows_Closing(); };
         Shared.Prefs.Changed += ApplyPrefs;
         Shared.Perms.Changed += OnPermsChanged;
@@ -779,6 +780,7 @@ public partial class MainWindow : Window
     }
 
     void NewTab_Click(object sender, MouseButtonEventArgs e) => NewTab();
+    void NewTabButton_Click(object sender, RoutedEventArgs e) => NewTab();
 
     void Row_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {

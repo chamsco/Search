@@ -226,7 +226,7 @@ public partial class MainWindow
         var menu = new ContextMenu();
         MenuItem Add(string header, Action run, bool enabled = true) { var i = new MenuItem { Header = header, IsEnabled = enabled }; i.Click += (_, _) => run(); menu.Items.Add(i); return i; }
         var mine = Shared.Book.In(profileId).ToList();
-        Add("Edit in Settings…", () => OpenPage("search://settings/tabs"));
+        Add("Edit in Settings…", () => OpenPage("search://settings/spaces"));
         menu.Items.Add(new Separator());
         Add("Move Left", () => Shared.Book.Move(s.Id, -1), mine.IndexOf(s) > 0);
         Add("Move Right", () => Shared.Book.Move(s.Id, 1), mine.IndexOf(s) < mine.Count - 1);
@@ -318,7 +318,7 @@ public partial class MainWindow
         }
         menu.Items.Add(new Separator());
         var manage = new MenuItem { Header = "Manage Profiles…" };
-        manage.Click += (_, _) => OpenPage("search://settings/tabs");
+        manage.Click += (_, _) => OpenPage("search://settings/spaces");
         menu.Items.Add(manage);
         menu.IsOpen = true;
     }
