@@ -237,6 +237,18 @@ public partial class MainWindow
         b.MouseLeave += (_, _) => b.Background = Brushes.Transparent;
     }
 
+    /// <summary>A space's icon, visible to assistive tools as a button.</summary>
+    sealed class SpaceTile : Border
+    {
+        protected override System.Windows.Automation.Peers.AutomationPeer OnCreateAutomationPeer() => new Peer(this);
+        sealed class Peer(SpaceTile tile) : System.Windows.Automation.Peers.FrameworkElementAutomationPeer(tile)
+        {
+            protected override System.Windows.Automation.Peers.AutomationControlType GetAutomationControlTypeCore() => System.Windows.Automation.Peers.AutomationControlType.Button;
+            protected override bool IsControlElementCore() => true;
+            protected override bool IsContentElementCore() => true;
+        }
+    }
+
     Border SpaceButton(Space s, int? distance = null)
     {
         var current = s.Id == space.Id;
@@ -246,7 +258,7 @@ public partial class MainWindow
         grid.Children.Add(glyph);
         if (Spaces.Rgb(s.Colour) is { } c)
             grid.Children.Add(new Ellipse { Width = 6, Height = 6, Fill = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 4, 4) });
-        var b = new Border { Width = 28, Height = 28, CornerRadius = new CornerRadius(9), Background = Brushes.Transparent, Child = grid, ToolTip = s.Name, Margin = new Thickness(0, 0, 2, 0), Tag = s };
+        var b = new SpaceTile { Width = 28, Height = 28, CornerRadius = new CornerRadius(9), Background = Brushes.Transparent, Child = grid, ToolTip = s.Name, Margin = new Thickness(0, 0, 2, 0), Tag = s };
         Hover(b, current);
         System.Windows.Automation.AutomationProperties.SetName(b, s.Name);
         System.Windows.Automation.AutomationProperties.SetAutomationId(b, "Space-" + s.Name);

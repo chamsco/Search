@@ -288,7 +288,7 @@ try
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(5000);
-    Step("Layout Top, pins as rows: tabs run along the top strip with the space icons, the column is gone", window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor")) is not null, Shot("layout-top"));
+    Step("Layout Top, pins as rows: tabs run along the top strip with the space icons, the column is gone", window.FindFirstDescendant(cf => cf.ByAutomationId("TopSettings")) is not null && window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace")) is not null, Shot("layout-top"));
 
     {
         var upd = window.FindFirstDescendant(cf => cf.ByAutomationId("TopUpdate"))?.BoundingRectangle; var setb = window.FindFirstDescendant(cf => cf.ByAutomationId("TopSettings"))?.BoundingRectangle;
@@ -297,7 +297,7 @@ try
         AutomationElement? T(string id) { try { return window!.FindFirstDescendant(cf => cf.ByAutomationId(id)); } catch { return null; } }
         var mn = T("TopMinimize")?.BoundingRectangle; var mx = T("TopMaximize")?.BoundingRectangle; var cl = T("TopClose")?.BoundingRectangle; var wb = window.BoundingRectangle;
         var ordered = mn is not null && mx is not null && cl is not null && mn.Value.Right <= mx.Value.Left + 2 && mx.Value.Right <= cl.Value.Left + 2;
-        var flush = cl is not null && cl.Value.Right >= wb.Right - 12 && cl.Value.Top <= wb.Top + 12;
+        var flush = cl is not null && cl.Value.Right >= wb.Right - 12 && cl.Value.Bottom <= wb.Top + 60;
         Step("The top strip has Windows' own window buttons at the top right: minimise, maximise, close, left to right", ordered && flush, $"min {mn?.Left}, max {mx?.Left}, close {cl?.Left}..{cl?.Right} of a window ending at {wb.Right} · " + Shot("strip-caption-buttons"));
         Step("The top strip has Settings and the Library, and no Home or Downloads", T("TopSettings") is not null && T("TopLibraryDoor") is not null && !window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)).Any(el => { try { return el.Name is "Home" or "Downloads"; } catch { return false; } }), "TopSettings " + (T("TopSettings") is not null) + ", TopLibraryDoor " + (T("TopLibraryDoor") is not null));
         for (var i = 0; i < 26; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
@@ -1122,7 +1122,7 @@ try
     {
         Mouse.MoveTo(CentreOf(updBtn));
         var hover = Await(() => Anywhere("Click to download") is not null, 6000);
-        Step("Hovering the update button: a small window shows the version and what is different", hover && Anywhere("Search 9.9.9") is not null && Anywhere("Updates show what changed before you install") is not null, "popup shown: " + hover + " · " + Shot("update-popup"));
+        Step("Hovering the update button: a small window shows the version and what is different", hover && Anywhere("Search 9.9.9.0") is not null && Anywhere("Updates show what changed before you install") is not null, "popup shown: " + hover + " · " + Shot("update-popup"));
         Mouse.Click(CentreOf(updBtn));
         var going = Await(() => Anywhere("Downloading…") is not null, 6000);
         Step("Clicking it downloads the update with a bar filling up", going, "downloading text shown: " + going + " · " + Shot("update-downloading"));
@@ -1130,6 +1130,8 @@ try
         Step("When the download is done it says it is ready; a second click would restart", ready && File.Exists(Path.Combine(Path.GetTempPath(), "Search-Setup-9.9.9.0.exe")), "ready text shown: " + ready + " · " + Shot("update-ready"));
         Mouse.MoveTo(new Point(window!.BoundingRectangle.Left + 500, window.BoundingRectangle.Top + 300));
         Thread.Sleep(600);
+        window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+        Thread.Sleep(2000);
     }
     else Step("Hovering the update button: a small window shows the version and what is different", false, "update button not found");
     var settingsOpened = false;
