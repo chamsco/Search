@@ -1047,7 +1047,7 @@ try
     var shotCard = Await(() => Anywhere("Screenshot saved") is not null, 10000);
     var shotFile = Directory.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots")) && Directory.EnumerateFiles(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots"), "Search *.png").Any(f => (DateTime.Now - File.GetLastWriteTime(f)).TotalMinutes < 5);
     Step("Take Screenshot from the tab menu: the page is saved to Pictures › Screenshots and a card says so", shotCard && shotFile, $"card: {shotCard}, file: {shotFile} · " + Shot("column-screenshot"));
-    ClickCard("Done");
+    ClickCardAway("Done", "Screenshot saved");
 
     // The column never gets narrower than its top row.
     var hideBefore = ById("CollapseSidebar")?.BoundingRectangle.Right ?? 0;

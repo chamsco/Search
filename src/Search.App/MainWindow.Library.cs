@@ -33,6 +33,7 @@ public partial class MainWindow
     double libBefore = 232;
     string librarySection = "spaces";
     readonly Dictionary<string, Button> railButtons = [];
+    readonly Dictionary<string, Border> railWashes = [];
 
     void ToggleLibrary(string? section = null)
     {
@@ -62,7 +63,10 @@ public partial class MainWindow
             var section = id;
             b.Click += (_, _) => ShowSection(section);
             railButtons[id] = b;
-            LibraryRail.Children.Add(b);
+            var wash = new Border { CornerRadius = new CornerRadius(9), Margin = new Thickness(0, 0, 0, 4), Child = b };
+            b.Margin = new Thickness(0);
+            railWashes[id] = wash;
+            LibraryRail.Children.Add(wash);
         }
         // The icon tilts on hover and comes back, as Zen's sprite plays and reverses.
         LibraryDoor.MouseEnter += (_, _) => Tilt(-10);
@@ -149,8 +153,11 @@ public partial class MainWindow
         librarySection = id;
         Shared.Prefs.Update(d => d.LibrarySection = id);
         LibraryTitle.Text = sec.Name;
-        foreach (var (key, b) in railButtons)
-            b.Background = key == id ? (Brush)FindResource("Row.Wash") : Brushes.Transparent;
+        foreach (var (key, w) in railWashes)
+        {
+            w.Background = key == id ? (Brush)FindResource("Row.Wash") : Brushes.Transparent;
+            railButtons[key].SetResourceReference(Control.ForegroundProperty, key == id ? "Ink" : "Row.Muted");
+        }
         try
         {
             if (libraryView is null)
