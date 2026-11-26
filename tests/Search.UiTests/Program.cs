@@ -40,7 +40,7 @@ string Shot(string name)
 }
 
 string? importLocal = null, importRoaming = null;
-bool showUpdate = false;
+string? showUpdate = null;
 Application Launch()
 {
     var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
@@ -48,7 +48,7 @@ Application Launch()
     psi.Environment["SEARCH_NO_UPDATES"] = "1";
     psi.Environment["SEARCH_SNAP"] = "1";
     psi.Environment["SEARCH_TEST_TRUST_LOCALHOST"] = "1";
-    if (showUpdate) psi.Environment["SEARCH_TEST_SHOW_UPDATE"] = "1";
+    if (showUpdate is not null) psi.Environment["SEARCH_TEST_SHOW_UPDATE"] = showUpdate;
     if (importLocal is not null) psi.Environment["SEARCH_IMPORT_LOCALAPPDATA"] = importLocal;
     if (importRoaming is not null) psi.Environment["SEARCH_IMPORT_APPDATA"] = importRoaming;
     return Application.Launch(psi);
@@ -237,15 +237,27 @@ try
         "[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Personal\"},{\"id\":\"" + workId + "\",\"name\":\"Work\",\"colour\":1,\"icon\":0,\"sharesSignIns\":false}]");
     app = Launch();
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
-    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(5000);
-    Step("Spaces on: a strip of space icons shows above the footer, Personal selected", window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace")) is not null, Shot("spaces-strip"));
+    Fit();
+    Step("Spaces on: the foot shows the space icons, Personal selected", window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace")) is not null, Shot("spaces-strip"));
+    bool FootCentred(string name, out string note)
+    {
+        var lib = window!.FindFirstDescendant(cf => cf.ByAutomationId("LibraryDoor"))?.BoundingRectangle; var set = window.FindFirstDescendant(cf => cf.ByAutomationId("FootSettings"))?.BoundingRectangle; var sel = window.FindFirstDescendant(cf => cf.ByAutomationId("Space-" + name))?.BoundingRectangle;
+        if (lib is null || set is null || sel is null) { note = "foot buttons not found"; return false; }
+        var mid = (lib.Value.Right + set.Value.Left) / 2; var centre = sel.Value.Left + sel.Value.Width / 2;
+        note = $"library ends {lib.Value.Right}, {name} centred at {centre} (middle {mid}), settings starts {set.Value.Left}";
+        return lib.Value.Right <= sel.Value.Left && sel.Value.Right <= set.Value.Left && Math.Abs(centre - mid) < 16;
+    }
+    var centredOk = FootCentred("Personal", out var centredNote);
+    Step("The foot has the Library at the left, Settings at the right, and the space you are in centred between them", centredOk, centredNote + " · " + Shot("foot-centred"));
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_2);
     Thread.Sleep(2500);
     Keyboard.Type("example.org");
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(6000);
+    var centredWork = FootCentred("Work", out var centredWorkNote);
+    Step("Ctrl+Alt+2: the foot's spaces slide so Work is in the middle", centredWork, centredWorkNote + " · " + Shot("foot-work-centred"));
     Step("Ctrl+Alt+2: the Work space opens with its own empty row; a page opened there loads", File.Exists(Path.Combine(data, "session-" + workId.ToString("N") + ".json")) || SessionOf(workId).Contains("example.org"), Shot("space-work"));
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
@@ -271,21 +283,21 @@ try
     var spacesNow = DataText("spaces.json").TrimEnd(']') + ",{\"id\":\"" + Guid.NewGuid() + "\",\"name\":\"Personal\",\"profile\":\"" + other + "\"}]";
     File.WriteAllText(Path.Combine(data, "spaces.json"), spacesNow);
     File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"spacesOn\":true,\"layout\":1,\"pinsAsRows\":true}");
-    showUpdate = true;
+    showUpdate = "1";
     app = Launch();
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(5000);
-    Step("Layout Top, pins as rows: tabs run along the top strip with the space icons, the column is gone", window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor")) is not null, Shot("layout-top"));
+    Step("Layout Top, pins as rows: tabs run along the top strip with the space icons, the column is gone", window.FindFirstDescendant(cf => cf.ByAutomationId("TopSettings")) is not null && window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace")) is not null, Shot("layout-top"));
 
     {
         var upd = window.FindFirstDescendant(cf => cf.ByAutomationId("TopUpdate"))?.BoundingRectangle; var setb = window.FindFirstDescendant(cf => cf.ByAutomationId("TopSettings"))?.BoundingRectangle;
         Step("An update that is ready shows as a disc in the strip, just before Settings", upd is not null && setb is not null && upd.Value.Width > 15 && upd.Value.Right <= setb.Value.Left + 4, $"update {upd?.Left}..{upd?.Right}, settings at {setb?.Left} · " + Shot("strip-update-ready"));
-        showUpdate = false;
+        showUpdate = null;
         AutomationElement? T(string id) { try { return window!.FindFirstDescendant(cf => cf.ByAutomationId(id)); } catch { return null; } }
         var mn = T("TopMinimize")?.BoundingRectangle; var mx = T("TopMaximize")?.BoundingRectangle; var cl = T("TopClose")?.BoundingRectangle; var wb = window.BoundingRectangle;
         var ordered = mn is not null && mx is not null && cl is not null && mn.Value.Right <= mx.Value.Left + 2 && mx.Value.Right <= cl.Value.Left + 2;
-        var flush = cl is not null && cl.Value.Right >= wb.Right - 12 && cl.Value.Top <= wb.Top + 12;
+        var flush = cl is not null && cl.Value.Right >= wb.Right - 12 && cl.Value.Bottom <= wb.Top + 60;
         Step("The top strip has Windows' own window buttons at the top right: minimise, maximise, close, left to right", ordered && flush, $"min {mn?.Left}, max {mx?.Left}, close {cl?.Left}..{cl?.Right} of a window ending at {wb.Right} · " + Shot("strip-caption-buttons"));
         Step("The top strip has Settings and the Library, and no Home or Downloads", T("TopSettings") is not null && T("TopLibraryDoor") is not null && !window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)).Any(el => { try { return el.Name is "Home" or "Downloads"; } catch { return false; } }), "TopSettings " + (T("TopSettings") is not null) + ", TopLibraryDoor " + (T("TopLibraryDoor") is not null));
         for (var i = 0; i < 26; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
@@ -302,14 +314,15 @@ try
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
     }
 
-    window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor"))?.AsButton().Invoke();
+    var topSpace = window.FindFirstDescendant(cf => cf.ByAutomationId("Space-Personal"));
+    if (topSpace is not null) Mouse.RightClick(CentreOf(topSpace));
     Thread.Sleep(1200);
-    Step("The profile door lists Personal and Studio", true, Shot("profile-menu"));
-    var studio = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("Studio"));
+    var studio = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("Open the Studio profile"));
+    Step("Right-click a space: its menu offers the Studio profile (there is no profile button in the strip)", studio is not null && window.FindFirstDescendant(cf => cf.ByAutomationId("ProfileDoor")) is null, Shot("profile-menu"));
     studio?.Click();
     Thread.Sleep(5000);
     var windowsNow = app.GetAllTopLevelWindows(automation).Count(w => !string.IsNullOrEmpty(w.Title));
-    Step("Choose Studio: it opens in a window of its own with its own spaces", windowsNow >= 2, $"{windowsNow} windows · " + Shot("profile-window"));
+    Step("Open the Studio profile: it opens in a window of its own with its own spaces", windowsNow >= 2, $"{windowsNow} windows · " + Shot("profile-window"));
 
     // ---- wave 4: archive, split view, peek, little windows, snap, windows restored ----
     void Quit()
@@ -683,6 +696,7 @@ try
                 var ctx = await server.GetContextAsync();
                 if (ctx.Request.HasEntityBody) ctx.Request.InputStream.CopyTo(Stream.Null);
                 var path = ctx.Request.Url!.AbsolutePath;
+                if (path == "/update.exe") { ctx.Response.ContentType = "application/octet-stream"; ctx.Response.ContentLength64 = 8 * 65536; var chunk = new byte[65536]; for (var c = 0; c < 8; c++) { ctx.Response.OutputStream.Write(chunk, 0, chunk.Length); ctx.Response.OutputStream.Flush(); Thread.Sleep(500); } ctx.Response.Close(); continue; }
                 if (path == "/linked.crx") { ctx.Response.ContentType = "application/x-chrome-extension"; ctx.Response.OutputStream.Write(linkedCrx, 0, linkedCrx.Length); ctx.Response.Close(); continue; }
                 var html = path switch { "/article" => articlePage, "/styled" => styledPage, "/video" => videoPage, "/feed.xml" => feedXml, "/blog" => "<!doctype html><title>A blog</title><link rel='alternate' type='application/rss+xml' href='/feed.xml'>", "/login" => loginPage, "/signup" => signupPage, "/contact" => contactPage, "/welcome" => "<!doctype html><title>Welcome</title><h1>Welcome</h1>", _ => indexPage };
                 var bytes = System.Text.Encoding.UTF8.GetBytes(html);
@@ -707,6 +721,7 @@ try
     Thread.Sleep(9000);
 
     Point RowPoints6() => new Point(window!.BoundingRectangle.Left + 117, 72);
+    void Fit() { try { window!.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Normal); Thread.Sleep(800); window.Patterns.Transform.Pattern.Move(10, 10); window.Patterns.Transform.Pattern.Resize(1000, 680); } catch { } Thread.Sleep(1500); }
     AutomationElement? Anywhere(string name)
     {
         // The app's own top-level windows (popups are separate windows of this process); bounded so a slow tree never stalls the step.
@@ -1052,7 +1067,7 @@ try
     data = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "search-ui-side-" + Guid.NewGuid().ToString("N")[..8])).FullName;
     File.WriteAllText(Path.Combine(data, "prefs.json"), "{\"httpsUpgrade\":false}");
     File.WriteAllText(Path.Combine(data, "session.json"), "{\"tabs\":[{\"url\":\"" + origin6 + "/login\",\"title\":\"\"}],\"active\":0}");
-    showUpdate = true;
+    showUpdate = origin6 + "/update.exe";
     app = Launch();
     window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
     window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
@@ -1102,6 +1117,23 @@ try
     if (ById("FootSettings") is { } footSet && ById("FootUpdate") is { } footUp)
         Step("The foot has Settings at the right, and Update beside it when one is ready", footUp.BoundingRectangle.Right <= footSet.BoundingRectangle.Left + 4 && Math.Abs(footUp.BoundingRectangle.Top - footSet.BoundingRectangle.Top) < 6, $"update at {footUp.BoundingRectangle.Left}, settings at {footSet.BoundingRectangle.Left} · " + Shot("column-foot"));
     else Step("The foot has Settings at the right, and Update beside it when one is ready", false, "buttons not found");
+    Fit();
+    if (ById("FootUpdate") is { } updBtn)
+    {
+        Mouse.MoveTo(CentreOf(updBtn));
+        var hover = Await(() => Anywhere("Click to download") is not null, 6000);
+        Step("Hovering the update button: a small window shows the version and what is different", hover && Anywhere("Search 9.9.9.0") is not null && Anywhere("Updates show what changed before you install") is not null, "popup shown: " + hover + " · " + Shot("update-popup"));
+        Mouse.Click(CentreOf(updBtn));
+        var going = Await(() => Anywhere("Downloading…") is not null, 6000);
+        Step("Clicking it downloads the update with a bar filling up", going, "downloading text shown: " + going + " · " + Shot("update-downloading"));
+        var ready = Await(() => Anywhere("Ready. Click to restart and update.") is not null, 25000);
+        Step("When the download is done it says it is ready; a second click would restart", ready && File.Exists(Path.Combine(Path.GetTempPath(), "Search-Setup-9.9.9.0.exe")), "ready text shown: " + ready + " · " + Shot("update-ready"));
+        Mouse.MoveTo(new Point(window!.BoundingRectangle.Left + 500, window.BoundingRectangle.Top + 300));
+        Thread.Sleep(600);
+        window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+        Thread.Sleep(2000);
+    }
+    else Step("Hovering the update button: a small window shows the version and what is different", false, "update button not found");
     var settingsOpened = false;
     for (var i = 0; i < 3 && !settingsOpened; i++)
     {
@@ -1168,7 +1200,7 @@ try
     Mouse.MoveTo(new Point(window.BoundingRectangle.Left + 800, window.BoundingRectangle.Top + 400)); Thread.Sleep(2000);
     var stayed = ById("CollapseSidebar") is not null;
     Step("Pressing the button while the column is out from the edge keeps it open", stayed, "still there after the pointer left: " + stayed + " · " + Shot("column-kept"));
-    showUpdate = false;
+    showUpdate = null;
 
     // Extensions
     Quit();

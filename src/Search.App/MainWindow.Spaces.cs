@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using Search.Core;
 
@@ -182,12 +183,43 @@ public partial class MainWindow
     {
         SpaceStrip.Children.Clear();
         TopSpaceStrip.Children.Clear();
-        ProfileDoor.Visibility = TopProfileDoor.Visibility = Shared.Book.Profiles.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
-        SpaceStrip.Visibility = TopSpaceStrip.Visibility = SpacesOn ? Visibility.Visible : Visibility.Collapsed;
+        SpaceViewport.Visibility = TopSpaceStrip.Visibility = SpacesOn ? Visibility.Visible : Visibility.Collapsed;
         if (!SpacesOn) return;
-        foreach (var s in Shared.Book.In(profileId).ToList()) { SpaceStrip.Children.Add(SpaceButton(s)); TopSpaceStrip.Children.Add(SpaceButton(s)); }
-        SpaceStrip.Children.Add(PlusButton());
+        var mine = Shared.Book.In(profileId).ToList();
+        var here = Math.Max(0, mine.FindIndex(x => x.Id == space.Id));
+        for (var i = 0; i < mine.Count; i++) { SpaceStrip.Children.Add(SpaceButton(mine[i], Math.Abs(i - here))); TopSpaceStrip.Children.Add(SpaceButton(mine[i])); }
+        var side = PlusButton(); side.Opacity = Fade(mine.Count - here);
+        SpaceStrip.Children.Add(side);
         TopSpaceStrip.Children.Add(PlusButton());
+        CentreSpaces();
+    }
+
+    const double SpacePitch = 30;
+    bool spacesCentred;
+
+    /// <summary>The foot's spaces: the current one in the middle of the room it has, the others sliding past it.</summary>
+    void CentreSpaces()
+    {
+        if (!SpacesOn || SpaceViewport.ActualWidth <= 0) return;
+        var here = Math.Max(0, Shared.Book.In(profileId).ToList().FindIndex(x => x.Id == space.Id));
+        var target = SpaceViewport.ActualWidth / 2 - (here * SpacePitch + 14);
+        if (spacesCentred && Moves && Math.Abs(SpaceSlide.X - target) > 0.5)
+            SpaceSlide.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(target, TimeSpan.FromMilliseconds(300)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        else { SpaceSlide.BeginAnimation(TranslateTransform.XProperty, null); SpaceSlide.X = target; }
+        spacesCentred = true;
+    }
+
+    static double Fade(int distance) => distance switch { 0 => 1, 1 => 0.75, 2 => 0.5, _ => 0.3 };
+
+    void SpaceViewport_SizeChanged(object sender, SizeChangedEventArgs e) { spacesCentred = false; CentreSpaces(); }
+
+    /// <summary>The wheel over the foot's spaces walks through them.</summary>
+    void SpaceViewport_Wheel(object sender, MouseWheelEventArgs e)
+    {
+        var mine = Shared.Book.In(profileId).ToList();
+        var here = mine.FindIndex(x => x.Id == space.Id);
+        if (here >= 0) SwitchSpaceBy(here + (e.Delta > 0 ? -1 : 1));
+        e.Handled = true;
     }
 
     Button PlusButton()
@@ -205,7 +237,19 @@ public partial class MainWindow
         b.MouseLeave += (_, _) => b.Background = Brushes.Transparent;
     }
 
-    Border SpaceButton(Space s)
+    /// <summary>A space's icon, visible to assistive tools as a button.</summary>
+    sealed class SpaceTile : Border
+    {
+        protected override System.Windows.Automation.Peers.AutomationPeer OnCreateAutomationPeer() => new Peer(this);
+        sealed class Peer(SpaceTile tile) : System.Windows.Automation.Peers.FrameworkElementAutomationPeer(tile)
+        {
+            protected override System.Windows.Automation.Peers.AutomationControlType GetAutomationControlTypeCore() => System.Windows.Automation.Peers.AutomationControlType.Button;
+            protected override bool IsControlElementCore() => true;
+            protected override bool IsContentElementCore() => true;
+        }
+    }
+
+    Border SpaceButton(Space s, int? distance = null)
     {
         var current = s.Id == space.Id;
         var grid = new Grid();
@@ -214,8 +258,22 @@ public partial class MainWindow
         grid.Children.Add(glyph);
         if (Spaces.Rgb(s.Colour) is { } c)
             grid.Children.Add(new Ellipse { Width = 6, Height = 6, Fill = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 4, 4) });
-        var b = new Border { Width = 28, Height = 28, CornerRadius = new CornerRadius(9), Background = Brushes.Transparent, Child = grid, ToolTip = s.Name, Margin = new Thickness(0, 0, 2, 0), Tag = s };
+        var b = new SpaceTile { Width = 28, Height = 28, CornerRadius = new CornerRadius(9), Background = Brushes.Transparent, Child = grid, ToolTip = s.Name, Margin = new Thickness(0, 0, 2, 0), Tag = s };
         Hover(b, current);
+        System.Windows.Automation.AutomationProperties.SetName(b, s.Name);
+        System.Windows.Automation.AutomationProperties.SetAutomationId(b, "Space-" + s.Name);
+        if (distance is { } d)
+        {
+            b.Opacity = Fade(d);
+            if (current)
+            {
+                b.RenderTransformOrigin = new Point(0.5, 0.5);
+                var grow = new ScaleTransform(Moves ? 1 : 1.3, Moves ? 1 : 1.3);
+                b.RenderTransform = grow;
+                if (Moves) foreach (var axis in new[] { ScaleTransform.ScaleXProperty, ScaleTransform.ScaleYProperty })
+                    grow.BeginAnimation(axis, new DoubleAnimation(1, 1.3, TimeSpan.FromMilliseconds(260)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            }
+        }
         b.MouseLeftButtonUp += (_, _) => SwitchSpace(s);
         b.ContextMenu = SpaceMenu(s);
         return b;
@@ -228,6 +286,8 @@ public partial class MainWindow
         var mine = Shared.Book.In(profileId).ToList();
         Add("Edit in Settings…", () => OpenPage("search://settings/spaces"));
         menu.Items.Add(new Separator());
+        foreach (var p in Shared.Book.Profiles.Where(p => p.Id != profileId).ToList()) { var id = p.Id; Add($"Open the {p.Name} profile", () => OpenProfile(id)); }
+        if (Shared.Book.Profiles.Count > 1) menu.Items.Add(new Separator());
         Add("Move Left", () => Shared.Book.Move(s.Id, -1), mine.IndexOf(s) > 0);
         Add("Move Right", () => Shared.Book.Move(s.Id, 1), mine.IndexOf(s) < mine.Count - 1);
         menu.Items.Add(new Separator());
@@ -305,23 +365,6 @@ public partial class MainWindow
     }
 
     // MARK: - profiles
-
-    void ProfileDoor_Click(object sender, RoutedEventArgs e)
-    {
-        var menu = new ContextMenu { PlacementTarget = (UIElement)sender, Placement = PlacementMode.Top };
-        foreach (var p in Shared.Book.Profiles.ToList())
-        {
-            var item = new MenuItem { Header = p.Name, IsChecked = p.Id == profileId };
-            var id = p.Id;
-            item.Click += (_, _) => OpenProfile(id);
-            menu.Items.Add(item);
-        }
-        menu.Items.Add(new Separator());
-        var manage = new MenuItem { Header = "Manage Profiles…" };
-        manage.Click += (_, _) => OpenPage("search://settings/spaces");
-        menu.Items.Add(manage);
-        menu.IsOpen = true;
-    }
 
     /// <summary>A profile has a window of its own: the one that is open, or a new one with its spaces' tabs from last time.</summary>
     public static void OpenProfile(Guid id)

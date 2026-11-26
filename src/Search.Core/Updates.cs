@@ -5,7 +5,14 @@ using System.Text.Json;
 namespace Search.Core;
 
 /// <summary>A newer build, and where its installer is.</summary>
-public sealed record Release(System.Version Version, string Tag, string InstallerUrl, string Page);
+public sealed record Release(System.Version Version, string Tag, string InstallerUrl, string Page, string Notes = "")
+{
+    /// <summary>The release's text as short plain lines: no headings or bullets marks, no blank lines, at most <paramref name="max"/>.</summary>
+    public static string[] Lines(string notes, int max = 6) =>
+        notes.Replace("\r", "").Split('\n')
+            .Select(l => l.Trim().TrimStart('#', '*', '-', '>', ' ').Replace("`", "").Replace("**", "").Trim())
+            .Where(l => l.Length > 0).Take(max).ToArray();
+}
 
 /// <summary>
 /// Knowing when there is a newer one. Port of the idea in Updater.swift: one
@@ -39,7 +46,7 @@ public static class Updates
                                      && (a.GetProperty("name").GetString() ?? "").EndsWith(".exe", StringComparison.Ordinal));
             if (asset.ValueKind != JsonValueKind.Object) continue;
             if (best is null || v > best.Version)
-                best = new Release(v, tag, asset.GetProperty("browser_download_url").GetString()!, r.GetProperty("html_url").GetString() ?? "");
+                best = new Release(v, tag, asset.GetProperty("browser_download_url").GetString()!, r.GetProperty("html_url").GetString() ?? "", r.TryGetProperty("body", out var body) && body.ValueKind == JsonValueKind.String ? body.GetString() ?? "" : "");
         }
         return best;
     }
