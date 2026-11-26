@@ -42,6 +42,8 @@ public sealed class MiniWindow : Window
         Grid.SetColumn(OpenInSearch, 1); bar.Children.Add(OpenInSearch);
         Grid.SetColumn(Shut, 2); bar.Children.Add(Shut);
         Shut.Margin = new Thickness(0, 0, 6, 0);
+        System.Windows.Automation.AutomationProperties.SetName(Shut, "Close small window");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(Shut, "MiniClose");
         OpenInSearch.Margin = new Thickness(0, 0, 4, 0);
         bar.SetResourceReference(Panel.BackgroundProperty, "Wash");
         View.SetValue(Grid.RowProperty, 1);
