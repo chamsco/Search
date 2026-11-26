@@ -208,6 +208,14 @@ public class UpdateTests
     [Fact]
     public void NothingWhenUpToDate() => Assert.Null(Updates.Newer(Feed, new System.Version(1, 0, 19, 14)));
 
+    [Fact]
+    public void NotesComeFromTheReleaseBodyAsPlainLines()
+    {
+        var feed = "[{\"tag_name\":\"v1.0.19.30\",\"draft\":false,\"html_url\":\"h\",\"body\":\"## What's new\\r\\n- **Faster** tabs\\n\\n* The `foot` has spaces\",\"assets\":[{\"name\":\"Search-Setup-1.0.19.30-x64.exe\",\"browser_download_url\":\"https://x/30.exe\"}]}]";
+        var r = Updates.Newer(feed, new System.Version(1, 0, 19, 3));
+        Assert.Equal(new[] { "What's new", "Faster tabs", "The foot has spaces" }, Release.Lines(r!.Notes));
+    }
+
     [Theory]
     [InlineData("v1.0.19-win.3", "1.0.19.3")]
     [InlineData("v1.0.19.14", "1.0.19.14")]

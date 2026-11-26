@@ -67,7 +67,11 @@ public partial class MainWindow : Window
 
         SourceInitialized += (_, _) => { RoundWindowCorners(); AddSystemMenuItems(); };
         StateChanged += (_, _) => FitMaximized();
-        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); StartExtensionUpdates(); if (Environment.GetEnvironmentVariable("SEARCH_TEST_SHOW_UPDATE") == "1") PaintUpdate(UpdateLook.Ready); };
+        Loaded += async (_, _) => { await StartAsync(open); StartLiveFolders(); WatchVault(); StartExtensionUpdates(); if (Environment.GetEnvironmentVariable("SEARCH_TEST_SHOW_UPDATE") is { Length: > 0 } fake)
+                {
+                    found = new Release(new System.Version(9, 9, 9, 0), "v9.9.9", fake == "1" ? "http://localhost:1/none.exe" : fake, "", "## What's new\n- The foot keeps your spaces in the middle\n- Window buttons are smaller and rounded\n- Updates show what changed before you install");
+                    stage = UpdateStage.Available; ShowUpdateState();
+                } };
         Closing += (_, _) => { SaveAllSpaces(); history.Save(); Windows_Closing(); };
         Shared.Prefs.Changed += ApplyPrefs;
         Shared.Perms.Changed += OnPermsChanged;

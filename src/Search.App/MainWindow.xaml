@@ -437,17 +437,18 @@
 
     <!-- Windows' own caption buttons: minimise, maximise, close, flush to the top right. -->
     <Style x:Key="Caption" TargetType="Button">
-      <Setter Property="Width" Value="46" />
-      <Setter Property="Height" Value="46" />
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Margin" Value="0,0,2,0" />
       <Setter Property="Foreground" Value="{DynamicResource Ink}" />
       <Setter Property="FontFamily" Value="{StaticResource Glyphs}" />
-      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontSize" Value="8.5" />
       <Setter Property="Focusable" Value="False" />
       <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="B" Background="Transparent">
+            <Border x:Name="B" Background="Transparent" CornerRadius="8">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <ControlTemplate.Triggers>
@@ -462,7 +463,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="B" Background="Transparent">
+            <Border x:Name="B" Background="Transparent" CornerRadius="8">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <ControlTemplate.Triggers>
@@ -513,17 +514,17 @@
       </ScrollViewer>
       <Button Grid.Column="2" Style="{StaticResource PlusDoor}" x:Name="TopPlusPinned" AutomationProperties.AutomationId="TopNewTabPinned" AutomationProperties.Name="New tab" Content="&#xE710;" ToolTip="New Tab (Ctrl+T)" Click="NewTabButton_Click" Visibility="Collapsed" Margin="2,0,4,0" />
       <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
-        <Button Style="{StaticResource Door}" x:Name="TopUpdateDoor" AutomationProperties.AutomationId="TopUpdate" AutomationProperties.Name="Restart to update" ToolTip="Restart to Update" Click="TopUpdate_Click" Visibility="Collapsed" />
+        <Button Style="{StaticResource Door}" x:Name="TopUpdateDoor" AutomationProperties.AutomationId="TopUpdate" AutomationProperties.Name="Update" Click="TopUpdate_Click" MouseEnter="Update_Enter" MouseLeave="Update_Leave" Visibility="Collapsed" />
         <Button Style="{StaticResource Door}" x:Name="TopSettingsDoor" AutomationProperties.AutomationId="TopSettings" AutomationProperties.Name="Settings" Content="&#xE713;" ToolTip="Settings (Ctrl+,)" Click="FootSettings_Click" />
         <Grid>
           <Button Style="{StaticResource Door}" x:Name="TopLibraryDoor" AutomationProperties.AutomationId="TopLibraryDoor" AutomationProperties.Name="Library" Content="&#xE8F1;" ToolTip="Library (Ctrl+Shift+L)" Click="LibraryDoor_Click" />
           <Ellipse x:Name="TopLibraryBadge" Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Visibility="Collapsed" IsHitTestVisible="False" Fill="{DynamicResource Ink}" />
         </Grid>
-        <Button Style="{StaticResource Door}" x:Name="TopProfileDoor" AutomationProperties.AutomationId="ProfileDoor" Content="&#xE77B;" ToolTip="Profiles" Click="ProfileDoor_Click" Visibility="Collapsed" />
-        <Border Width="6" />
+
+        <Border Width="4" />
         <Button Style="{StaticResource Caption}" AutomationProperties.AutomationId="TopMinimize" AutomationProperties.Name="Minimize" Content="&#xE921;" Click="Minimize_Click" ToolTip="Minimize" />
         <Button Style="{StaticResource Caption}" x:Name="TopMaxDoor" AutomationProperties.AutomationId="TopMaximize" AutomationProperties.Name="Maximize" Content="&#xE922;" Click="Maximize_Click" ToolTip="Maximize" />
-        <Button Style="{StaticResource CaptionClose}" AutomationProperties.AutomationId="TopClose" AutomationProperties.Name="Close" Content="&#xE8BB;" Click="CloseWindow_Click" ToolTip="Close" />
+        <Button Style="{StaticResource CaptionClose}" AutomationProperties.AutomationId="TopClose" AutomationProperties.Name="Close" Content="&#xE8BB;" Click="CloseWindow_Click" ToolTip="Close" Margin="0,0,4,0" />
       </StackPanel>
     </Grid>
 
@@ -556,10 +557,10 @@
         </ItemsControl.ItemsPanel>
       </ItemsControl>
 
-      <!-- The foot of the column: home, downloads, bookmarks. -->
-      <Grid DockPanel.Dock="Bottom" Margin="10,0,10,8" Height="30">
-      <StackPanel Orientation="Horizontal">
-        <Grid>
+      <!-- The foot: the Library at the left, the spaces in the middle (the one you are in centred and a little larger, the rest fading away), Settings and an update at the right. -->
+      <Grid DockPanel.Dock="Bottom" Margin="10,0,10,8" Height="36">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <Grid VerticalAlignment="Center">
           <Button Style="{StaticResource Door}" x:Name="LibraryDoor" AutomationProperties.AutomationId="LibraryDoor" AutomationProperties.Name="Library" Content="&#xE8F1;" ToolTip="Library: spaces, history, downloads, bookmarks (Ctrl+Shift+L)" Click="LibraryDoor_Click" RenderTransformOrigin="0.5,0.5">
             <Button.RenderTransform><RotateTransform x:Name="LibraryTilt" /></Button.RenderTransform>
           </Button>
@@ -567,15 +568,24 @@
             <Ellipse.RenderTransform><TranslateTransform x:Name="LibraryBadgeDrop" /></Ellipse.RenderTransform>
           </Ellipse>
         </Grid>
-        <Button Style="{StaticResource Door}" x:Name="ProfileDoor" AutomationProperties.AutomationId="ProfileDoor" Content="&#xE77B;" ToolTip="Profiles" Click="ProfileDoor_Click" Visibility="Collapsed" />
-      </StackPanel>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-          <Button Style="{StaticResource Door}" x:Name="FootUpdateDoor" AutomationProperties.AutomationId="FootUpdate" AutomationProperties.Name="Restart to update" Content="&#xE895;" ToolTip="Restart to Update" Click="TopUpdate_Click" Visibility="Collapsed" />
+        <Grid x:Name="SpaceViewport" Grid.Column="1" Margin="8,0" ClipToBounds="True" Background="Transparent" Visibility="Collapsed" SizeChanged="SpaceViewport_SizeChanged" MouseWheel="SpaceViewport_Wheel">
+          <Grid.OpacityMask>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+              <GradientStop Color="Transparent" Offset="0" />
+              <GradientStop Color="Black" Offset="0.24" />
+              <GradientStop Color="Black" Offset="0.76" />
+              <GradientStop Color="Transparent" Offset="1" />
+            </LinearGradientBrush>
+          </Grid.OpacityMask>
+          <StackPanel x:Name="SpaceStrip" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <StackPanel.RenderTransform><TranslateTransform x:Name="SpaceSlide" /></StackPanel.RenderTransform>
+          </StackPanel>
+        </Grid>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Style="{StaticResource Door}" x:Name="FootUpdateDoor" AutomationProperties.AutomationId="FootUpdate" AutomationProperties.Name="Update" Click="TopUpdate_Click" MouseEnter="Update_Enter" MouseLeave="Update_Leave" Visibility="Collapsed" />
           <Button Style="{StaticResource Door}" x:Name="FootSettingsDoor" AutomationProperties.AutomationId="FootSettings" AutomationProperties.Name="Settings" Content="&#xE713;" ToolTip="Settings (Ctrl+,)" Margin="0" Click="FootSettings_Click" />
         </StackPanel>
       </Grid>
-      <!-- Spaces: one icon each, above the foot. Shown once spaces are turned on in Settings › Tabs. -->
-      <WrapPanel x:Name="SpaceStrip" DockPanel.Dock="Bottom" Margin="10,0,10,4" Visibility="Collapsed" />
       <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="10,0,10,10">
         <StackPanel>
           <ItemsControl x:Name="TabList" ItemTemplate="{StaticResource TabRow}" AllowDrop="True" />
@@ -698,6 +708,22 @@
             <Button Content="Remove" Padding="12,0" Height="28" Margin="0,0,6,0" Click="MarkRemove_Click" />
             <Button Content="Done" Padding="16,0" Height="28" Click="MarkDone_Click" />
           </StackPanel>
+        </StackPanel>
+      </Border>
+    </Popup>
+
+    <!-- What an update changes, by its button: version, notes, and a bar while it downloads. -->
+    <Popup x:Name="UpdatePopup" AllowsTransparency="True" StaysOpen="True" Placement="Top" PopupAnimation="Fade">
+      <Border Style="{StaticResource Sheet}" Margin="6" Padding="14,12" Width="264" Cursor="Arrow" MouseEnter="Update_Enter" MouseLeave="Update_Leave">
+        <StackPanel>
+          <TextBlock x:Name="UpdateTitle" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" />
+          <TextBlock x:Name="UpdateFrom" FontSize="11.5" Foreground="{DynamicResource Muted}" Margin="0,2,0,10" />
+          <TextBlock Text="What's different" FontSize="11" Foreground="{DynamicResource Muted}" Margin="0,0,0,4" />
+          <StackPanel x:Name="UpdateNotes" />
+          <Border x:Name="UpdateTrack" Height="6" CornerRadius="3" Margin="0,12,0,0" Background="{DynamicResource Row.Wash}" Visibility="Collapsed">
+            <Border x:Name="UpdateFill" Width="0" HorizontalAlignment="Left" CornerRadius="3" Background="{DynamicResource Ink}" />
+          </Border>
+          <TextBlock x:Name="UpdateHint" FontSize="12" Margin="0,8,0,0" Foreground="{DynamicResource Ink}" />
         </StackPanel>
       </Border>
     </Popup>
