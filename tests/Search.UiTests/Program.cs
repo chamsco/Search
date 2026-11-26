@@ -1077,17 +1077,18 @@ try
         var pressing = Await(() => window.FindAllDescendants().Any(el => { try { return el.Name.Contains("waiting for a key"); } catch { return false; } }), 5000);
         Step("Click a key: the box waits for the new one", pressing, Shot("shortcuts-waiting"));
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_K);
-        var savedKey = Await(() => DataText("shortcuts.json").Contains("Ctrl+Alt+K"), 6000);
+        var savedKey = Await(() => DataText("shortcuts.json").Replace("\\u002B", "+").Contains("Ctrl+Alt+K"), 6000);
         Step("Press Ctrl+Alt+K: New Tab is kept on that key, and the key is not taken as a command meanwhile", savedKey, "shortcuts.json: " + DataText("shortcuts.json") + " · trace: " + string.Join(" | ", Trace6().Split('\n').Where(l => l.Contains("shortcuts.")).TakeLast(4)) + " · " + Shot("shortcuts-changed"));
-        int Tabs() => window!.FindAllDescendants().Count(el => { try { return el.Name == "New Tab"; } catch { return false; } });
-        var beforeKey = Tabs();
+        // A new tab hides the Settings page: its nav is gone from the tree while the blank page is in front.
+        bool OnSettings() => window!.FindAllDescendants().Any(el => { try { return el.Name.Contains("Keyboard & Mouse"); } catch { return false; } });
+        var wasOnSettings = OnSettings();
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
         Thread.Sleep(1500);
-        var afterOld = Tabs();
+        var stillSettings = OnSettings();
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_K);
         Thread.Sleep(2000);
-        var afterNew = Tabs();
-        Step("Ctrl+T no longer opens a tab; Ctrl+Alt+K does", afterOld == beforeKey && afterNew > afterOld, $"'New Tab' rows: {beforeKey} beforeKey, {afterOld} after Ctrl+T, {afterNew} after Ctrl+Alt+K · " + Shot("shortcuts-works"));
+        var leftSettings = !OnSettings();
+        Step("Ctrl+T no longer opens a tab; Ctrl+Alt+K does", wasOnSettings && stillSettings && leftSettings, $"on Settings before: {wasOnSettings}, after Ctrl+T: {stillSettings}, after Ctrl+Alt+K: {!leftSettings} · " + Shot("shortcuts-works"));
         // Back to Settings (Ctrl+, is unchanged) and put the keys back so the rest of the run is as before.
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
         Thread.Sleep(2500);
@@ -1095,7 +1096,7 @@ try
         if (keyNav2 is not null) Mouse.Click(CentreOf(keyNav2));
         Thread.Sleep(1500);
         ClickPage("Put every key back");
-        var keysRestored = Await(() => !DataText("shortcuts.json").Contains("Ctrl+Alt+K"), 5000);
+        var keysRestored = Await(() => !DataText("shortcuts.json").Replace("\\u002B", "+").Contains("Ctrl+Alt+K"), 5000);
         Step("Put every key back: the keys are as they came", keysRestored, "shortcuts.json: " + DataText("shortcuts.json"));
     }
 
