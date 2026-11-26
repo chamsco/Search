@@ -88,8 +88,10 @@ Status of every feature found in Search 1.0.19 for Mac (from its source and UI s
 ## Extensions
 | Feature | Status | Notes |
 |---|---|---|
-| Chrome Web Store install / update | ⬜ | Engine support is switched on |
-| Toolbar buttons, popups, side panels | ⬜ | Port of the Mac shims |
+| Chrome Web Store install | ✅ | Library › Extensions: paste a store link or id (or a .crx/.zip address, or load an unpacked folder); kept unpacked in Search's folder, switched on/off, removed |
+| Popups and options pages | ✅ | Open / Options in a small window; tab menu › Extensions |
+| Auto-update | ✅ | Once a day after launch (and Check for updates in the Library) asks Chrome's updater and swaps a newer package in |
+| Toolbar buttons, side panels | ⛔ | The engine has no toolbar or side panel to draw them in: popups open from Library › Extensions or the tab menu › Extensions |
 
 ## AI
 | Feature | Status | Notes |

@@ -23,6 +23,7 @@ public partial class MainWindow
         ("downloads", "Downloads", "", "downloads.html"),
         ("bookmarks", "Bookmarks", "", "bookmarks.html"),
         ("sites", "Site styles", "", "settings.html#sites"),
+        ("extensions", "Extensions", "\uE943", "extensions.html"),
         ("archive", "Archived Tabs", "", "archive.html"),
     ];
 
@@ -168,6 +169,7 @@ public partial class MainWindow
                 var core = libraryView.CoreWebView2;
                 ApplyColorScheme(core);
                 core.SetVirtualHostNameToFolderMapping(PagesHost, PagesDir, CoreWebView2HostResourceAccessKind.Allow);
+                await EnsureExtensions(core);
                 core.WebMessageReceived += (_, e) => OnPageMessage(libraryTab, core, e);
                 core.Settings.AreDevToolsEnabled = true;
                 core.Settings.IsStatusBarEnabled = false;

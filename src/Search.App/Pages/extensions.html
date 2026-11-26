@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Extensions</title><link rel="stylesheet" href="common.css">
+<style>
+.xrow { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--hairline); border-radius: 12px; margin: 0 0 8px; }
+.xrow .ic { width: 32px; height: 32px; border-radius: 8px; background: var(--wash); flex: none; display: grid; place-items: center; overflow: hidden; font-weight: 600; }
+.xrow .ic img { width: 100%; height: 100%; object-fit: contain; }
+.xrow .body { flex: 1; min-width: 0; } .xrow .nm { font-weight: 500; } .xrow .nm small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.xrow .ds { color: var(--muted); font-size: 12px; margin: 2px 0 6px; }
+.xrow .acts2 { display: flex; gap: 6px; flex-wrap: wrap; } .xrow button { height: 26px; padding: 0 10px; font-size: 12px; }
+.xrow.off .nm, .xrow.off .ic { opacity: .5; }
+#status { color: var(--muted); font-size: 12px; margin: 6px 2px 14px; min-height: 18px; } #status.err { color: var(--danger); }
+</style></head>
+<body><div class="page">
+  <h1>Extensions</h1><p class="sub">Chrome extensions, kept in Search's own folder.</p>
+  <div class="toolbar"><input id="src" class="grow" type="text" placeholder="Chrome Web Store link or id, or a .crx address" aria-label="Chrome Web Store link or id" autocomplete="off"><button id="add" aria-label="Add extension">Add</button></div>
+  <div class="toolbar" style="margin-top:-8px"><button id="pick" class="quiet" aria-label="Load an unpacked folder">Load an unpacked folder…</button><button id="upd" class="quiet" aria-label="Check for updates">Check for updates</button></div>
+  <div id="status" role="status"></div>
+  <div id="list"></div>
+</div>
+<script src="bridge.js"></script>
+<script>
+const list = document.getElementById('list'), status = document.getElementById('status'), src = document.getElementById('src');
+const say = (t, err) => { status.textContent = t || ''; status.className = err ? 'err' : ''; };
+host.on('extensions', m => {
+  list.innerHTML = m.items.map(e => `<div class="xrow${e.enabled ? '' : ' off'}" data-key="${e.key}">
+    <div class="ic">${e.icon ? `<img src="${e.icon}" alt="">` : esc((e.name[0] || '•').toUpperCase())}</div>
+    <div class="body"><div class="nm">${esc(e.name)}<small>${esc(e.version)}</small></div>
+      <div class="ds">${esc(e.description || '')}${e.sites.length ? `<br>Works on: ${esc(e.sites.slice(0, 3).join(', '))}${e.sites.length > 3 ? ' and ' + (e.sites.length - 3) + ' more' : ''}` : ''}</div>
+      <div class="acts2">${e.popup ? '<button data-act="popup">Open</button>' : ''}${e.options ? '<button data-act="options">Options</button>' : ''}<button data-act="remove" class="quiet danger">Remove</button></div></div>
+    <div class="switch${e.enabled ? ' on' : ''}" data-act="toggle" role="switch" aria-checked="${e.enabled}" aria-label="${esc(e.name)} on or off"></div></div>`).join('')
+    || '<div class="empty">No extensions yet.</div>';
+});
+host.on('extensions.busy', m => say(m.text));
+host.on('extensions.done', m => { say(m.text); src.value = ''; });
+host.on('extensions.error', m => say(m.text, true));
+list.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const key = b.closest('.xrow').dataset.key, act = b.dataset.act;
+  if (act === 'toggle') host.send('extensions.toggle', { key, on: !b.classList.contains('on') });
+  else host.send('extensions.' + act, { key });
+});
+const add = () => { if (src.value.trim()) host.send('extensions.add', { source: src.value }); };
+document.getElementById('add').onclick = add;
+src.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+document.getElementById('upd').onclick = () => host.send('extensions.update');
+document.getElementById('pick').onclick = () => host.send('extensions.pick');
+host.send('extensions.get');
+</script></body></html>
