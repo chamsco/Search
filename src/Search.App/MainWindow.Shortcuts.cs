@@ -135,6 +135,7 @@ public partial class MainWindow
         switch (type)
         {
             case "shortcuts.get": break;
+            case "shortcuts.debug": App.Trace("shortcuts.debug " + m.GetRawText()); return;
             case "shortcuts.capture": capturingKey = m.TryGetProperty("on", out var on) && on.ValueKind == JsonValueKind.True; return;
             case "shortcuts.set":
             {

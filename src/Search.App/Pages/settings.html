@@ -132,7 +132,7 @@ const SECTIONS = ['App','File','Edit','View','Tabs','Bookmarks','History','Space
 function drawKeys() {
   const q = document.getElementById('keyFind').value.trim().toLowerCase().replace(/\s+/g, '');
   const rows = SC.filter(c => (c.section !== 'Spaces' || scSpaces) && (!q || c.title.toLowerCase().replace(/\s+/g, '').includes(q) || c.key.toLowerCase().replace(/\s+/g, '').includes(q)));
-  document.getElementById('keyList').innerHTML = rows.length ? SECTIONS.map(sec => { const mine = rows.filter(c => c.section === sec); return mine.length ? `<h2 class="h2">${sec}</h2><div class="group">${mine.map(c => `<div class="line" data-id="${c.id}"><div class="label">${esc(c.title)}</div>${c.changed ? `<button class="icon kreset" title="Put the key back" aria-label="Put ${esc(c.title)} back to ${esc(c.own) || 'no key'}">&#xE777;</button>` : ''}<button class="kkey" aria-label="${esc(c.title)} key">${capturing === c.id ? 'Press a key…' : (esc(c.key) || 'None')}</button></div>`).join('')}</div>` : ''; }).join('') : '<p class="sub">No command called that, or on that key.</p>';
+  document.getElementById('keyList').innerHTML = rows.length ? SECTIONS.map(sec => { const mine = rows.filter(c => c.section === sec); return mine.length ? `<h2 class="h2">${sec}</h2><div class="group">${mine.map(c => `<div class="line" data-id="${c.id}"><div class="label">${esc(c.title)}</div>${c.changed ? `<button class="icon kreset" title="Put the key back" aria-label="Put ${esc(c.title)} back to ${esc(c.own) || 'no key'}">&#xE777;</button>` : ''}<button class="kkey" aria-label="${esc(c.title)} key${capturing === c.id ? ', waiting for a key' : ''}">${capturing === c.id ? 'Press a key…' : (esc(c.key) || 'None')}</button></div>`).join('')}</div>` : ''; }).join('') : '<p class="sub">No command called that, or on that key.</p>';
 }
 function keyOf(e) {
   const c = e.code;
@@ -149,6 +149,7 @@ document.getElementById('keyList').addEventListener('click', e => {
   if (e.target.closest('.kkey')) { capturing = line.dataset.id; send('shortcuts.capture', { on: true }); document.getElementById('keyNote').textContent = ''; drawKeys(); const now = document.querySelector('.line[data-id="' + capturing + '"] .kkey'); if (now) now.focus(); }
 });
 document.addEventListener('keydown', e => {
+  send('shortcuts.debug', { code: e.code, key: e.key, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, capturing: !!capturing });
   if (!capturing) return;
   e.preventDefault(); e.stopPropagation();
   const bare = !e.ctrlKey && !e.altKey && !e.shiftKey;
