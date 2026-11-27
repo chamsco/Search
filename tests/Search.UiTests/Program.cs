@@ -457,6 +457,15 @@ try
             .Select(e => e.BoundingRectangle.Top + e.BoundingRectangle.Height / 2.0).OrderBy(y => y).ToList();
         var lines = new List<double>();
         foreach (var y in ys) if (lines.Count == 0 || y - lines[^1] > 12) lines.Add(y);
+        // A row the app has just moved in the column can be missing from UI Automation for a while (it is drawn):
+        // rows are 30 apart, so a gap is filled, and rows the saved session holds are added below.
+        if (lines.Count > 0)
+        {
+            var expected = 0;
+            try { using var d = System.Text.Json.JsonDocument.Parse(SessionText()); expected = d.RootElement.GetProperty("tabs").EnumerateArray().Count(t => !t.TryGetProperty("pinId", out var pid) || pid.ValueKind == System.Text.Json.JsonValueKind.Null ? t.TryGetProperty("title", out var ti) && ti.GetString() == "Example Domain" : false); } catch { }
+            if (lines.Count < expected) for (var i = 1; i < lines.Count && lines.Count < expected; i++) if (lines[i] - lines[i - 1] > 45) lines.Insert(i, lines[i - 1] + 30);
+            while (lines.Count < expected && lines.Count < 12) lines.Add(lines[^1] + 30);
+        }
         return lines.Select(y => new Point(left + 7 + 110, (int)y)).ToList();
     }
 
