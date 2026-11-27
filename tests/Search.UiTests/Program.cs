@@ -405,7 +405,7 @@ try
         {
             var n = 0;
             for (var y = 0; y < edge.Height; y++) { var p1 = a.GetPixel(x, y); var p2 = b.GetPixel(x, y); if (Math.Abs(p1.R - p2.R) + Math.Abs(p1.G - p2.G) + Math.Abs(p1.B - p2.B) > 60) n++; }
-            if (n > 20) cols.Add(edge.Width - 20 - 1 - x);
+            if (n > 8) cols.Add(edge.Width - 20 - 1 - x);
         }
         return cols;
     }
@@ -424,7 +424,11 @@ try
     Step("Leave the page alone for two seconds: the bar fades away", shownCols.Count > 0 && idleCols.Count == 0, $"columns still differing after idle [{string.Join(",", idleCols)}] · {pageIdleShot}");
     Mouse.MoveTo(new Point(pageRight - 30, wb2.Top + wb2.Height / 2));
     Thread.Sleep(200);
-    Mouse.MoveTo(new Point(pageRight - 6, wb2.Top + wb2.Height / 2));
+    Mouse.MoveTo(new Point(pageRight - 14, wb2.Top + wb2.Height / 2 - 40));
+    Thread.Sleep(150);
+    Mouse.MoveTo(new Point(pageRight - 10, wb2.Top + wb2.Height / 2));
+    Thread.Sleep(150);
+    Mouse.MoveTo(new Point(pageRight - 9, wb2.Top + wb2.Height / 2 + 2));
     Thread.Sleep(500);
     using var stripHover = Strip();
     var hoverCols = BarColumns(stripHover, stripIdle);

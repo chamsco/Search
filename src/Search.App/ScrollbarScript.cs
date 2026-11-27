@@ -92,7 +92,7 @@ static class ScrollbarScript
       };
       addEventListener('scroll', () => { if (!dragging) show(); else place(); }, { passive: true });
       addEventListener('resize', () => { if (shown) place(); }, { passive: true });
-      document.addEventListener('mousemove', e => {
+      addEventListener('mousemove', e => {
         if (dragging) return;
         const nearV = e.clientX >= innerWidth - NEAR, nearH = e.clientY >= innerHeight - NEAR;
         if (nearV || nearH) show();
