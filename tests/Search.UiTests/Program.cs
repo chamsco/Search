@@ -367,7 +367,7 @@ try
         {
             // Along the top too: click a tab, Shift+click two further on: three are selected; Escape lets them go (#24).
             var chips = window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text))
-                .Where(e => { try { var r = e.BoundingRectangle; return r.Top < wb.Top + 48 && r.Left > wb.Left + 150 && r.Width > 10 && e.Name.Contains("blank"); } catch { return false; } })
+                .Where(e => { try { var r = e.BoundingRectangle; return r.Top < wb.Top + 48 && r.Left > wb.Left + 260 && r.Right < wb.Right - 260 && r.Width > 10 && e.Name.Length > 0; } catch { return false; } })
                 .OrderBy(e => e.BoundingRectangle.Left).ToList();
             var topPicked = "";
             if (chips.Count >= 3)

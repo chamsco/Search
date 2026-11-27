@@ -183,7 +183,7 @@ public partial class MainWindow : Window
         if (live is not null) live.Live = false;
         live = t;
         if (SplitOf(t) is { } own) own.Focused = t.Id;
-        if (t.GroupId is not null) RebuildRows(StateOf(space));
+        if (t.GroupId is not null && !keepRows) RebuildRows(StateOf(space));
         if (previous is not null && previous != t) DipPage();
         t.Live = true;
         t.LastSeen = DateTime.UtcNow;
@@ -793,6 +793,7 @@ public partial class MainWindow : Window
     {
         pressAt = e.GetPosition(this); App.Trace($"row press {e.ClickCount} at {pressAt}");
         wasLive = e.ClickCount == 1 && (sender as FrameworkElement)?.DataContext is Tab w && w == live;
+        liveBeforePress = live;
         if ((sender as FrameworkElement)?.DataContext is Tab p && e.ClickCount == 1 && PickClick(p)) { wasLive = false; e.Handled = true; return; }
         if ((sender as FrameworkElement)?.DataContext is Tab t && e.ClickCount == 1)
         {
@@ -808,6 +809,9 @@ public partial class MainWindow : Window
     }
 
     bool pickedPress;
+    Tab? liveBeforePress;
+    /// <summary>Set while a drag is starting: the rows must stay as they are, or the row being dragged would be let go of.</summary>
+    bool keepRows;
 
     void Row_MouseUp(object sender, MouseButtonEventArgs e)
     {
@@ -923,6 +927,8 @@ public partial class MainWindow : Window
             if (Math.Abs(d.Y) < 4 && Math.Abs(d.X) < 4) return;
             source.PreviewMouseMove -= Move;
             if (source.DataContext is not Tab t) return;
+            // Pressing showed the tab; dragging it leaves the page that was on screen there, for it to be let go beside.
+            if (t == live && liveBeforePress is { IsBlank: false } before && before != t && Ordered().Contains(before)) { keepRows = true; try { Select(before); } finally { keepRows = false; } }
             dragging = t; carrying = Carried(t); App.Trace($"drag start {t.Title}" + (carrying.Count > 1 ? $" with {carrying.Count - 1} more" : ""));
             PinDrop.Visibility = pins.Count == 0 && !t.IsPin && !t.IsBlank ? Visibility.Visible : Visibility.Collapsed;
             source.Opacity = 0.55;
