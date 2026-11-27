@@ -52,6 +52,43 @@ public sealed class TabSplit
         return true;
     }
 
+    /// <summary>Another page at INDEX (0 first), sharing the room evenly: a tab let go on the left half of the first page goes first.</summary>
+    public bool Insert(Guid tab, int index)
+    {
+        if (!CanAdd || Holds(tab)) return false;
+        Tabs.Insert(Math.Clamp(index, 0, Tabs.Count), tab);
+        Sizes = Even(Tabs.Count);
+        return true;
+    }
+
+    /// <summary>OLD's place, and its share of the room, goes to WITH: the empty page beside a page becomes the tab picked for it.</summary>
+    public bool Replace(Guid old, Guid with)
+    {
+        var at = Tabs.IndexOf(old);
+        if (at < 0 || Holds(with)) return false;
+        Tabs[at] = with;
+        if (Focused == old) Focused = with;
+        return true;
+    }
+
+    /// <summary>
+    /// Where a page let go at (X, Y) over a stage of W by H goes: the index it takes among the pages.
+    /// Over the first half of a page (left, or top when stacked) it goes before that page; over the second half, after it.
+    /// </summary>
+    public int DropIndex(double x, double y, double w, double h, double gap)
+    {
+        var rects = Rects(w, h, gap);
+        for (var i = 0; i < rects.Count; i++)
+        {
+            var (rx, ry, rw, rh) = rects[i];
+            var along = Axis == SplitAxis.Horizontal ? x : y;
+            var start = Axis == SplitAxis.Horizontal ? rx : ry;
+            var size = Axis == SplitAxis.Horizontal ? rw : rh;
+            if (along < start + size + gap / 2 || i == rects.Count - 1) return along < start + size / 2 ? i : i + 1;
+        }
+        return Tabs.Count;
+    }
+
     /// <summary>One page leaves; the rest share its room evenly. False once fewer than two are left: the split is over.</summary>
     public bool Remove(Guid tab)
     {

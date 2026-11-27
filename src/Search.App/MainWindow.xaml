@@ -129,6 +129,7 @@
         <Grid>
         <Border x:Name="WashLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" Opacity="0" />
         <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Hover}" Opacity="0" />
+        <Border x:Name="PickLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" BorderBrush="{DynamicResource Muted}" BorderThickness="1" Visibility="Collapsed" IsHitTestVisible="False" />
         <Grid Margin="10,0,7,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
@@ -153,6 +154,9 @@
         </Grid>
       </Border>
       <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Picked}" Value="True">
+          <Setter TargetName="PickLayer" Property="Visibility" Value="Visible" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding SplitDrop}" Value="True">
           <Setter TargetName="Row" Property="BorderThickness" Value="1" />
           <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Ink}" />
@@ -203,6 +207,7 @@
         <Grid>
         <Border x:Name="WashLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" Opacity="0" />
         <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Hover}" Opacity="0" />
+        <Border x:Name="PickLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" BorderBrush="{DynamicResource Muted}" BorderThickness="1" Visibility="Collapsed" IsHitTestVisible="False" />
         <Border x:Name="GroupBar" Height="2" CornerRadius="1" VerticalAlignment="Bottom" Margin="10,0,10,2" IsHitTestVisible="False" Background="{Binding GroupBrush}" />
         <Grid Margin="9,0,6,0">
           <Grid.ColumnDefinitions>
@@ -225,6 +230,9 @@
         </Grid>
       </Border>
       <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Picked}" Value="True">
+          <Setter TargetName="PickLayer" Property="Visibility" Value="Visible" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding SplitDrop}" Value="True">
           <Setter TargetName="Row" Property="BorderThickness" Value="1" />
           <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Ink}" />
@@ -284,6 +292,10 @@
         </Trigger>
         <DataTrigger Binding="{Binding Live}" Value="True">
           <Setter TargetName="Tile" Property="Background" Value="{DynamicResource Row.PinLive}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Picked}" Value="True">
+          <Setter TargetName="Tile" Property="BorderBrush" Value="{DynamicResource Muted}" />
+          <Setter TargetName="Tile" Property="BorderThickness" Value="1" />
         </DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
@@ -688,7 +700,7 @@
 
         <!-- An empty tab: the field alone in the middle of the page (Omnibox.swift). -->
         <Grid x:Name="Blank" Background="{DynamicResource Ground}" Visibility="Collapsed">
-          <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="560" Margin="24,0">
+          <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center" MaxWidth="560" Margin="24,0">
             <local:DotBall x:Name="Ball" Width="112" Height="112" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-164,0,0" />
             <Border x:Name="FieldSheet" Style="{StaticResource Sheet}" Padding="22,14" VerticalAlignment="Top">
               <Border.Effect>
@@ -699,7 +711,7 @@
                            VerticalAlignment="Center" IsHitTestVisible="False" Margin="0,0,150,0" />
                 <TextBox x:Name="BlankField" FontSize="15.5" BorderThickness="0" Background="Transparent" Padding="-2,0,0,0" Margin="0,0,150,0"
                          Foreground="{DynamicResource Ink}" CaretBrush="{DynamicResource Ink}" VerticalContentAlignment="Center"
-                         PreviewKeyDown="BlankField_PreviewKeyDown" TextChanged="BlankField_TextChanged" />
+                         PreviewKeyDown="BlankField_PreviewKeyDown" TextChanged="BlankField_TextChanged" GotKeyboardFocus="BlankField_GotKeyboardFocus" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                   <Button x:Name="MicDoor" Style="{StaticResource Door}" AutomationProperties.AutomationId="Dictate" AutomationProperties.Name="Dictate" Content="&#xE720;" FontSize="13"
                           ToolTip="Speak the address or search" Margin="0,0,8,0" Click="Mic_Click" />
@@ -713,7 +725,7 @@
               </Grid>
             </Border>
             <Canvas VerticalAlignment="Top" Margin="0,58,0,0">
-              <Border x:Name="BlankOffersSheet" Style="{StaticResource Sheet}" Padding="6" Width="560" Visibility="Collapsed" Margin="0,8,0,0" RenderTransformOrigin="0.5,0">
+              <Border x:Name="BlankOffersSheet" Style="{StaticResource Sheet}" Padding="6" Width="{Binding ActualWidth, ElementName=FieldSheet}" Visibility="Collapsed" Margin="0,8,0,0" RenderTransformOrigin="0.5,0">
                 <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>
                 <Border.Effect>
                   <DropShadowEffect Color="Black" Opacity="0.07" BlurRadius="20" ShadowDepth="6" Direction="270" />
@@ -727,6 +739,16 @@
     </Border>
 
     <!-- Find on page (Ctrl+F): over the card's top right. A popup, so it can lie over the page's own window. -->
+    <!-- A tab dragged from the column or the strip, over the page: the half it will take in Split View. -->
+    <Popup x:Name="PageDropPopup" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=Card}" StaysOpen="True">
+      <Grid x:Name="PageDrop" Background="#01808080" AllowDrop="True" DragOver="PageDrop_DragOver" Drop="PageDrop_Drop" AutomationProperties.AutomationId="PageDrop">
+        <Border x:Name="PageDropZone" HorizontalAlignment="Left" VerticalAlignment="Top" CornerRadius="10" Visibility="Collapsed" IsHitTestVisible="False"
+                Background="{DynamicResource Row.Wash}" BorderBrush="{DynamicResource Ink}" BorderThickness="1.5" Opacity="0.9">
+          <TextBlock Text="Open in Split View" FontSize="13" Foreground="{DynamicResource Ink}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </Grid>
+    </Popup>
+
     <Popup x:Name="FindPopup" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=Card}" StaysOpen="True" PopupAnimation="Fade">
       <Border Style="{StaticResource Sheet}" Margin="12,6,18,22" Padding="10,6" CornerRadius="12">
         <Border.Effect><DropShadowEffect Color="Black" Opacity="0.10" BlurRadius="18" ShadowDepth="5" Direction="270" /></Border.Effect>

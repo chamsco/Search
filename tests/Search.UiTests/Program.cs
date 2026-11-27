@@ -364,6 +364,23 @@ try
         var pinned = T("TopNewTabPinned")?.BoundingRectangle;
         var plusShown = pinned is not null && pinned.Value.Width > 10 && pinned.Value.Right <= wb.Right && pinned.Value.Left > wb.Left + wb.Width / 2;
         Step("With tabs past the strip's width, the plus stays at the strip's right edge, no scrolling to reach it", plusShown, $"plus at {pinned?.Left}..{pinned?.Right}, window right {wb.Right} · " + Shot("strip-many-tabs"));
+        {
+            // Along the top too: click a tab, Shift+click two further on: three are selected; Escape lets them go (#24).
+            var chips = window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text))
+                .Where(e => { try { var r = e.BoundingRectangle; return r.Top < wb.Top + 48 && r.Left > wb.Left + 150 && r.Width > 10 && e.Name.Contains("blank"); } catch { return false; } })
+                .OrderBy(e => e.BoundingRectangle.Left).ToList();
+            var topPicked = "";
+            if (chips.Count >= 3)
+            {
+                Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Release(VirtualKeyShort.SHIFT);
+                Mouse.Click(CentreOf(chips[0])); Thread.Sleep(1000);
+                using (Keyboard.Pressing(VirtualKeyShort.SHIFT)) { Mouse.Click(CentreOf(chips[2])); Thread.Sleep(600); }
+                Keyboard.Release(VirtualKeyShort.SHIFT); Thread.Sleep(600);
+                topPicked = Trace6().Split('\n').LastOrDefault(l => l.Contains("picked")) ?? "";
+            }
+            Step("Top strip: click a tab, Shift+click the one two further: the three tabs are selected", topPicked.Trim().EndsWith("picked 3"), $"{chips.Count} tabs found, trace: {topPicked.Trim()} · " + Shot("strip-tabs-picked"));
+            Keyboard.Press(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.ESCAPE); Thread.Sleep(500);
+        }
         if (T("TopNewTabPinned") is { } plusBtn) { try { plusBtn.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(plusBtn)); } }
         Thread.Sleep(1200);
         Step("Pressing the pinned plus opens one more tab", T("TopNewTabPinned") is not null, Shot("strip-plus-pressed"));
@@ -636,6 +653,102 @@ try
         // Back apart, so the tabs are as the next steps expect.
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
         Thread.Sleep(2000);
+    }
+
+    int TabCount() { try { return Session5().GetProperty("tabs").GetArrayLength(); } catch { return -1; } }
+    string TraceLines(string what) => string.Join(" / ", Trace6().Split('\n').Where(l => l.Contains(what)).TakeLast(4).Select(l => l.Trim()));
+    void Free() { Keyboard.Release(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Release(VirtualKeyShort.SHIFT); Keyboard.Release(VirtualKeyShort.ALT); Thread.Sleep(200); }
+
+    {
+        // Drag a tab out of the column onto the page: it opens beside it in Split View, on the side it is let go (#22).
+        Free();
+        var rowsP = RowPoints();
+        var pageDropShot = "";
+        if (rowsP.Count >= 3)
+        {
+            Mouse.Click(rowsP[0]); Thread.Sleep(1500);
+            rowsP = RowPoints();
+            var from = rowsP[2];
+            var wb = window!.BoundingRectangle;
+            var target = new Point(wb.Right - 160, wb.Top + wb.Height / 2);
+            Mouse.MoveTo(from); Thread.Sleep(300);
+            Mouse.Down(MouseButton.Left); Thread.Sleep(200);
+            for (var k = 1; k <= 6; k++) { Mouse.MoveTo(new Point(from.X + k * 2, from.Y)); Thread.Sleep(80); }
+            Thread.Sleep(600);
+            var here = new Point(from.X + 12, from.Y);
+            for (var k = 1; k <= 16; k++) { Mouse.MoveTo(new Point(here.X + (target.X - here.X) * k / 16, here.Y + (target.Y - here.Y) * k / 16)); Thread.Sleep(70); }
+            for (var k = 0; k < 4; k++) { Mouse.MoveTo(new Point(target.X + k, target.Y + k)); Thread.Sleep(150); }
+            Thread.Sleep(400);
+            pageDropShot = Shot("split-page-drop-over");
+            Mouse.Up(MouseButton.Left);
+        }
+        var byPage = Await(() => SplitCounts().SequenceEqual([2]), 6000);
+        var pageTrace = TraceLines("page drop");
+        Step("Drag a tab from the column onto the right of the page: a zone shows the half it will take, and it opens there in Split View",
+            byPage && pageTrace.Contains("at 1"), $"splits [{string.Join(",", SplitCounts())}] trace: {pageTrace} · {pageDropShot} · " + Shot("split-page-drop"));
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+        Thread.Sleep(2000);
+    }
+
+    {
+        // Tab menu › Split with New Tab: the new-tab field in a pane beside it; picking an open tab there brings it in (#23).
+        Free();
+        var tabsBefore = TabCount();
+        Choose(RowPoints()[0], "Split with New Tab");
+        Thread.Sleep(2000);
+        var paneShot = Shot("split-new-tab");
+        var paneMade = SplitCounts().SequenceEqual([2]) && TraceLines("split with new tab").Length > 0;
+        Step("Right-click a tab › Split with New Tab: the tab on the left, the new-tab field in an empty pane on the right", paneMade,
+            $"splits [{string.Join(",", SplitCounts())}], tabs {tabsBefore} → {TabCount()} · " + paneShot);
+
+        Keyboard.Type("example");
+        Thread.Sleep(1500);
+        var offersShot = Shot("split-new-tab-offers");
+        Keyboard.Press(VirtualKeyShort.DOWN); Thread.Sleep(300);
+        Keyboard.Press(VirtualKeyShort.RETURN);
+        Thread.Sleep(3000);
+        var brought = Await(() => SplitCounts().SequenceEqual([2]) && TabCount() == tabsBefore, 5000) && TraceLines("brought").Length > 0;
+        Step("Type \"example\" in that field, pick the open tab offered: it comes into the pane, the empty tab is gone", brought,
+            $"splits [{string.Join(",", SplitCounts())}], tabs {tabsBefore} → {TabCount()}, trace: {TraceLines("brought")} · {offersShot} · " + Shot("split-new-tab-brought"));
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+        Thread.Sleep(2000);
+
+        Free();
+        Choose(RowPoints()[0], "Split with New Tab");
+        Thread.Sleep(2000);
+        Keyboard.Press(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.ESCAPE);
+        Thread.Sleep(2500);
+        Step("Split with New Tab, then Escape with nothing typed: the empty pane goes, the tab is on its own again",
+            Await(() => SplitCounts().Length == 0 && TabCount() == tabsBefore, 4000), $"splits [{string.Join(",", SplitCounts())}], tabs {TabCount()} · " + Shot("split-new-tab-escape"));
+    }
+
+    {
+        // Several tabs at once: Shift+click a range, Ctrl+click to take one away, right-click to act on them all (#24).
+        Free();
+        var rowsS = RowPoints();
+        Mouse.Click(rowsS[0]); Thread.Sleep(1200);
+        using (Keyboard.Pressing(VirtualKeyShort.SHIFT)) { Mouse.Click(rowsS[2]); Thread.Sleep(600); }
+        Free(); Thread.Sleep(600);
+        var range = TraceLines("picked").Split(" / ").LastOrDefault() ?? "";
+        Step("Click the first tab, Shift+click the third: all three are selected", range.EndsWith("picked 3"), $"trace: {range} · " + Shot("tabs-picked-range"));
+
+        using (Keyboard.Pressing(VirtualKeyShort.CONTROL)) { Mouse.Click(rowsS[1]); Thread.Sleep(600); }
+        Free(); Thread.Sleep(600);
+        var toggled = TraceLines("picked").Split(" / ").LastOrDefault() ?? "";
+        Step("Ctrl+click the second: it is taken out, two stay selected", toggled.EndsWith("picked 2"), $"trace: {toggled} · " + Shot("tabs-picked-ctrl"));
+
+        Mouse.Click(rowsS[2], MouseButton.Right);
+        Thread.Sleep(1000);
+        var pickMenuShot = Shot("tabs-picked-menu");
+        var entry = MenuEntry("Open 2 Tabs in Split View");
+        entry?.Click();
+        Thread.Sleep(2500);
+        Step("Right-click a selected tab: the menu is for both (\"2 Tabs Selected\"); Open 2 Tabs in Split View shows them side by side",
+            entry is not null && Await(() => SplitCounts().SequenceEqual([2]), 4000), $"menu entry found: {entry is not null}, splits [{string.Join(",", SplitCounts())}] · {pickMenuShot} · " + Shot("tabs-picked-split"));
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+        Thread.Sleep(2000);
+        Free();
+        Mouse.Click(RowPoints()[0]); Thread.Sleep(1000);
     }
 
     Choose(RowPoints()[1], "Add to Group", "New Group");

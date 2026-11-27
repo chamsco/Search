@@ -74,6 +74,14 @@ public sealed class Tab : INotifyPropertyChanged
     /// <summary>A tab being dragged is over this one, to be put beside it in Split View when let go.</summary>
     public bool SplitDrop { get => splitDrop; set => Set(ref splitDrop, value); }
 
+    /// <summary>The empty page put beside another by Split with New Tab: until something is typed or picked, the new-tab field shows in its place.</summary>
+    public bool Fresh { get; set; }
+    public bool ShowsField => Fresh && url == "about:blank";
+
+    bool picked;
+    /// <summary>One of several tabs chosen at once (Ctrl+click, Shift+click), for the menu to act on together.</summary>
+    public bool Picked { get => picked; set => Set(ref picked, value); }
+
     bool inSplit;
     /// <summary>Shown beside others in Split View.</summary>
     public bool InSplit { get => inSplit; set => Set(ref inSplit, value); }

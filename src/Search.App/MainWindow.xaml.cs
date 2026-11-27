@@ -177,6 +177,7 @@ public partial class MainWindow : Window
     void Select(Tab t)
     {
         EndEditing(commit: false);
+        if (!t.Picked) ClearPicks();
         if (t != live) CloseFind();
         var previous = live;
         if (live is not null) live.Live = false;
@@ -207,6 +208,7 @@ public partial class MainWindow : Window
         if (live.IsBlank)
         {
             if (live.View is not null) live.View.Visibility = Visibility.Hidden;
+            FillBlank();
             Blank.Visibility = Visibility.Visible;
             BlankField.Text = "";
             Dispatcher.BeginInvoke(() => { BlankField.Focus(); Keyboard.Focus(BlankField); }, DispatcherPriority.Input);
@@ -219,7 +221,12 @@ public partial class MainWindow : Window
             view.Visibility = Visibility.Visible;
             LayoutStage();
             RoundLiveView();
-            Dispatcher.BeginInvoke(() => view.Focus(), DispatcherPriority.Input);
+            if (live.ShowsField)
+            {
+                BlankField.Text = "";
+                Dispatcher.BeginInvoke(() => { BlankField.Focus(); Keyboard.Focus(BlankField); }, DispatcherPriority.Input);
+            }
+            else Dispatcher.BeginInvoke(() => view.Focus(), DispatcherPriority.Input);
         }
         App.Trace($"stage shows {Stage.Children.OfType<WebView2>().Count(v => v.Visibility == Visibility.Visible)} page(s) in {space.Name}, live {(live.IsBlank ? "blank" : live.Url)}");
         UpdateDoors();
@@ -466,6 +473,7 @@ public partial class MainWindow : Window
     {
         if (live is null) return;
         live.Url = url;
+        live.Fresh = false;
         var view = Wake(live);
         if (view.CoreWebView2 is not null) view.CoreWebView2.Navigate(NavTarget(url));
         ShowLive();
@@ -554,12 +562,20 @@ public partial class MainWindow : Window
 
     void BlankField_PreviewKeyDown(object sender, KeyEventArgs e) => FieldKeys(BlankField, BlankOffers, e, () =>
     {
+        // An empty page beside another, with nothing typed: Escape takes it away.
+        if (BlankField.Text.Length == 0 && live is { ShowsField: true } fresh) { BlankOffersSheet.Visibility = Visibility.Collapsed; CancelFieldPane(fresh); return; }
         BlankField.Text = "";
         BlankOffersSheet.Visibility = Visibility.Collapsed;
     });
 
+    /// <summary>The field of an empty split page clicked while the other page is the one in use: the empty page becomes it.</summary>
+    void BlankField_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (live is not null && SplitOf(live) is { } sp && FieldPane(sp) is { } fresh && fresh != live) Select(fresh);
+    }
+
     List<Suggestion> Offers(string typed) =>
-        siteMode is not null && typed.StartsWith(SitePrefix, StringComparison.Ordinal) ? [] : Omnibox.Offers(typed, history, engine, Ordered().Where(t => t != live && !t.IsBlank).Select(t => (t.Id, t.Url, t.Label)), bookmarks: Marks, custom: customEngine);
+        siteMode is not null && typed.StartsWith(SitePrefix, StringComparison.Ordinal) ? [] : Omnibox.Offers(typed, history, engine, Ordered().Where(t => t != live && !t.IsBlank && !t.ShowsField && !(live is not null && SplitOf(live)?.Holds(t.Id) == true)).Select(t => (t.Id, t.Url, t.Label)), bookmarks: Marks, custom: customEngine);
 
     /// <summary>The rest of the best match, written after the caret and selected, so typing on replaces it (History.completion).</summary>
     void ShowCompletion(TextBox field, List<Suggestion> offers)
@@ -650,12 +666,14 @@ public partial class MainWindow : Window
         InlinePopup.IsOpen = false;
         if (picked?.Kind == SuggestionKind.Open && picked.Tab is Guid id && Ordered().FirstOrDefault(t => t.Id == id) is { } open)
         {
+            // In an empty page beside another, an open tab comes into the split instead of being switched to.
+            if (live is { ShowsField: true } fresh && BringIntoPane(fresh, open)) { BlankField.Text = ""; BlankOffersSheet.Visibility = Visibility.Collapsed; return; }
             var empty = live is { IsBlank: true } ? live : null;
             Select(open);
             if (empty is not null) Close(empty);
             return;
         }
-        if (askMode && live is { IsBlank: true } && !string.IsNullOrWhiteSpace(text))
+        if (askMode && live is { IsBlank: true } or { ShowsField: true } && !string.IsNullOrWhiteSpace(text))
         {
             // Ask: the question goes to the AI site chosen in Settings.
             var site = Shared.Prefs.Data.Ask;
@@ -775,8 +793,11 @@ public partial class MainWindow : Window
     {
         pressAt = e.GetPosition(this); App.Trace($"row press {e.ClickCount} at {pressAt}");
         wasLive = e.ClickCount == 1 && (sender as FrameworkElement)?.DataContext is Tab w && w == live;
+        if ((sender as FrameworkElement)?.DataContext is Tab p && e.ClickCount == 1 && PickClick(p)) { wasLive = false; e.Handled = true; return; }
         if ((sender as FrameworkElement)?.DataContext is Tab t && e.ClickCount == 1)
         {
+            ClearPicks();
+            pickAnchor = t;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && SplitOn && !t.IsBlank) OpenInSplit(t);
             else if (t != live) Select(t);
             e.Handled = true;
@@ -814,6 +835,9 @@ public partial class MainWindow : Window
             m.Click += (_, _) => act();
             return m;
         }
+        // Right-click one of several picked tabs: the menu is for them all. Right-click another: it alone.
+        if (t.Picked && Picked() is { Count: > 1 } many) { AddPickedItems(menu, many, (h, a, on) => Item(h, a, null, on)); return; }
+        ClearPicks();
         // The same items, in the same order, as the Mac's TabMenu (TabBar.swift).
         if (t.IsPin)
         {
@@ -890,12 +914,25 @@ public partial class MainWindow : Window
             dragging = t; App.Trace($"drag start {t.Title}");
             PinDrop.Visibility = pins.Count == 0 && !t.IsPin && !t.IsBlank ? Visibility.Visible : Visibility.Collapsed;
             source.Opacity = 0.55;
-            source.QueryContinueDrag += (_, q) => { if (q.Action != DragAction.Continue || q.EscapePressed) App.Trace($"drag query {q.Action} esc={q.EscapePressed} keys={q.KeyStates} loaded={source.IsLoaded} inTree={PresentationSource.FromVisual(source) is not null}"); };
+            var cancelled = false;
+            BeginPageDrop(t);
+            void Query(object _, QueryContinueDragEventArgs q)
+            {
+                if (q.EscapePressed || q.Action == DragAction.Cancel) cancelled = true;
+                if (q.Action != DragAction.Continue || q.EscapePressed) App.Trace($"drag query {q.Action} esc={q.EscapePressed} keys={q.KeyStates} loaded={source.IsLoaded} inTree={PresentationSource.FromVisual(source) is not null}");
+            }
+            void Feedback(object _, GiveFeedbackEventArgs g) => TrackPageDrop();
+            source.QueryContinueDrag += Query;
+            source.GiveFeedback += Feedback;
             try { var fx = DragDrop.DoDragDrop(source, new DataObject(typeof(Tab), t), DragDropEffects.Move); App.Trace($"drag ended {fx}"); }
             finally
             {
+                source.QueryContinueDrag -= Query;
+                source.GiveFeedback -= Feedback;
                 source.Opacity = 1;
                 ClearSplitDrop();
+                if (dragging is not null && EndPageDrop(t, cancelled)) dragging = null;
+                else if (PageDropPopup.IsOpen) EndPageDrop(t, true);
                 if (dragging is { } landed) Landed(landed);
                 dragging = null;
                 PinDrop.Visibility = Visibility.Collapsed;
@@ -1020,6 +1057,8 @@ public partial class MainWindow : Window
         if (KeyName(key) is { } name
             && (Shared.Shortcuts.CommandFor(new KeyCombo(name, ctrl, alt, shift)) ?? (name == "=" && shift ? Shared.Shortcuts.CommandFor(new KeyCombo(name, ctrl, alt, false)) : null)) is { } command
             && RunCommand(command.Id)) { e.Handled = true; return; }
+
+        if (key == Key.Escape && !ctrl && !alt && !shift && Ordered().Any(t => t.Picked)) { ClearPicks(); e.Handled = true; return; }
 
         // What no setting moves: Windows' and the engine's own keys.
         if (key == Key.Escape && !ctrl && !alt && !shift && libraryOpen && Keyboard.FocusedElement is not System.Windows.Controls.TextBox) CloseLibrary();
