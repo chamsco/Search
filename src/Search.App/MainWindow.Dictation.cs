@@ -62,18 +62,44 @@ public partial class MainWindow
 {
     bool askMode;
 
+    /// <summary>Settings › General › Ask with AI: off takes the switch away and leaves the field in Search.</summary>
+    void ApplyAsk()
+    {
+        var on = Shared.Prefs.Data.AskOn;
+        ModePill.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        if (!on && askMode)
+        {
+            askMode = false;
+            PaintMode(false);
+            if (!listening) Placeholder.Text = "Enter a web address";
+        }
+        App.Trace("ask switch " + (on ? "shown" : "hidden"));
+    }
+
+    /// <summary>The pill's height against the row it sits in: equal or less means nothing is cut off.</summary>
+    void ModePill_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (ModePill.Parent is FrameworkElement row && row.Parent is FrameworkElement field)
+            App.Trace($"mode pill {ModePill.ActualHeight:0} tall in a field row of {field.ActualHeight:0}");
+    }
+
     void Mode_Click(object sender, RoutedEventArgs e) => SetMode((sender as FrameworkElement)?.Tag as string == "ask");
 
     /// <summary>Search or Ask in the empty tab's field: Ask sends the words to the AI site chosen in Settings, in a tab.</summary>
     void SetMode(bool ask)
     {
-        askMode = ask;
+        askMode = ask && Shared.Prefs.Data.AskOn;
+        PaintMode(askMode);
+        if (!listening) Placeholder.Text = askMode ? "Ask a question" : "Enter a web address";
+        BlankField.Focus();
+    }
+
+    void PaintMode(bool ask)
+    {
         foreach (var (button, on) in new[] { (SearchMode, !ask), (AskMode, ask) })
         {
             if (on) { button.SetResourceReference(Control.BackgroundProperty, "Ground"); button.SetResourceReference(Control.ForegroundProperty, "Ink"); }
             else { button.Background = System.Windows.Media.Brushes.Transparent; button.SetResourceReference(Control.ForegroundProperty, "Row.Muted"); }
         }
-        if (!listening) Placeholder.Text = ask ? "Ask a question" : "Enter a web address";
-        BlankField.Focus();
     }
 }

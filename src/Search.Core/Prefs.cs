@@ -24,6 +24,8 @@ public sealed class PrefsData
 {
     public Engine Engine { get; set; } = Engines.Standard;
     public string CustomEngine { get; set; } = "";
+    /// <summary>Settings › General › Ask with AI: the empty tab's Search / Ask switch. Off hides it, and nothing is sent to an AI site.</summary>
+    public bool AskOn { get; set; } = true;
     /// <summary>Settings › General › Ask uses: where the empty tab's Ask mode sends the question.</summary>
     public AskSite Ask { get; set; } = AskSite.Claude;
     /// <summary>Settings › General › Suggestions from your search engine.</summary>
