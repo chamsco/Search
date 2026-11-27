@@ -305,7 +305,8 @@ try
         var widths = System.Text.RegularExpressions.Regex.Matches(Trace6(), @"top tab width (\d+) for (\d+) tabs").Select(m => (w: int.Parse(m.Groups[1].Value), n: int.Parse(m.Groups[2].Value))).ToList();
         var last = widths.LastOrDefault();
         Step("With more tabs open along the top the tabs get narrower than their full width, and not narrower than a tab can read", last.w is >= 72 and < 172, $"{widths.Count} resizes, last: {last.w}px for {last.n} tabs (172 when there is room) · " + Shot("strip-tabs-narrower"));
-        for (var i = 0; i < 26; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
+        // A blank tab is reused by Ctrl+T, so each new tab is given a page to be a tab of its own.
+        for (var i = 0; i < 16; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(300); Keyboard.Type("about:blank#" + i); Keyboard.Press(VirtualKeyShort.RETURN); Thread.Sleep(500); }
         Thread.Sleep(1500);
         var pinned = T("TopNewTabPinned")?.BoundingRectangle;
         var plusShown = pinned is not null && pinned.Value.Width > 10 && pinned.Value.Right <= wb.Right && pinned.Value.Left > wb.Left + wb.Width / 2;
