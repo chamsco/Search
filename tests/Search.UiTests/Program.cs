@@ -890,6 +890,16 @@ try
         Free();
     }
 
+    // The split and multi-select steps above move rows about; UI Automation can lag behind such moves. The group steps
+    // below aim at rows by where UI Automation says they are, so they start from the same three tabs in a fresh start.
+    Quit();
+    File.WriteAllText(Path.Combine(data, "session.json"),
+        "{\"tabs\":[{\"url\":\"https://example.org/\",\"title\":\"Example Domain\"},{\"url\":\"https://example.com/\",\"title\":\"Example Domain\"},{\"url\":\"https://example.net/\",\"title\":\"Example Domain\"}],\"active\":0}");
+    app = Launch();
+    window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30));
+    window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+    Thread.Sleep(7000);
+
     Choose(RowPoints()[1], "Add to Group", "New Group");
     Keyboard.Type("Research");
     Keyboard.Press(VirtualKeyShort.RETURN);
