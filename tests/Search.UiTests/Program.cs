@@ -135,6 +135,10 @@ try
         Keyboard.Press(VirtualKeyShort.RETURN);
         var askSent = Await(() => Trace6().Contains("ask Claude"), 8000);
         Step("The field has a Search / Ask switch; a question in Ask mode is sent to the AI site chosen in Settings (Claude), in a tab", hasSwitch && askSent, $"switch {hasSwitch}, sent {askSent} · {inAsk} · {typedShot}");
+        // The pill sits whole inside the field (issue: its bottom was cut off, 26 tall in a row of 22).
+        var pill = System.Text.RegularExpressions.Regex.Matches(Trace6(), @"mode pill (\d+) tall in a field row of (\d+)").LastOrDefault();
+        var fits = pill is not null && int.Parse(pill.Groups[1].Value) <= int.Parse(pill.Groups[2].Value);
+        Step("The Search / Ask pill is whole: no taller than the field's row, so nothing is cut off", fits, $"{pill?.Value ?? "no pill measured"} · {inAsk}");
         Thread.Sleep(2500);
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
         Thread.Sleep(1500);
@@ -206,6 +210,43 @@ try
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
     Thread.Sleep(2500);
     Step("Ctrl+, : Settings opens as a page in a tab", SessionText().Contains("search://settings"), Shot("settings-page"));
+
+    {
+        // Settings › General › Ask with AI: off hides the empty tab's Search / Ask switch; on brings it back.
+        bool Flip()
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                // The switch, not its label of the same words: the rightmost element of that name.
+                var sw = window.FindAllDescendants(cf => cf.ByName("Ask with AI")).Where(e => !e.IsOffscreen).OrderByDescending(e => e.BoundingRectangle.Right).FirstOrDefault();
+                if (sw is not null) { Mouse.Click(CentreOf(sw)); Thread.Sleep(1200); return true; }
+                Thread.Sleep(1000);
+            }
+            return false;
+        }
+        var flipped = Flip();
+        var hiddenTraced = Await(() => Trace6().Contains("ask switch hidden"), 4000);
+        var offShot = Shot("settings-ask-off");
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+        Thread.Sleep(1500);
+        var askOff = window.FindFirstDescendant(cf => cf.ByAutomationId("ModeAsk"));
+        var askGone = askOff is null || askOff.IsOffscreen;
+        var blankShot = Shot("ask-switch-hidden");
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+        Thread.Sleep(1200);
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+        Thread.Sleep(2000);
+        var askBack = Flip() && Await(() => Trace6().Split('\n').LastOrDefault(l => l.Contains("ask switch")) is { } l && l.Contains("shown"), 4000);
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+        Thread.Sleep(1500);
+        var askOn = window.FindFirstDescendant(cf => cf.ByAutomationId("ModeAsk"));
+        var returned = askOn is not null && !askOn.IsOffscreen;
+        var onShot = Shot("ask-switch-back");
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+        Thread.Sleep(1200);
+        Step("Settings › General › Ask with AI off hides the empty tab's Search / Ask switch; on brings it back", flipped && hiddenTraced && askGone && askBack && returned,
+            $"switch found {flipped}, hidden traced {hiddenTraced}, gone {askGone}, back on {askBack}, returned {returned} · {offShot} · {blankShot} · {onShot}");
+    }
 
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
     Keyboard.Type("http://example.com");

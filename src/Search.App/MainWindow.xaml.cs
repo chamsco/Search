@@ -692,7 +692,7 @@ public partial class MainWindow : Window
             if (empty is not null) Close(empty);
             return;
         }
-        if (askMode && live is { IsBlank: true } or { ShowsField: true } && !string.IsNullOrWhiteSpace(text))
+        if (askMode && Shared.Prefs.Data.AskOn && live is { IsBlank: true } or { ShowsField: true } && !string.IsNullOrWhiteSpace(text))
         {
             // Ask: the question goes to the AI site chosen in Settings.
             var site = Shared.Prefs.Data.Ask;
