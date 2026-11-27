@@ -118,7 +118,7 @@
 
     <!-- A tab's row in the column (Side.swift TabRow): 28 tall, corners of 9. -->
     <DataTemplate x:Key="TabRow" DataType="{x:Type local:Tab}">
-      <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Height="28" CornerRadius="9" Background="Transparent" Margin="{Binding Indent}"
+      <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Height="28" CornerRadius="9" Background="Transparent" Margin="{Binding RowMargin}"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
               AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
         <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
@@ -167,9 +167,11 @@
           <Setter TargetName="Ring" Property="Visibility" Value="Collapsed" />
         </Trigger>
         <DataTrigger Binding="{Binding InSplit}" Value="True">
-          <Setter TargetName="Row" Property="BorderThickness" Value="1" />
-          <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Row.Wash}" />
+          <Setter TargetName="Row" Property="Background" Value="{DynamicResource Row.Hover}" />
         </DataTrigger>
+        <DataTrigger Binding="{Binding SplitPos}" Value="1"><Setter TargetName="Row" Property="CornerRadius" Value="9,9,0,0" /></DataTrigger>
+        <DataTrigger Binding="{Binding SplitPos}" Value="2"><Setter TargetName="Row" Property="CornerRadius" Value="0" /></DataTrigger>
+        <DataTrigger Binding="{Binding SplitPos}" Value="3"><Setter TargetName="Row" Property="CornerRadius" Value="0,0,9,9" /></DataTrigger>
         <DataTrigger Binding="{Binding Live}" Value="True">
           <DataTrigger.EnterActions><BeginStoryboard Storyboard="{StaticResource WashIn}" /></DataTrigger.EnterActions>
           <DataTrigger.ExitActions><BeginStoryboard Storyboard="{StaticResource WashOut}" /></DataTrigger.ExitActions>

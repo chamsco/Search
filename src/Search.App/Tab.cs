@@ -68,11 +68,18 @@ public sealed class Tab : INotifyPropertyChanged
 
     System.Windows.Thickness indent = new(0, 0, 0, 2);
     /// <summary>How far in the row is set: inside a group, or a pinned folder.</summary>
-    public System.Windows.Thickness Indent { get => indent; set => Set(ref indent, value); }
+    public System.Windows.Thickness Indent { get => indent; set { if (Set(ref indent, value)) Raise(nameof(RowMargin)); } }
 
     bool inSplit;
     /// <summary>Shown beside others in Split View.</summary>
     public bool InSplit { get => inSplit; set => Set(ref inSplit, value); }
+
+    int splitPos;
+    /// <summary>Where the row sits in its split's shared box in the column: 0 not in one, 1 first, 2 middle, 3 last.</summary>
+    public int SplitPos { get => splitPos; set { if (Set(ref splitPos, value)) Raise(nameof(RowMargin)); } }
+
+    /// <summary>The row's margin: the indent, without the gap below where the next row of the same split box follows.</summary>
+    public System.Windows.Thickness RowMargin => splitPos is 1 or 2 ? new(indent.Left, indent.Top, indent.Right, 0) : indent;
 
     public bool IsBlank => string.IsNullOrEmpty(url);
 

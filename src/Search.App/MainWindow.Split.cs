@@ -43,7 +43,17 @@ public partial class MainWindow
     /// <summary>Put the live page, or the live split's pages, where they belong in the stage.</summary>
     void LayoutStage()
     {
-        foreach (var t in Ordered()) t.InSplit = SplitOf(t) is not null;
+        var order = Ordered().ToList();
+        for (var i = 0; i < order.Count; i++)
+        {
+            var t = order[i];
+            var own = SplitOf(t);
+            t.InSplit = own is not null;
+            // Split pages sit in one box in the column: a first, any middle, a last.
+            var before = i > 0 && !t.IsPin && !order[i - 1].IsPin && own is not null && SplitOf(order[i - 1]) == own;
+            var after = i < order.Count - 1 && !t.IsPin && !order[i + 1].IsPin && own is not null && SplitOf(order[i + 1]) == own;
+            t.SplitPos = own is null || (!before && !after) ? 0 : !before ? 1 : after ? 2 : 3;
+        }
         if (live is null) return;
         var sp = SplitOf(live);
         if (sp is null || Stage.ActualWidth < 60 || Stage.ActualHeight < 60)
@@ -141,7 +151,7 @@ public partial class MainWindow
                 f.Margin = new Thickness(x - 2, y - 2, 0, 0);
                 f.Width = rw + 4;
                 f.Height = rh + 4;
-                f.BorderBrush = sp.Tabs[i] == focused ? accent : quiet;
+                f.BorderBrush = Brushes.Transparent; // no ring round the focused page: its place shows in the column
             }
             if (i < lines.Count)
             {
