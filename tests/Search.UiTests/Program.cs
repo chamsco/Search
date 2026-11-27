@@ -657,6 +657,9 @@ try
 
     int TabCount() { try { return Session5().GetProperty("tabs").GetArrayLength(); } catch { return -1; } }
     string TraceLines(string what) => string.Join(" / ", Trace6().Split('\n').Where(l => l.Contains(what)).TakeLast(4).Select(l => l.Trim()));
+    // The three tab rows: a row just put back in the column can be missing from UI Automation for a while, so the
+    // rows are 30 apart from the first when one is not found.
+    List<Point> Three() { var p = RowPoints(); return p.Count >= 3 ? p : Enumerable.Range(0, 3).Select(k => new Point(p[0].X, p[0].Y + 30 * k)).ToList(); }
     void Free() { Keyboard.Release(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Release(VirtualKeyShort.SHIFT); Keyboard.Release(VirtualKeyShort.ALT); Thread.Sleep(200); }
 
     {
@@ -725,7 +728,7 @@ try
     {
         // Several tabs at once: Shift+click a range, Ctrl+click to take one away, right-click to act on them all (#24).
         Free();
-        var rowsS = RowPoints();
+        var rowsS = Three();
         Mouse.Click(rowsS[1]); Thread.Sleep(1000); Mouse.Click(rowsS[0]); Thread.Sleep(1200);
         using (Keyboard.Pressing(VirtualKeyShort.SHIFT)) { Mouse.Click(rowsS[2]); Thread.Sleep(600); }
         Free(); Thread.Sleep(600);
@@ -754,7 +757,7 @@ try
     {
         // Two picked tabs dragged together onto the left of the page: both open beside it, on the left, in that order (#24).
         Free();
-        var r = RowPoints();
+        var r = Three();
         Mouse.Click(r[1]); Thread.Sleep(1000); Mouse.Click(r[0]); Thread.Sleep(1200);
         foreach (var k in new[] { 1, 2, 0 }) { using (Keyboard.Pressing(VirtualKeyShort.CONTROL)) { Mouse.Click(r[k]); Thread.Sleep(500); } Free(); }
         var two = TraceLines("picked").Split(" / ").LastOrDefault() ?? "";
