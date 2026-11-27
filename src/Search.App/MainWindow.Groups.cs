@@ -76,6 +76,7 @@ public partial class MainWindow
                     last = g?.Id;
                 }
                 t.Indent = new Thickness(g is null ? 0 : 10, 0, 0, 2);
+                t.GroupBrush = g is null ? null : HeadingFor(g.Id, false).Stripe ?? System.Windows.Media.Brushes.Gray;
                 if (g is { Collapsed: true } && t != liveHere) continue;
                 rows.Add(t);
             }

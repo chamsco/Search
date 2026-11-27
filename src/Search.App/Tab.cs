@@ -59,6 +59,10 @@ public sealed class Tab : INotifyPropertyChanged
     /// <summary>The tab group it is in.</summary>
     public Guid? GroupId { get => groupId; set { if (Set(ref groupId, value)) Raise(nameof(InGroup)); } }
     public bool InGroup => groupId is not null;
+
+    System.Windows.Media.Brush? groupBrush;
+    /// <summary>The colour of its group's mark under the tab in the top strip (null outside a group).</summary>
+    public System.Windows.Media.Brush? GroupBrush { get => groupBrush; set => Set(ref groupBrush, value); }
     /// <summary>For a pin, the folder among the pinned rows it is in.</summary>
     public Guid? FolderId { get; set; }
 

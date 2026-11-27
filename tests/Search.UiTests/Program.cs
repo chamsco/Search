@@ -300,7 +300,13 @@ try
         var flush = cl is not null && cl.Value.Right >= wb.Right - 12 && cl.Value.Bottom <= wb.Top + 60;
         Step("The top strip has Windows' own window buttons at the top right: minimise, maximise, close, left to right", ordered && flush, $"min {mn?.Left}, max {mx?.Left}, close {cl?.Left}..{cl?.Right} of a window ending at {wb.Right} · " + Shot("strip-caption-buttons"));
         Step("The top strip has Settings and the Library, and no Home or Downloads", T("TopSettings") is not null && T("TopLibraryDoor") is not null && !window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)).Any(el => { try { return el.Name is "Home" or "Downloads"; } catch { return false; } }), "TopSettings " + (T("TopSettings") is not null) + ", TopLibraryDoor " + (T("TopLibraryDoor") is not null));
-        for (var i = 0; i < 26; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
+        for (var i = 0; i < 2; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
+        Thread.Sleep(1500);
+        var widths = System.Text.RegularExpressions.Regex.Matches(Trace6(), @"top tab width (\d+) for (\d+) tabs").Select(m => (w: int.Parse(m.Groups[1].Value), n: int.Parse(m.Groups[2].Value))).ToList();
+        var last = widths.LastOrDefault();
+        Step("With more tabs open along the top the tabs get narrower than their full width, and not narrower than a tab can read", last.w is >= 72 and < 172, $"{widths.Count} resizes, last: {last.w}px for {last.n} tabs (172 when there is room) · " + Shot("strip-tabs-narrower"));
+        // A blank tab is reused by Ctrl+T, so each new tab is given a page to be a tab of its own.
+        for (var i = 0; i < 16; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(300); Keyboard.Type("about:blank#" + i); Keyboard.Press(VirtualKeyShort.RETURN); Thread.Sleep(500); }
         Thread.Sleep(1500);
         var pinned = T("TopNewTabPinned")?.BoundingRectangle;
         var plusShown = pinned is not null && pinned.Value.Width > 10 && pinned.Value.Right <= wb.Right && pinned.Value.Left > wb.Left + wb.Width / 2;

@@ -29,13 +29,25 @@ public sealed class RowHeading : INotifyPropertyChanged
     public System.Windows.Thickness Indent => new(depth * 12, 0, 0, 0);
 
     int? colour;
-    public int? Colour { get => colour; set { if (Set(ref colour, value)) Raise(nameof(Stripe)); } }
+    public int? Colour { get => colour; set { if (Set(ref colour, value)) { Raise(nameof(Stripe)); Raise(nameof(Tint)); } } }
     public Brush? Stripe
     {
         get
         {
             if (colour is not int index || Spaces.Rgb(index) is not { } c) return null;
             var b = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B));
+            b.Freeze();
+            return b;
+        }
+    }
+
+    /// <summary>The group's colour, softly, as the pill behind its name in the top strip.</summary>
+    public Brush Tint
+    {
+        get
+        {
+            var c = colour is int index && Spaces.Rgb(index) is { } rgb ? Color.FromArgb(0x30, rgb.R, rgb.G, rgb.B) : Color.FromArgb(0x1F, 0x80, 0x80, 0x80);
+            var b = new SolidColorBrush(c);
             b.Freeze();
             return b;
         }

@@ -763,12 +763,54 @@ public partial class MainWindow
     /// </summary>
     void KeepPlusInReach()
     {
+        FitTopTabs();
         var pinned = TopPlusPinned.Visibility == Visibility.Visible;
         var room = TopScroll.ViewportWidth + (pinned ? TopPlusPinned.ActualWidth + TopPlusPinned.Margin.Left + TopPlusPinned.Margin.Right : 0);
         var over = TopScroll.ExtentWidth > room + 0.5;
-        if (over == pinned) return;
-        TopPlusPinned.Visibility = over ? Visibility.Visible : Visibility.Collapsed;
-        TopPlusInline.Visibility = over ? Visibility.Hidden : Visibility.Visible;
+        if (over != pinned)
+        {
+            TopPlusPinned.Visibility = over ? Visibility.Visible : Visibility.Collapsed;
+            TopPlusInline.Visibility = over ? Visibility.Hidden : Visibility.Visible;
+        }
+        FadeTopEdges(over);
+    }
+
+    public static readonly DependencyProperty TopTabWidthProperty = DependencyProperty.Register(nameof(TopTabWidth), typeof(double), typeof(MainWindow), new PropertyMetadata(172.0));
+    /// <summary>How wide each tab is along the top: as wide as 172, narrower as more are open, until about ten fit before the strip scrolls.</summary>
+    public double TopTabWidth { get => (double)GetValue(TopTabWidthProperty); set => SetValue(TopTabWidthProperty, value); }
+
+    const double TabWidest = 172, TabNarrowest = 72, TabGap = 2;
+
+    void FitTopTabs()
+    {
+        if (!TopLayout || TopScroll.ActualWidth <= 0) return;
+        var rows = TopTabs.ItemsSource as System.Collections.IEnumerable;
+        if (rows is null) return;
+        int tabsN = 0, heads = 0;
+        foreach (var r in rows) { if (r is Tab) tabsN++; else heads++; }
+        if (tabsN == 0) return;
+        var pinned = TopPlusPinned.Visibility == Visibility.Visible;
+        var room = TopScroll.ActualWidth + (pinned ? TopPlusPinned.ActualWidth + TopPlusPinned.Margin.Left + TopPlusPinned.Margin.Right : 0);
+        var taken = TopSpaceStrip.ActualWidth + TopSpaceStrip.Margin.Left + TopSpaceStrip.Margin.Right + pins.Count * 40 + heads * 96 + 34;
+        var width = Math.Clamp((room - taken) / tabsN - TabGap, TabNarrowest, TabWidest);
+        if (Math.Abs(width - TopTabWidth) > 0.5) { TopTabWidth = Math.Floor(width); App.Trace($"top tab width {TopTabWidth} for {tabsN} tabs"); }
+    }
+
+    /// <summary>Tabs that run past the strip's edge fade out instead of being cut off.</summary>
+    void FadeTopEdges(bool over)
+    {
+        var w = TopScroll.ActualWidth;
+        if (!over || w <= 0) { if (TopScroll.OpacityMask is not null) TopScroll.OpacityMask = null; return; }
+        var fade = Math.Min(34 / w, 0.3);
+        var left = TopScroll.HorizontalOffset > 1;
+        var right = TopScroll.HorizontalOffset + TopScroll.ViewportWidth < TopScroll.ExtentWidth - 1;
+        var brush = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(left ? 0 : 255), 0, 0, 0), 0));
+        brush.GradientStops.Add(new GradientStop(Colors.Black, left ? fade : 0));
+        brush.GradientStops.Add(new GradientStop(Colors.Black, right ? 1 - fade : 1));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(right ? 0 : 255), 0, 0, 0), 1));
+        brush.Freeze();
+        TopScroll.OpacityMask = brush;
     }
 
     void TopScroll_Wheel(object sender, MouseWheelEventArgs e)
