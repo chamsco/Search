@@ -555,6 +555,36 @@ try
         }
     }
 
+    {
+        // Drag a tab onto the middle of another: they are let go side by side in Split View.
+        var rows0 = RowPoints();
+        var splitsBeforeDrag = SplitCounts().Length;
+        string splitDragShot = "";
+        if (rows0.Count >= 3)
+        {
+            Keyboard.Release(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Release(VirtualKeyShort.SHIFT); Keyboard.Release(VirtualKeyShort.ALT); Thread.Sleep(200);
+            var from = rows0[2];
+            Mouse.MoveTo(from); Thread.Sleep(300);
+            Mouse.Down(MouseButton.Left); Thread.Sleep(200);
+            for (var k = 1; k <= 6; k++) { Mouse.MoveTo(new Point(from.X + k, from.Y - k * 2)); Thread.Sleep(80); }
+            Thread.Sleep(700);
+            // The 'Drop here to pin' strip has pushed the column down: the first row is where it is now.
+            var target = RowPoints()[0];
+            var here = new Point(from.X + 6, from.Y - 12);
+            for (var k = 1; k <= 12; k++) { Mouse.MoveTo(new Point(here.X + (target.X - here.X) * k / 12, here.Y + (target.Y - here.Y) * k / 12)); Thread.Sleep(80); }
+            for (var k = 0; k < 4; k++) { Mouse.MoveTo(new Point(target.X + k, target.Y)); Thread.Sleep(150); }
+            Thread.Sleep(300);
+            splitDragShot = Shot("split-drag-over");
+            Mouse.Up(MouseButton.Left);
+        }
+        Thread.Sleep(2500);
+        var madeSplit = Await(() => SplitCounts().SequenceEqual([2]), 5000);
+        Step("Drag a tab from the column onto the middle of another: the two are shown side by side in Split View", madeSplit, $"splits before {splitsBeforeDrag}, after [{string.Join(",", SplitCounts())}] trace: {DragTrace()} · {splitDragShot} · " + Shot("split-by-drag"));
+        // Back apart, so the tabs are as the next steps expect.
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+        Thread.Sleep(2000);
+    }
+
     Choose(RowPoints()[1], "Add to Group", "New Group");
     Keyboard.Type("Research");
     Keyboard.Press(VirtualKeyShort.RETURN);
