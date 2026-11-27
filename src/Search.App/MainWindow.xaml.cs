@@ -789,8 +789,11 @@ public partial class MainWindow : Window
         return false;
     }
 
+    int presses;
+
     void Row_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        presses++;
         pressAt = e.GetPosition(this); App.Trace($"row press {e.ClickCount} at {pressAt}");
         wasLive = e.ClickCount == 1 && (sender as FrameworkElement)?.DataContext is Tab w && w == live;
         liveBeforePress = live;
@@ -920,10 +923,13 @@ public partial class MainWindow : Window
 
     void StartDrag(FrameworkElement source, MouseButtonEventArgs e)
     {
+        // Only for this press: a row left without a move over it (the pointer jumped away) must not start a drag on a later press.
+        var press = ++presses;
+        var from = pressAt;
         void Move(object s, MouseEventArgs m)
         {
-            if (m.LeftButton != MouseButtonState.Pressed) { source.PreviewMouseMove -= Move; return; }
-            var d = m.GetPosition(this) - pressAt; if (Math.Abs(d.Y) >= 4 || Math.Abs(d.X) >= 4) App.Trace("row moved " + d);
+            if (m.LeftButton != MouseButtonState.Pressed || press != presses) { source.PreviewMouseMove -= Move; return; }
+            var d = m.GetPosition(this) - from; if (Math.Abs(d.Y) >= 4 || Math.Abs(d.X) >= 4) App.Trace("row moved " + d);
             if (Math.Abs(d.Y) < 4 && Math.Abs(d.X) < 4) return;
             source.PreviewMouseMove -= Move;
             if (source.DataContext is not Tab t) return;
