@@ -300,6 +300,20 @@ try
     var personal = SessionText();
     Step("Ctrl+Alt+1: back to Personal with its own tabs (the search, the pin) while Work's file holds only its own page", personal.Contains("weather") && SessionOf(workId).Contains("example.org") && !SessionOf(workId).Contains("weather"), Shot("space-personal"));
 
+    // Issue: Settings opened in one space stayed on top after switching to another space.
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_COMMA);
+    Thread.Sleep(3000);
+    var settingsShot = Shot("space-settings-open");
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_2);
+    Thread.Sleep(2500);
+    string LastStage() => Trace6().Split('\n').LastOrDefault(l => l.Contains("stage shows")) ?? "";
+    var inWork = LastStage();
+    Step("Settings open in Personal, then Ctrl+Alt+2: Work shows only its own page, Settings does not stay on top", inWork.Contains("shows 1 page(s) in Work") && inWork.Contains("example.org"), inWork.Trim() + " · " + settingsShot + " · " + Shot("space-settings-left"));
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
+    Thread.Sleep(2500);
+    var backHome = LastStage();
+    Step("Ctrl+Alt+1: back in Personal, its Settings page is there again and alone", backHome.Contains("shows 1 page(s) in Personal") && backHome.Contains("settings"), backHome.Trim() + " · " + Shot("space-settings-back"));
+
     var plus = window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace"));
     plus?.AsButton().Invoke();
     Thread.Sleep(1200);
@@ -309,6 +323,8 @@ try
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(2500);
     Step("New Space popup: name it Travel, Enter: the space is made and opened", DataText("spaces.json").Contains("Travel"), popupShot + " · " + Shot("space-new"));
+    var inTravel = LastStage();
+    Step("The new space's empty tab is not covered by a page from the space you came from", inTravel.Contains("shows 0 page(s) in Travel") && inTravel.Contains("live blank"), inTravel.Trim());
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
 
     // A second profile, seeded the way Settings › Tabs makes it.

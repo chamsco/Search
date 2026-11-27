@@ -200,7 +200,10 @@ public partial class MainWindow : Window
         settled = DateTime.UtcNow;
         var keep = new HashSet<Tab>();
         if (!live.IsBlank) { keep.Add(live); if (SplitOf(live) is { } own) foreach (var id in own.Tabs) if (TabById(id) is { } m) keep.Add(m); }
-        foreach (var o in Ordered()) if (o.View is { } ov && !keep.Contains(o)) ov.Visibility = Visibility.Hidden;
+        // Every page on the stage, not only this space's: a page left showing in the space you came from
+        // (Settings, say) would otherwise stay on top of the one you switched to.
+        var keepViews = keep.Select(k => k.View).OfType<WebView2>().ToHashSet();
+        foreach (var ov in Stage.Children.OfType<WebView2>()) if (!keepViews.Contains(ov)) ov.Visibility = Visibility.Hidden;
         if (live.IsBlank)
         {
             if (live.View is not null) live.View.Visibility = Visibility.Hidden;
@@ -218,6 +221,7 @@ public partial class MainWindow : Window
             RoundLiveView();
             Dispatcher.BeginInvoke(() => view.Focus(), DispatcherPriority.Input);
         }
+        App.Trace($"stage shows {Stage.Children.OfType<WebView2>().Count(v => v.Visibility == Visibility.Visible)} page(s) in {space.Name}, live {(live.IsBlank ? "blank" : live.Url)}");
         UpdateDoors();
     }
 
