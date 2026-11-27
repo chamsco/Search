@@ -120,7 +120,7 @@
     <DataTemplate x:Key="TabRow" DataType="{x:Type local:Tab}">
       <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Height="28" CornerRadius="9" Background="Transparent" Margin="{Binding Indent}"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
-              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver" DragLeave="Row_DragLeave">
         <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
         <Border.Triggers>
           <EventTrigger RoutedEvent="Loaded"><BeginStoryboard Storyboard="{StaticResource Arrive}" /></EventTrigger>
@@ -153,6 +153,11 @@
         </Grid>
       </Border>
       <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding SplitDrop}" Value="True">
+          <Setter TargetName="Row" Property="BorderThickness" Value="1" />
+          <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Ink}" />
+          <Setter TargetName="WashLayer" Property="Opacity" Value="1" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding IsBlank}" Value="True">
           <Setter TargetName="MarkHost" Property="Visibility" Value="Collapsed" />
         </DataTrigger>
@@ -187,7 +192,7 @@
     <DataTemplate x:Key="TabChip" DataType="{x:Type local:Tab}">
       <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Width="{Binding TopTabWidth, RelativeSource={RelativeSource AncestorType=Window}}" Height="30" CornerRadius="9" Background="Transparent" Margin="0,0,2,0" WindowChrome.IsHitTestVisibleInChrome="True"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
-              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver" DragLeave="Row_DragLeave">
         <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
         <Border.Triggers>
           <EventTrigger RoutedEvent="Loaded"><BeginStoryboard Storyboard="{StaticResource Arrive}" /></EventTrigger>
@@ -218,6 +223,11 @@
         </Grid>
       </Border>
       <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding SplitDrop}" Value="True">
+          <Setter TargetName="Row" Property="BorderThickness" Value="1" />
+          <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Ink}" />
+          <Setter TargetName="WashLayer" Property="Opacity" Value="1" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding GroupBrush}" Value="{x:Null}">
           <Setter TargetName="GroupBar" Property="Visibility" Value="Collapsed" />
         </DataTrigger>
@@ -250,7 +260,7 @@
     <DataTemplate x:Key="PinTile" DataType="{x:Type local:Tab}">
       <Border x:Name="Tile" Height="34" WindowChrome.IsHitTestVisibleInChrome="True" CornerRadius="9" Margin="2" Background="{DynamicResource Row.Tile}"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening" ToolTip="{Binding Label}"
-              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver" DragLeave="Row_DragLeave">
         <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
         <Grid>
         <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" Opacity="0" />
