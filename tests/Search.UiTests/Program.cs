@@ -385,6 +385,31 @@ try
     var workPinLeft = Settled(c => c.Contains("1 visible (native 1) in Personal"));
     Step("Pin Work's page and switch to Personal: only Personal's page shows", workPinLeft.Contains("1 visible (native 1) in Personal") && !workPinLeft.Contains("example.org"), workPinLeft + " · " + Shot("space-workpin-left"));
 
+    // Issue: scrollbars as Zen's: thin, no arrows, over the page.
+    ToSpace(2);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Thread.Sleep(1200);
+    Keyboard.Type("https://en.wikipedia.org/wiki/Web_browser");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(7000);
+    var wb2 = window.BoundingRectangle;
+    Mouse.MoveTo(new Point(wb2.Right - 60, wb2.Top + wb2.Height / 2));
+    Mouse.Scroll(-5);
+    Thread.Sleep(400);
+    var pageBarShot = Shot("scrollbar-page");
+    Mouse.MoveTo(new Point(wb2.Right - 14, wb2.Top + wb2.Height / 2));
+    Thread.Sleep(600);
+    Step("A long page: its scrollbar is a thin bar over the page with no arrows, wider under the pointer", !app.HasExited, pageBarShot + " · " + Shot("scrollbar-page-hover"));
+    for (var k = 0; k < 18; k++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(400); Keyboard.Type("about:blank#" + k); Keyboard.Press(VirtualKeyShort.RETURN); Thread.Sleep(500); }
+    Thread.Sleep(1000);
+    var sideBar = window.FindFirstDescendant(cf => cf.ByAutomationId("TabScroll"))?.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.ScrollBar));
+    var sideShot = Shot("scrollbar-side");
+    if (sideBar is not null) { Mouse.MoveTo(CentreOf(sideBar)); Thread.Sleep(500); }
+    var barWidth = sideBar?.BoundingRectangle.Width ?? -1;
+    Step("Many tabs in the column: its scrollbar is a thin rounded thumb (no arrows, no track), at most 10 px wide", barWidth is > 0 and <= 10, $"scrollbar width {barWidth} · {sideShot} · " + Shot("scrollbar-side-hover"));
+    for (var k = 0; k < 19; k++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W); Thread.Sleep(250); }
+    ToSpace(1);
+
     var plus = window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace"));
     plus?.AsButton().Invoke();
     Thread.Sleep(1200);

@@ -7,6 +7,83 @@
     <FontFamily x:Key="Text">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="Glyphs">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
+    <!-- Scrollbars as Zen's: no arrows, no track, a thin rounded thumb that fades in with the pointer and widens under it. -->
+    <Style x:Key="ThinThumb" TargetType="Thumb">
+      <Setter Property="OverridesDefaultStyle" Value="True" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Thumb">
+            <Border x:Name="T" CornerRadius="3" Background="{DynamicResource Ink}" Opacity="0.22" />
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="T" Property="Opacity" Value="0.38" /></Trigger>
+              <Trigger Property="IsDragging" Value="True"><Setter TargetName="T" Property="Opacity" Value="0.5" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="PageArea" TargetType="RepeatButton">
+      <Setter Property="OverridesDefaultStyle" Value="True" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="IsTabStop" Value="False" />
+      <Setter Property="Template">
+        <Setter.Value><ControlTemplate TargetType="RepeatButton"><Border Background="Transparent" /></ControlTemplate></Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="ScrollBar">
+      <Setter Property="OverridesDefaultStyle" Value="True" />
+      <Setter Property="SnapsToDevicePixels" Value="True" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Width" Value="10" />
+      <Setter Property="MinWidth" Value="10" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Grid x:Name="Bar" Background="Transparent" Opacity="0.55">
+              <Track x:Name="PART_Track" IsDirectionReversed="True" HorizontalAlignment="Right" Width="4" Margin="0,4,2,4">
+                <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource PageArea}" Command="ScrollBar.PageUpCommand" /></Track.DecreaseRepeatButton>
+                <Track.Thumb><Thumb Style="{StaticResource ThinThumb}" MinHeight="24" /></Track.Thumb>
+                <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource PageArea}" Command="ScrollBar.PageDownCommand" /></Track.IncreaseRepeatButton>
+              </Track>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="PART_Track" Property="Width" Value="6" />
+                <Setter TargetName="Bar" Property="Opacity" Value="1" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="Orientation" Value="Horizontal">
+          <Setter Property="Width" Value="Auto" />
+          <Setter Property="MinWidth" Value="0" />
+          <Setter Property="Height" Value="10" />
+          <Setter Property="MinHeight" Value="10" />
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ScrollBar">
+                <Grid x:Name="Bar" Background="Transparent" Opacity="0.55">
+                  <Track x:Name="PART_Track" IsDirectionReversed="False" VerticalAlignment="Bottom" Height="4" Margin="4,0,4,2">
+                    <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource PageArea}" Command="ScrollBar.PageLeftCommand" /></Track.DecreaseRepeatButton>
+                    <Track.Thumb><Thumb Style="{StaticResource ThinThumb}" MinWidth="24" /></Track.Thumb>
+                    <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource PageArea}" Command="ScrollBar.PageRightCommand" /></Track.IncreaseRepeatButton>
+                  </Track>
+                </Grid>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="PART_Track" Property="Height" Value="6" />
+                    <Setter TargetName="Bar" Property="Opacity" Value="1" />
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
     <!-- Menus in Search's own look: the ground, a hairline, corners of 10, a soft shadow (as the field's list). -->
     <Style TargetType="ContextMenu">
       <Setter Property="OverridesDefaultStyle" Value="True" />

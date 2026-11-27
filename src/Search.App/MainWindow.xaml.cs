@@ -90,13 +90,19 @@ public partial class MainWindow : Window
 
     // MARK: - start and session
 
+    /// <summary>
+    /// Pages' scrollbars as Zen's: a thin bar over the page that shows while scrolling and widens under the pointer,
+    /// no arrows, no track. Edge's own overlay bars, with Chromium's names for the same as a fallback.
+    /// </summary>
+    const string ThinScrollbars = "--enable-features=msOverlayScrollbarWinStyle,msOverlayScrollbarWinStyleAnimation,OverlayScrollbar,FluentOverlayScrollbar";
+
     async Task StartAsync(string? open)
     {
         var data = Store.File("Engine");
         try
         {
             environment = await CoreWebView2Environment.CreateAsync(null, data,
-                new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true, AdditionalBrowserArguments = Proxy.Argument(Shared.Prefs.Data.ProxyMode, Shared.Prefs.Data.ProxyServer) });
+                new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true, AdditionalBrowserArguments = $"{Proxy.Argument(Shared.Prefs.Data.ProxyMode, Shared.Prefs.Data.ProxyServer)} {ThinScrollbars}".Trim() });
         }
         catch (WebView2RuntimeNotFoundException)
         {
