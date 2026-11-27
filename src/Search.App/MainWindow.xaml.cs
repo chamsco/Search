@@ -218,6 +218,7 @@ public partial class MainWindow : Window
             RoundLiveView();
             Dispatcher.BeginInvoke(() => view.Focus(), DispatcherPriority.Input);
         }
+        App.Trace($"stage shows {Stage.Children.OfType<WebView2>().Count(v => v.Visibility == Visibility.Visible)} page(s) in {space.Name}, live {(live.IsBlank ? "blank" : live.Url)}");
         UpdateDoors();
     }
 
