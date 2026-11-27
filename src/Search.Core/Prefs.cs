@@ -2,12 +2,30 @@ namespace Search.Core;
 
 public enum LookChoice { System, Light, Dark }
 public enum TabsLayout { Sidebar, Top }
+public enum AskSite { Claude, ChatGPT, Perplexity }
+
+/// <summary>Ask in the empty tab's field: the words go to an AI site in a tab; nothing is built into Search.</summary>
+public static class AskSites
+{
+    public static string Url(AskSite site, string words)
+    {
+        var q = Uri.EscapeDataString(words.Trim());
+        return site switch
+        {
+            AskSite.ChatGPT => "https://chatgpt.com/?q=" + q,
+            AskSite.Perplexity => "https://www.perplexity.ai/search?q=" + q,
+            _ => "https://claude.ai/new?q=" + q,
+        };
+    }
+}
 
 /// <summary>Settings. Port of the ones that apply on Windows from Sources/Search/Prefs.swift; kept in prefs.json.</summary>
 public sealed class PrefsData
 {
     public Engine Engine { get; set; } = Engines.Standard;
     public string CustomEngine { get; set; } = "";
+    /// <summary>Settings › General › Ask uses: where the empty tab's Ask mode sends the question.</summary>
+    public AskSite Ask { get; set; } = AskSite.Claude;
     /// <summary>Settings › General › Suggestions from your search engine.</summary>
     public bool EngineSuggests { get; set; } = true;
     public LookChoice Look { get; set; } = LookChoice.System;
