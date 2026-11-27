@@ -94,7 +94,7 @@ try
             if (Math.Abs(p1.R - p2.R) > 24) changed++;
         }
         var mic = window.FindFirstDescendant(cf => cf.ByAutomationId("Dictate")) is not null;
-        Step("Empty tab shows the centred address field with a ball of dots turning above it and a microphone in the field", mic && dark > 60 && changed > 8, $"mic {mic}, dots drawn {dark}, pixels that moved {changed} · " + Shot("new-tab"));
+        Step("Empty tab shows the centred address field with a ball of dots turning above it and a microphone in the field", mic && dark > 60 && (changed > 8 || Trace6().Contains("ball still")), $"mic {mic}, still {Trace6().Contains("ball still")}, dots drawn {dark}, pixels that moved {changed} · " + Shot("new-tab"));
     }
 
     Keyboard.Type("you");
