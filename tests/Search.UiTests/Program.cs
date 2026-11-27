@@ -367,7 +367,7 @@ try
         {
             // Along the top too: click a tab, Shift+click two further on: three are selected; Escape lets them go (#24).
             var chips = window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text))
-                .Where(e => { try { var r = e.BoundingRectangle; return r.Top < wb.Top + 48 && r.Left > wb.Left + 260 && r.Right < wb.Right - 260 && r.Width > 10 && e.Name.Length > 0; } catch { return false; } })
+                .Where(e => { try { var r = e.BoundingRectangle; return r.Top < wb.Top + 48 && r.Left > wb.Left + 260 && r.Right < wb.Right - 260 && r.Width > 18 && e.Name.Length > 1; } catch { return false; } })
                 .OrderBy(e => e.BoundingRectangle.Left).ToList();
             var topPicked = "";
             if (chips.Count >= 3)
@@ -657,6 +657,8 @@ try
 
     int TabCount() { try { return Session5().GetProperty("tabs").GetArrayLength(); } catch { return -1; } }
     string TraceLines(string what) => string.Join(" / ", Trace6().Split('\n').Where(l => l.Contains(what)).TakeLast(4).Select(l => l.Trim()));
+    // A click on the page already shown opens its address for editing (and hides its title from the column): Escape puts it back.
+    void EndEdit() { Keyboard.Press(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.ESCAPE); Thread.Sleep(500); }
     void Free() { Keyboard.Release(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Release(VirtualKeyShort.SHIFT); Keyboard.Release(VirtualKeyShort.ALT); Thread.Sleep(200); }
 
     {
@@ -726,7 +728,7 @@ try
         // Several tabs at once: Shift+click a range, Ctrl+click to take one away, right-click to act on them all (#24).
         Free();
         var rowsS = RowPoints();
-        Mouse.Click(rowsS[0]); Thread.Sleep(1200);
+        Mouse.Click(rowsS[0]); Thread.Sleep(1200); EndEdit(); rowsS = RowPoints();
         using (Keyboard.Pressing(VirtualKeyShort.SHIFT)) { Mouse.Click(rowsS[2]); Thread.Sleep(600); }
         Free(); Thread.Sleep(600);
         var range = TraceLines("picked").Split(" / ").LastOrDefault() ?? "";
@@ -748,14 +750,14 @@ try
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
         Thread.Sleep(2000);
         Free();
-        Mouse.Click(RowPoints()[0]); Thread.Sleep(1000);
+        Mouse.Click(RowPoints()[0]); Thread.Sleep(1000); EndEdit();
     }
 
     {
         // Two picked tabs dragged together onto the left of the page: both open beside it, on the left, in that order (#24).
         Free();
         var r = RowPoints();
-        Mouse.Click(r[0]); Thread.Sleep(1200);
+        Mouse.Click(r[0]); Thread.Sleep(1200); EndEdit(); r = RowPoints();
         foreach (var k in new[] { 1, 2, 0 }) { using (Keyboard.Pressing(VirtualKeyShort.CONTROL)) { Mouse.Click(r[k]); Thread.Sleep(500); } Free(); }
         var two = TraceLines("picked").Split(" / ").LastOrDefault() ?? "";
         var from = r[1];
@@ -778,7 +780,7 @@ try
         Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
         Thread.Sleep(2000);
         Free();
-        Mouse.Click(RowPoints()[0]); Thread.Sleep(1000);
+        Mouse.Click(RowPoints()[0]); Thread.Sleep(1000); EndEdit();
     }
 
     Choose(RowPoints()[1], "Add to Group", "New Group");
