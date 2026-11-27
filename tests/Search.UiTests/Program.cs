@@ -323,6 +323,8 @@ try
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(2500);
     Step("New Space popup: name it Travel, Enter: the space is made and opened", DataText("spaces.json").Contains("Travel"), popupShot + " · " + Shot("space-new"));
+    var inTravel = LastStage();
+    Step("The new space's empty tab is not covered by a page from the space you came from", inTravel.Contains("shows 0 page(s) in Travel") && inTravel.Contains("live blank"), inTravel.Trim());
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
 
     // A second profile, seeded the way Settings › Tabs makes it.
