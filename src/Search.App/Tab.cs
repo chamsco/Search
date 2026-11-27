@@ -70,6 +70,10 @@ public sealed class Tab : INotifyPropertyChanged
     /// <summary>How far in the row is set: inside a group, or a pinned folder.</summary>
     public System.Windows.Thickness Indent { get => indent; set { if (Set(ref indent, value)) Raise(nameof(RowMargin)); } }
 
+    bool splitDrop;
+    /// <summary>A tab being dragged is over this one, to be put beside it in Split View when let go.</summary>
+    public bool SplitDrop { get => splitDrop; set => Set(ref splitDrop, value); }
+
     bool inSplit;
     /// <summary>Shown beside others in Split View.</summary>
     public bool InSplit { get => inSplit; set => Set(ref inSplit, value); }

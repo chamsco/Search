@@ -80,6 +80,7 @@ public partial class MainWindow : Window
         Shared.Downloads.Changed += OnDownloadsChanged;
         Closed += (_, _) => { Shared.Prefs.Changed -= ApplyPrefs; Shared.Perms.Changed -= OnPermsChanged; Shared.Styles.Changed -= OnStylesChanged; Marks.Changed -= OnBookmarksChanged; Shared.Downloads.Changed -= OnDownloadsChanged; };
         PreviewKeyDown += Window_PreviewKeyDown;
+        Loaded += (_, _) => { Ball.Still = !Moves; if (!Moves) App.Trace("ball still: animations are off"); SetMode(false); };
         PreviewMouseDown += Window_PreviewMouseDown;
         Stage.SizeChanged += (_, _) => RoundLiveView();
         InitLittle();
@@ -650,6 +651,17 @@ public partial class MainWindow : Window
             if (empty is not null) Close(empty);
             return;
         }
+        if (askMode && live is { IsBlank: true } && !string.IsNullOrWhiteSpace(text))
+        {
+            // Ask: the question goes to the AI site chosen in Settings.
+            var site = Shared.Prefs.Data.Ask;
+            App.Trace("ask " + site);
+            BlankField.Text = "";
+            SetMode(false);
+            EndEditing(commit: false);
+            Navigate(AskSites.Url(site, text));
+            return;
+        }
         var url = picked?.Url ?? Omnibox.Resolve(text, engine, customEngine);
         EndEditing(commit: false);
         Navigate(url);
@@ -879,6 +891,7 @@ public partial class MainWindow : Window
             finally
             {
                 source.Opacity = 1;
+                ClearSplitDrop();
                 if (dragging is { } landed) Landed(landed);
                 dragging = null;
                 PinDrop.Visibility = Visibility.Collapsed;
@@ -894,6 +907,23 @@ public partial class MainWindow : Window
         e.Effects = DragDropEffects.Move;
         e.Handled = true;
         if (dragging is not { } moving || (sender as FrameworkElement)?.DataContext is not Tab target || moving == target) return;
+        // Over the middle of another tab it is let go beside that tab in Split View; the row only gives way once the pointer is through the middle.
+        var splitable = CanSplitDrop(moving, target) && sender is FrameworkElement;
+        if (splitable)
+        {
+            var row = (FrameworkElement)sender;
+            var p = e.GetPosition(row);
+            var frac = TopLayout ? p.X / Math.Max(1, row.ActualWidth) : p.Y / Math.Max(1, row.ActualHeight);
+            if (frac > 0.28 && frac < 0.72)
+            {
+                if (splitTarget != target) { ClearSplitDrop(); splitTarget = target; target.SplitDrop = true; }
+                return;
+            }
+            ClearSplitDrop();
+            var fromAt = tabs.IndexOf(moving); var toAt = tabs.IndexOf(target);
+            if (fromAt >= 0 && toAt >= 0 && (toAt < fromAt ? frac > 0.28 : frac < 0.72)) return;
+        }
+        else ClearSplitDrop();
         // Within one list, the row moves as you go, so you see where it will land.
         if (moving.IsPin == target.IsPin)
         {
@@ -904,10 +934,36 @@ public partial class MainWindow : Window
         }
     }
 
+    Tab? splitTarget;
+
+    bool CanSplitDrop(Tab moving, Tab target) =>
+        SplitOn && moving != target && !moving.IsPin && !target.IsPin && !moving.IsBlank && !target.IsBlank
+        && SplitOf(moving) is null && (SplitOf(target) is not { } sp || sp.CanAdd);
+
+    void ClearSplitDrop()
+    {
+        if (splitTarget is null) return;
+        splitTarget.SplitDrop = false;
+        splitTarget = null;
+    }
+
+    void Row_DragLeave(object sender, DragEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is Tab t && t == splitTarget) ClearSplitDrop();
+    }
+
     void Row_Drop(object sender, DragEventArgs e)
     {
         e.Handled = true;
-        if (e.Data.GetData(typeof(Tab)) is not Tab moving || (sender as FrameworkElement)?.DataContext is not Tab target || moving == target) return;
+        if (e.Data.GetData(typeof(Tab)) is not Tab moving || (sender as FrameworkElement)?.DataContext is not Tab target || moving == target) { ClearSplitDrop(); return; }
+        if (splitTarget == target && CanSplitDrop(moving, target))
+        {
+            ClearSplitDrop();
+            App.Trace($"split by drop {moving.Title} beside {target.Title}");
+            if (Pair(target, moving) is not null) { dragging = null; Select(moving); }
+            return;
+        }
+        ClearSplitDrop();
         if (moving.IsPin == target.IsPin) return; // already moved while dragging
         if (target.IsPin && moving.IsBlank) return;
         (moving.IsPin ? pins : tabs).Remove(moving);

@@ -120,7 +120,7 @@
     <DataTemplate x:Key="TabRow" DataType="{x:Type local:Tab}">
       <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Height="28" CornerRadius="9" Background="Transparent" Margin="{Binding RowMargin}"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
-              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver" DragLeave="Row_DragLeave">
         <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
         <Border.Triggers>
           <EventTrigger RoutedEvent="Loaded"><BeginStoryboard Storyboard="{StaticResource Arrive}" /></EventTrigger>
@@ -153,6 +153,11 @@
         </Grid>
       </Border>
       <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding SplitDrop}" Value="True">
+          <Setter TargetName="Row" Property="BorderThickness" Value="1" />
+          <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Ink}" />
+          <Setter TargetName="WashLayer" Property="Opacity" Value="1" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding IsBlank}" Value="True">
           <Setter TargetName="MarkHost" Property="Visibility" Value="Collapsed" />
         </DataTrigger>
@@ -189,7 +194,7 @@
     <DataTemplate x:Key="TabChip" DataType="{x:Type local:Tab}">
       <Border x:Name="Row" AutomationProperties.Name="{Binding Label}" Width="{Binding TopTabWidth, RelativeSource={RelativeSource AncestorType=Window}}" Height="30" CornerRadius="9" Background="Transparent" Margin="0,0,2,0" WindowChrome.IsHitTestVisibleInChrome="True"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening"
-              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver" DragLeave="Row_DragLeave">
         <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
         <Border.Triggers>
           <EventTrigger RoutedEvent="Loaded"><BeginStoryboard Storyboard="{StaticResource Arrive}" /></EventTrigger>
@@ -220,6 +225,11 @@
         </Grid>
       </Border>
       <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding SplitDrop}" Value="True">
+          <Setter TargetName="Row" Property="BorderThickness" Value="1" />
+          <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Ink}" />
+          <Setter TargetName="WashLayer" Property="Opacity" Value="1" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding GroupBrush}" Value="{x:Null}">
           <Setter TargetName="GroupBar" Property="Visibility" Value="Collapsed" />
         </DataTrigger>
@@ -252,7 +262,7 @@
     <DataTemplate x:Key="PinTile" DataType="{x:Type local:Tab}">
       <Border x:Name="Tile" Height="34" WindowChrome.IsHitTestVisibleInChrome="True" CornerRadius="9" Margin="2" Background="{DynamicResource Row.Tile}"
               MouseLeftButtonDown="Row_MouseDown" MouseUp="Row_MouseUp" ContextMenuOpening="Row_ContextMenuOpening" ToolTip="{Binding Label}"
-              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver">
+              AllowDrop="True" Drop="Row_Drop" DragOver="Row_DragOver" DragLeave="Row_DragLeave">
         <Border.ContextMenu><ContextMenu /></Border.ContextMenu>
         <Grid>
         <Border x:Name="HoverLayer" CornerRadius="9" Background="{DynamicResource Row.Wash}" Opacity="0" />
@@ -484,6 +494,22 @@
       </Setter>
     </Style>
 
+    <Style x:Key="ModeChip" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource Row.Muted}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Padding" Value="11,0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="B" CornerRadius="10" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="Sheet" TargetType="Border">
       <Setter Property="Background" Value="{DynamicResource Ground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource Hairline}" />
@@ -663,16 +689,27 @@
         <!-- An empty tab: the field alone in the middle of the page (Omnibox.swift). -->
         <Grid x:Name="Blank" Background="{DynamicResource Ground}" Visibility="Collapsed">
           <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="560" Margin="24,0">
+            <local:DotBall x:Name="Ball" Width="112" Height="112" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-164,0,0" />
             <Border x:Name="FieldSheet" Style="{StaticResource Sheet}" Padding="22,14" VerticalAlignment="Top">
               <Border.Effect>
                 <DropShadowEffect Color="Black" Opacity="0.06" BlurRadius="24" ShadowDepth="8" Direction="270" />
               </Border.Effect>
               <Grid Height="22">
                 <TextBlock x:Name="Placeholder" Text="Enter a web address" FontSize="15.5" Foreground="{DynamicResource Muted}" Opacity="0.75"
-                           VerticalAlignment="Center" IsHitTestVisible="False" />
-                <TextBox x:Name="BlankField" FontSize="15.5" BorderThickness="0" Background="Transparent" Padding="-2,0,0,0"
+                           VerticalAlignment="Center" IsHitTestVisible="False" Margin="0,0,150,0" />
+                <TextBox x:Name="BlankField" FontSize="15.5" BorderThickness="0" Background="Transparent" Padding="-2,0,0,0" Margin="0,0,150,0"
                          Foreground="{DynamicResource Ink}" CaretBrush="{DynamicResource Ink}" VerticalContentAlignment="Center"
                          PreviewKeyDown="BlankField_PreviewKeyDown" TextChanged="BlankField_TextChanged" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                  <Button x:Name="MicDoor" Style="{StaticResource Door}" AutomationProperties.AutomationId="Dictate" AutomationProperties.Name="Dictate" Content="&#xE720;" FontSize="13"
+                          ToolTip="Speak the address or search" Margin="0,0,8,0" Click="Mic_Click" />
+                  <Border CornerRadius="12" Background="{DynamicResource Row.Tile}" Padding="2" Height="26">
+                    <StackPanel Orientation="Horizontal">
+                      <Button x:Name="SearchMode" Style="{StaticResource ModeChip}" Content="Search" AutomationProperties.AutomationId="ModeSearch" AutomationProperties.Name="Search mode" Click="Mode_Click" Tag="search" />
+                      <Button x:Name="AskMode" Style="{StaticResource ModeChip}" Content="Ask" AutomationProperties.AutomationId="ModeAsk" AutomationProperties.Name="Ask mode" Click="Mode_Click" Tag="ask" />
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
               </Grid>
             </Border>
             <Canvas VerticalAlignment="Top" Margin="0,58,0,0">

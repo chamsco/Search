@@ -80,7 +80,22 @@ try
     Step("Launch Search.exe with an empty data folder", window is not null, window?.Title);
     window!.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(4000);
-    Step("Empty tab shows the centred address field", true, Shot("new-tab"));
+    {
+        // The mark above the field is a ball of dots turning: two looks a moment apart differ, and the field has its microphone.
+        var screen = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+        var wb0 = window.BoundingRectangle; var area = new Rectangle((int)(wb0.Left + 232 + (wb0.Width - 240) / 2) - 70, screen.Height / 2 - 200, 140, 140);
+        Bitmap Look() { var bmp = new Bitmap(area.Width, area.Height); using var g = Graphics.FromImage(bmp); g.CopyFromScreen(area.Location, Point.Empty, area.Size); return bmp; }
+        using var one = Look(); Thread.Sleep(900); using var two = Look();
+        int changed = 0, dark = 0;
+        for (var y = 0; y < area.Height; y += 2) for (var x = 0; x < area.Width; x += 2)
+        {
+            var p1 = one.GetPixel(x, y); var p2 = two.GetPixel(x, y);
+            if (p1.R < 200) dark++;
+            if (Math.Abs(p1.R - p2.R) > 24) changed++;
+        }
+        var mic = window.FindFirstDescendant(cf => cf.ByAutomationId("Dictate")) is not null;
+        Step("Empty tab shows the centred address field with a ball of dots turning above it and a microphone in the field", mic && dark > 60 && (changed > 8 || Trace6().Contains("ball still")), $"mic {mic}, still {Trace6().Contains("ball still")}, dots drawn {dark}, pixels that moved {changed} · " + Shot("new-tab"));
+    }
 
     Keyboard.Type("you");
     Thread.Sleep(2000);
@@ -104,6 +119,26 @@ try
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(4000);
     Step("Ctrl+T, type example.com, Enter: opens in a second tab", !app.HasExited, Shot("second-tab"));
+
+    {
+        // Ask: the switch at the right of the field; a question typed in Ask mode goes to the AI site chosen in Settings (Claude), in a tab of its own.
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+        Thread.Sleep(1200);
+        var ask = window.FindFirstDescendant(cf => cf.ByAutomationId("ModeAsk"));
+        var hasSwitch = ask is not null && window.FindFirstDescendant(cf => cf.ByAutomationId("ModeSearch")) is not null;
+        if (ask is not null) { try { ask.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(ask)); } }
+        Thread.Sleep(500);
+        var inAsk = Shot("ask-mode");
+        Keyboard.Type("why is the sky blue");
+        Thread.Sleep(600);
+        var typedShot = Shot("ask-typed");
+        Keyboard.Press(VirtualKeyShort.RETURN);
+        var askSent = Await(() => Trace6().Contains("ask Claude"), 8000);
+        Step("The field has a Search / Ask switch; a question in Ask mode is sent to the AI site chosen in Settings (Claude), in a tab", hasSwitch && askSent, $"switch {hasSwitch}, sent {askSent} · {inAsk} · {typedShot}");
+        Thread.Sleep(2500);
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+        Thread.Sleep(1500);
+    }
 
     var b = window.BoundingRectangle;
     // First row: below the 52-point strip, the address pill (38) and the page's actions (34), 10 in from the column's edge (maximised windows sit 7 in).
@@ -553,6 +588,36 @@ try
             item?.Click();
             Thread.Sleep(900);
         }
+    }
+
+    {
+        // Drag a tab onto the middle of another: they are let go side by side in Split View.
+        var rows0 = RowPoints();
+        var splitsBeforeDrag = SplitCounts().Length;
+        string splitDragShot = "";
+        if (rows0.Count >= 3)
+        {
+            Keyboard.Release(VirtualKeyShort.ESCAPE); Keyboard.Release(VirtualKeyShort.CONTROL); Keyboard.Release(VirtualKeyShort.SHIFT); Keyboard.Release(VirtualKeyShort.ALT); Thread.Sleep(200);
+            var from = rows0[2];
+            Mouse.MoveTo(from); Thread.Sleep(300);
+            Mouse.Down(MouseButton.Left); Thread.Sleep(200);
+            for (var k = 1; k <= 6; k++) { Mouse.MoveTo(new Point(from.X + k, from.Y - k * 2)); Thread.Sleep(80); }
+            Thread.Sleep(700);
+            // The 'Drop here to pin' strip has pushed the column down: the first row is where it is now.
+            var target = RowPoints()[0];
+            var here = new Point(from.X + 6, from.Y - 12);
+            for (var k = 1; k <= 12; k++) { Mouse.MoveTo(new Point(here.X + (target.X - here.X) * k / 12, here.Y + (target.Y - here.Y) * k / 12)); Thread.Sleep(80); }
+            for (var k = 0; k < 4; k++) { Mouse.MoveTo(new Point(target.X + k, target.Y)); Thread.Sleep(150); }
+            Thread.Sleep(300);
+            splitDragShot = Shot("split-drag-over");
+            Mouse.Up(MouseButton.Left);
+        }
+        Thread.Sleep(2500);
+        var madeSplit = Await(() => SplitCounts().SequenceEqual([2]), 5000);
+        Step("Drag a tab from the column onto the middle of another: the two are shown side by side in Split View", madeSplit, $"splits before {splitsBeforeDrag}, after [{string.Join(",", SplitCounts())}] trace: {DragTrace()} · {splitDragShot} · " + Shot("split-by-drag"));
+        // Back apart, so the tabs are as the next steps expect.
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+        Thread.Sleep(2000);
     }
 
     Choose(RowPoints()[1], "Add to Group", "New Group");
