@@ -109,4 +109,31 @@ public partial class MainWindow
         foreach (var t in loose.Skip(1)) AddToGroup(t, g);
         if (loose.Count > 1 && headings.TryGetValue(g.Id, out var h)) BeginRenamingHeading(h);
     }
+
+    // MARK: - dragging several
+
+    /// <summary>The tabs a drag carries: every picked tab when the one dragged is among several picked, else that tab alone.</summary>
+    List<Tab> carrying = [];
+
+    List<Tab> Carried(Tab t) => t.Picked && Picked() is { Count: > 1 } many ? many : [t];
+
+    /// <summary>The tabs carried with T (not T itself), in the order they are in.</summary>
+    IEnumerable<Tab> Others(Tab t) => carrying.Contains(t) ? carrying.Where(o => o != t) : [];
+
+    /// <summary>After a drag that moved T within the list: the others carried with it close up round it, in the order they were in.</summary>
+    void Gather(Tab t)
+    {
+        if (carrying.Count < 2 || !carrying.Contains(t)) return;
+        var list = t.IsPin ? pins : tabs;
+        var same = carrying.Where(o => o.IsPin == t.IsPin && list.Contains(o)).ToList();
+        if (same.Count < 2) return;
+        var at = same.IndexOf(t);
+        foreach (var o in same.Where(o => o != t)) list.Remove(o);
+        var here = list.IndexOf(t);
+        // Those before it go just above it, in order; those after, just below.
+        foreach (var o in same.Take(at)) list.Insert(here++, o);
+        var below = here + 1;
+        foreach (var o in same.Skip(at + 1)) list.Insert(Math.Min(below++, list.Count), o);
+        App.Trace($"gathered {same.Count}");
+    }
 }

@@ -374,9 +374,12 @@ public partial class MainWindow
     int pageDropAt = -1;
 
     /// <summary>A tab dragged from the column or the strip can be let go on the page on screen to be shown beside it.</summary>
-    bool CanDropOnPage(Tab moving) =>
-        SplitOn && live is { IsBlank: false } && moving != live && !moving.IsBlank && SplitOf(moving) is null
-        && (SplitOf(live) is not { } sp || sp.CanAdd);
+    bool CanDropOnPage(Tab moving)
+    {
+        var all = (carrying.Contains(moving) ? carrying : [moving]).Where(m => m != live).ToList();
+        return SplitOn && live is { IsBlank: false } && all.Contains(moving) && all.All(m => !m.IsBlank && SplitOf(m) is null)
+            && (SplitOf(live)?.Tabs.Count ?? 1) + all.Count <= TabSplit.Most;
+    }
 
     /// <summary>The drag begins: a see-through sheet over the page, which shows the half the tab will take.</summary>
     void BeginPageDrop(Tab moving)
@@ -444,9 +447,12 @@ public partial class MainWindow
         PageDropPopup.IsOpen = false;
         if (cancelled || at < 0 || live is null || !CanDropOnPage(moving)) return false;
         var anchor = live;
-        if (Pair(anchor, moving) is not { } sp) return false;
-        sp.Tabs.Remove(moving.Id);
-        sp.Insert(moving.Id, at);
+        var all = (carrying.Contains(moving) ? carrying : [moving]).Where(m => m != anchor).ToList();
+        if (Pair(anchor, all[0]) is not { } sp) return false;
+        foreach (var m in all.Skip(1)) Pair(anchor, m);
+        // The carried pages go together, in their order, at the side they were let go.
+        foreach (var m in all) sp.Tabs.Remove(m.Id);
+        for (var k = 0; k < all.Count; k++) sp.Insert(all[k].Id, at + k);
         ClearChrome();
         App.Trace($"split by page drop {moving.Title} at {at} of {sp.Tabs.Count}");
         Select(moving);

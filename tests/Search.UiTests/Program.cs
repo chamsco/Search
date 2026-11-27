@@ -751,6 +751,36 @@ try
         Mouse.Click(RowPoints()[0]); Thread.Sleep(1000);
     }
 
+    {
+        // Two picked tabs dragged together onto the left of the page: both open beside it, on the left, in that order (#24).
+        Free();
+        var r = RowPoints();
+        Mouse.Click(r[0]); Thread.Sleep(1200);
+        foreach (var k in new[] { 1, 2, 0 }) { using (Keyboard.Pressing(VirtualKeyShort.CONTROL)) { Mouse.Click(r[k]); Thread.Sleep(500); } Free(); }
+        var two = TraceLines("picked").Split(" / ").LastOrDefault() ?? "";
+        var from = r[1];
+        var wb = window!.BoundingRectangle;
+        var target = new Point(wb.Left + 420, wb.Top + wb.Height / 2);
+        Mouse.MoveTo(from); Thread.Sleep(300);
+        Mouse.Down(MouseButton.Left); Thread.Sleep(200);
+        for (var k = 1; k <= 6; k++) { Mouse.MoveTo(new Point(from.X + k * 2, from.Y)); Thread.Sleep(80); }
+        Thread.Sleep(600);
+        var here = new Point(from.X + 12, from.Y);
+        for (var k = 1; k <= 16; k++) { Mouse.MoveTo(new Point(here.X + (target.X - here.X) * k / 16, here.Y + (target.Y - here.Y) * k / 16)); Thread.Sleep(70); }
+        for (var k = 0; k < 4; k++) { Mouse.MoveTo(new Point(target.X + k, target.Y + k)); Thread.Sleep(150); }
+        Thread.Sleep(400);
+        var overShot = Shot("tabs-picked-drag-over");
+        Mouse.Up(MouseButton.Left);
+        var three = Await(() => SplitCounts().SequenceEqual([3]), 6000);
+        var dropTrace = TraceLines("page drop");
+        Step("Ctrl+click two tabs, drag one of them onto the left of the page: both are carried and open on the left of a split of three",
+            two.EndsWith("picked 2") && three && dropTrace.Contains("at 0 of 3"), $"picks: {two}, splits [{string.Join(",", SplitCounts())}], trace: {TraceLines("drag start")} / {dropTrace} · {overShot} · " + Shot("tabs-picked-drag-split"));
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+        Thread.Sleep(2000);
+        Free();
+        Mouse.Click(RowPoints()[0]); Thread.Sleep(1000);
+    }
+
     Choose(RowPoints()[1], "Add to Group", "New Group");
     Keyboard.Type("Research");
     Keyboard.Press(VirtualKeyShort.RETURN);

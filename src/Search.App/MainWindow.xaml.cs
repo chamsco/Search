@@ -796,17 +796,29 @@ public partial class MainWindow : Window
         if ((sender as FrameworkElement)?.DataContext is Tab p && e.ClickCount == 1 && PickClick(p)) { wasLive = false; e.Handled = true; return; }
         if ((sender as FrameworkElement)?.DataContext is Tab t && e.ClickCount == 1)
         {
-            ClearPicks();
+            // Pressed on one of several picked: they may be about to be dragged together; a click without a drag lets them go.
+            pickedPress = t.Picked && Picked().Count > 1;
+            if (!pickedPress) ClearPicks();
             pickAnchor = t;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && SplitOn && !t.IsBlank) OpenInSplit(t);
-            else if (t != live) Select(t);
+            else if (t != live && !pickedPress) Select(t);
             e.Handled = true;
         }
         if (sender is FrameworkElement f && e.ClickCount == 1) StartDrag(f, e);
     }
 
+    bool pickedPress;
+
     void Row_MouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (pickedPress && e.ChangedButton == MouseButton.Left && (e.GetPosition(this) - pressAt).Length < 4)
+        {
+            // A plain click on one of several picked tabs: the picks go and that tab is shown, as any click.
+            pickedPress = false;
+            ClearPicks();
+            if ((sender as FrameworkElement)?.DataContext is Tab c && c != live) { Select(c); e.Handled = true; return; }
+        }
+        pickedPress = false;
         // The middle button closes, as in every browser.
         if (e.ChangedButton == MouseButton.Middle && (sender as FrameworkElement)?.DataContext is Tab t) { Close(t); e.Handled = true; }
         // A plain click on the page you are already on changes its address where it is.
@@ -911,7 +923,7 @@ public partial class MainWindow : Window
             if (Math.Abs(d.Y) < 4 && Math.Abs(d.X) < 4) return;
             source.PreviewMouseMove -= Move;
             if (source.DataContext is not Tab t) return;
-            dragging = t; App.Trace($"drag start {t.Title}");
+            dragging = t; carrying = Carried(t); App.Trace($"drag start {t.Title}" + (carrying.Count > 1 ? $" with {carrying.Count - 1} more" : ""));
             PinDrop.Visibility = pins.Count == 0 && !t.IsPin && !t.IsBlank ? Visibility.Visible : Visibility.Collapsed;
             source.Opacity = 0.55;
             var cancelled = false;
@@ -933,7 +945,10 @@ public partial class MainWindow : Window
                 ClearSplitDrop();
                 if (dragging is not null && EndPageDrop(t, cancelled)) dragging = null;
                 else if (PageDropPopup.IsOpen) EndPageDrop(t, true);
-                if (dragging is { } landed) Landed(landed);
+                if (dragging is { } landed) { Gather(landed); Landed(landed); foreach (var o in Others(landed)) Landed(o); }
+                if (carrying.Count > 1) ClearPicks();
+                pickedPress = false;
+                carrying = [];
                 dragging = null;
                 PinDrop.Visibility = Visibility.Collapsed;
                 SaveSoon();
@@ -977,9 +992,13 @@ public partial class MainWindow : Window
 
     Tab? splitTarget;
 
-    bool CanSplitDrop(Tab moving, Tab target) =>
-        SplitOn && moving != target && !moving.IsPin && !target.IsPin && !moving.IsBlank && !target.IsBlank
-        && SplitOf(moving) is null && (SplitOf(target) is not { } sp || sp.CanAdd);
+    bool CanSplitDrop(Tab moving, Tab target)
+    {
+        var all = carrying.Contains(moving) ? carrying : [moving];
+        return SplitOn && !all.Contains(target) && !target.IsPin && !target.IsBlank
+            && all.All(m => !m.IsPin && !m.IsBlank && SplitOf(m) is null)
+            && (SplitOf(target)?.Tabs.Count ?? 1) + all.Count <= TabSplit.Most;
+    }
 
     void ClearSplitDrop()
     {
@@ -1001,18 +1020,27 @@ public partial class MainWindow : Window
         {
             ClearSplitDrop();
             App.Trace($"split by drop {moving.Title} beside {target.Title}");
-            if (Pair(target, moving) is not null) { dragging = null; Select(moving); }
+            if (Pair(target, moving) is not null)
+            {
+                foreach (var o in Others(moving)) Pair(target, o);
+                dragging = null; Select(moving);
+            }
             return;
         }
         ClearSplitDrop();
         if (moving.IsPin == target.IsPin) return; // already moved while dragging
         if (target.IsPin && moving.IsBlank) return;
-        (moving.IsPin ? pins : tabs).Remove(moving);
-        moving.GroupId = null; moving.FolderId = null;
-        if (target.IsPin) { moving.PinId = Guid.NewGuid(); moving.Home = moving.Url; }
-        else { moving.PinId = null; moving.Home = null; }
         var to = target.IsPin ? pins : tabs;
-        to.Insert(Math.Max(0, to.IndexOf(target)), moving);
+        var at = Math.Max(0, to.IndexOf(target));
+        foreach (var m in carrying.Contains(moving) ? carrying.ToList() : [moving])
+        {
+            if (m.IsPin == target.IsPin || (target.IsPin && m.IsBlank)) continue;
+            (m.IsPin ? pins : tabs).Remove(m);
+            m.GroupId = null; m.FolderId = null;
+            if (target.IsPin) { m.PinId = Guid.NewGuid(); m.Home = m.Url; }
+            else { m.PinId = null; m.Home = null; }
+            to.Insert(Math.Min(at++, to.Count), m);
+        }
     }
 
     void PinDrop_Drop(object sender, DragEventArgs e)
@@ -1020,6 +1048,7 @@ public partial class MainWindow : Window
         if (e.Handled || e.Data.GetData(typeof(Tab)) is not Tab moving || moving.IsPin) return;
         e.Handled = true;
         Pin(moving);
+        foreach (var o in Others(moving)) Pin(o);
     }
 
     FrameworkElement? Container(Tab t)
