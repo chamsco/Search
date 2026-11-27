@@ -793,7 +793,7 @@ public partial class MainWindow
         var room = TopScroll.ActualWidth + (pinned ? TopPlusPinned.ActualWidth + TopPlusPinned.Margin.Left + TopPlusPinned.Margin.Right : 0);
         var taken = TopSpaceStrip.ActualWidth + TopSpaceStrip.Margin.Left + TopSpaceStrip.Margin.Right + pins.Count * 40 + heads * 96 + 34;
         var width = Math.Clamp((room - taken) / tabsN - TabGap, TabNarrowest, TabWidest);
-        if (Math.Abs(width - TopTabWidth) > 0.5) TopTabWidth = Math.Floor(width);
+        if (Math.Abs(width - TopTabWidth) > 0.5) { TopTabWidth = Math.Floor(width); App.Trace($"top tab width {TopTabWidth} for {tabsN} tabs"); }
     }
 
     /// <summary>Tabs that run past the strip's edge fade out instead of being cut off.</summary>
