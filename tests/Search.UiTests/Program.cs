@@ -300,6 +300,10 @@ try
         var flush = cl is not null && cl.Value.Right >= wb.Right - 12 && cl.Value.Bottom <= wb.Top + 60;
         Step("The top strip has Windows' own window buttons at the top right: minimise, maximise, close, left to right", ordered && flush, $"min {mn?.Left}, max {mx?.Left}, close {cl?.Left}..{cl?.Right} of a window ending at {wb.Right} · " + Shot("strip-caption-buttons"));
         Step("The top strip has Settings and the Library, and no Home or Downloads", T("TopSettings") is not null && T("TopLibraryDoor") is not null && !window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)).Any(el => { try { return el.Name is "Home" or "Downloads"; } catch { return false; } }), "TopSettings " + (T("TopSettings") is not null) + ", TopLibraryDoor " + (T("TopLibraryDoor") is not null));
+        for (var i = 0; i < 4; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
+        Thread.Sleep(1500);
+        var plusEarly = T("TopNewTabPinned")?.BoundingRectangle;
+        Step("Four more tabs along the top: the tabs get narrower and everything still fits, so the plus stays after the last tab", plusEarly is null || plusEarly.Value.Width < 1, $"pinned plus {(plusEarly is null ? "not shown" : plusEarly.Value.Left.ToString())} · " + Shot("strip-tabs-narrower"));
         for (var i = 0; i < 26; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
         Thread.Sleep(1500);
         var pinned = T("TopNewTabPinned")?.BoundingRectangle;
