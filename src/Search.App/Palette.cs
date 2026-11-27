@@ -46,6 +46,7 @@ public static class Palette
         Set("Wash", P(0.937, 0.175));
         Set("Hover", P(0.965, 0.15));
         Set("Frame", P(0.955, 0.075));
+        Set("Card.Deep", P(0.925, 0.085));
         Set("Safe", dark ? Color.FromRgb(74, 222, 128) : Color.FromRgb(20, 128, 61));
         Set("Unsafe", dark ? Color.FromRgb(250, 191, 36) : Color.FromRgb(181, 84, 10));
 

@@ -105,9 +105,22 @@ public partial class MainWindow
             FoldLibrary(libBefore, to, () => { SideColumn.Width = new GridLength(to); });
             if (Moves) LibraryHost.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
             else LibraryHost.Opacity = 1;
+            FadeColumnBody(false);
             LibraryDoor.Opacity = 1;
         }
         ShowSection(want);
+    }
+
+    /// <summary>The column's pins, tabs and foot under the Library: gone while it is open, back (softly) once it has gone.</summary>
+    void FadeColumnBody(bool show, bool soft = false)
+    {
+        foreach (UIElement el in new UIElement[] { PinGrid, TabScroll, SideFoot })
+        {
+            el.BeginAnimation(OpacityProperty, null);
+            if (!Moves || (show && !soft)) { el.Opacity = show ? 1 : 0; continue; }
+            el.BeginAnimation(OpacityProperty, show ? new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)) : new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(120)));
+            el.Opacity = show ? 1 : 0;
+        }
     }
 
     void CloseLibrary(bool animate = true)
@@ -115,9 +128,10 @@ public partial class MainWindow
         if (!libraryOpen) return;
         libraryOpen = false;
         var from = SideColumn.ActualWidth;
-        void Done() { LibraryHost.Visibility = Visibility.Collapsed; LibraryHost.BeginAnimation(OpacityProperty, null); SideColumn.Width = new GridLength(libBefore); }
+        void Done() { LibraryHost.Visibility = Visibility.Collapsed; LibraryHost.BeginAnimation(OpacityProperty, null); SideColumn.Width = new GridLength(libBefore); FadeColumnBody(true, Moves && animate); }
         if (!animate || !Moves) { Done(); return; }
-        LibraryHost.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(160)));
+        // The library fades out over the whole fold, and only then do the column's own rows come back: the two never show on top of each other.
+        LibraryHost.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(260)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
         FoldLibrary(from, libBefore, Done);
     }
 

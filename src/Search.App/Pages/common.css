@@ -69,6 +69,7 @@ kbd { font: 12px "Segoe UI Variable Text","Segoe UI"; padding: 1px 6px; border: 
 .sn, .pn { font-size: 13px; }
 
 /* In the Library (the column widened): no page margins, no page title. */
+html.embed, html.embed body { background: transparent; }
 html.embed .page { max-width: none; padding: 12px 10px 40px; }
 html.embed h1, html.embed .sub { display: none; }
 html.embed .shell { display: block; } html.embed nav { display: none; } html.embed main { padding: 12px 12px 40px; max-width: none; }

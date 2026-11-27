@@ -565,7 +565,7 @@
       </ItemsControl>
 
       <!-- The foot: the Library at the left, the spaces in the middle (the one you are in centred and a little larger, the rest fading away), Settings and an update at the right. -->
-      <Grid DockPanel.Dock="Bottom" Margin="10,0,10,8" Height="36">
+      <Grid x:Name="SideFoot" DockPanel.Dock="Bottom" Margin="10,0,10,8" Height="36">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <Grid VerticalAlignment="Center">
           <Button Style="{StaticResource Door}" x:Name="LibraryDoor" AutomationProperties.AutomationId="LibraryDoor" AutomationProperties.Name="Library" Content="&#xE8F1;" ToolTip="Library: spaces, history, downloads, bookmarks (Ctrl+Shift+L)" Click="LibraryDoor_Click" RenderTransformOrigin="0.5,0.5">
@@ -593,7 +593,7 @@
           <Button Style="{StaticResource Door}" x:Name="FootSettingsDoor" AutomationProperties.AutomationId="FootSettings" AutomationProperties.Name="Settings" Content="&#xE713;" ToolTip="Settings (Ctrl+,)" Margin="0" Click="FootSettings_Click" />
         </StackPanel>
       </Grid>
-      <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="10,0,10,10">
+      <ScrollViewer x:Name="TabScroll" DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="10,0,10,10">
         <StackPanel>
           <ItemsControl x:Name="TabList" ItemTemplate="{StaticResource TabRow}" AllowDrop="True" />
           <!-- New tab: the faintest ink, a plus and its name. -->
@@ -622,7 +622,7 @@
       <Grid.ColumnDefinitions><ColumnDefinition Width="82" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
       <StackPanel x:Name="LibraryRail" Margin="9,8,0,0" />
-      <Border x:Name="LibraryFrame" Grid.Column="1" Margin="0,0,8,0" CornerRadius="10" Background="{DynamicResource Ground}" BorderBrush="{DynamicResource Hairline}" BorderThickness="0.5" ClipToBounds="True" />
+      <Border x:Name="LibraryFrame" Grid.Column="1" Margin="0,0,8,0" CornerRadius="10" Background="{DynamicResource Card.Deep}" BorderBrush="{DynamicResource Hairline}" BorderThickness="0.5" ClipToBounds="True" />
       <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="10,6,10,8" Height="30">
         <Button Style="{StaticResource Door}" AutomationProperties.AutomationId="LibraryBack" AutomationProperties.Name="Back to tabs" Content="&#xE72B;" HorizontalAlignment="Left" Click="LibraryBack_Click" ToolTip="Back to tabs (Esc)" />
         <TextBlock x:Name="LibraryTitle" AutomationProperties.AutomationId="LibraryTitle" FontSize="12.5" Margin="40,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Row.Muted}" />
