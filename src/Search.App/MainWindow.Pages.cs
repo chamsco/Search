@@ -383,6 +383,13 @@ public partial class MainWindow
         PostToPages(SettingsMessage(), "settings");
     }
 
+    /// <summary>The page's own scrollbar drawn as Zen's (ScrollbarScript), on every page from its first document on.</summary>
+    static async Task InstallScrollbars(CoreWebView2 core)
+    {
+        try { await core.AddScriptToExecuteOnDocumentCreatedAsync(ScrollbarScript.Source); }
+        catch (Exception e) { App.Log(e); }
+    }
+
     void ApplyColorScheme(CoreWebView2 core)
     {
         try

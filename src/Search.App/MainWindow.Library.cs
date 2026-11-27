@@ -185,6 +185,7 @@ public partial class MainWindow
                 await libraryView.EnsureCoreWebView2Async(environment);
                 var core = libraryView.CoreWebView2;
                 ApplyColorScheme(core);
+                await InstallScrollbars(core);
                 core.SetVirtualHostNameToFolderMapping(PagesHost, PagesDir, CoreWebView2HostResourceAccessKind.Allow);
                 await EnsureExtensions(core);
                 core.WebMessageReceived += (_, e) => OnPageMessage(libraryTab, core, e);

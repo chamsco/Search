@@ -65,6 +65,7 @@ public partial class MainWindow
         }
         var core = w.View.CoreWebView2;
         ApplyColorScheme(core);
+        await InstallScrollbars(core);
         core.DownloadStarting += OnDownloadStarting;
         core.NewWindowRequested += (_, e) => { App.Trace("mini: new window asked for " + e.Uri); e.Handled = true; core.Navigate(e.Uri); };
         core.DocumentTitleChanged += (_, _) => w.Say(core.DocumentTitle, core.Source);
