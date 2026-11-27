@@ -314,6 +314,103 @@ try
     var backHome = LastStage();
     Step("Ctrl+Alt+1: back in Personal, its Settings page is there again and alone", backHome.Contains("shows 1 page(s) in Personal") && backHome.Contains("settings"), backHome.Trim() + " · " + Shot("space-settings-back"));
 
+    // Issue #25: pages of one space (Split View, Library pages, pins) must not stay on screen in another.
+    // "stage check" is traced once the switch settles: pages WPF shows, and page windows Windows itself shows.
+    string StageCheck() => (Trace6().Split('\n').LastOrDefault(l => l.Contains("stage check")) ?? "").Trim();
+    string Settled(Func<string, bool> ok) { var at = DateTime.UtcNow; string got; do { got = StageCheck(); if (ok(got)) break; Thread.Sleep(300); } while ((DateTime.UtcNow - at).TotalSeconds < 6); return got; }
+    void ToSpace(int n) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, n == 1 ? VirtualKeyShort.KEY_1 : VirtualKeyShort.KEY_2); Thread.Sleep(2500); }
+    bool WorkAlone(string c) => c.Contains("1 visible (native 1) in Work") && c.Contains("example.org");
+
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Thread.Sleep(1200);
+    Keyboard.Type("example.net");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(5000);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+    Thread.Sleep(1500);
+    Keyboard.Type("example.com");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(6000);
+    var splitHere = Settled(c => c.Contains("2 visible (native 2) in Personal"));
+    var splitShot = Shot("space-split-open");
+    // This hop by the space's button in the foot, as a person would; the others by Ctrl+Alt+number.
+    if (window.FindFirstDescendant(cf => cf.ByAutomationId("Space-Work")) is { } workButton) { Mouse.Click(CentreOf(workButton)); Thread.Sleep(2500); } else ToSpace(2);
+    var splitLeft = Settled(WorkAlone);
+    Step("Split View of two pages in Personal, then click Work in the foot: Work shows only its own page, neither split page stays on top", WorkAlone(splitLeft), $"in Personal: {splitHere} · in Work: {splitLeft} · {splitShot} · " + Shot("space-split-left"));
+    ToSpace(1);
+    var splitBack = Settled(c => c.Contains("2 visible (native 2) in Personal"));
+    Step("Ctrl+Alt+1: back in Personal, the split's two pages are there again, side by side", splitBack.Contains("2 visible (native 2) in Personal") && splitBack.Contains("example.net"), splitBack + " · " + Shot("space-split-back"));
+
+    // Work's own page in Split View too, so the switch goes split to split.
+    ToSpace(2);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+    Thread.Sleep(1500);
+    Keyboard.Type("example.com/#work");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(6000);
+    var workSplit = Settled(c => c.Contains("2 visible (native 2) in Work"));
+    ToSpace(1);
+    var splitToSplit = Settled(c => c.Contains("2 visible (native 2) in Personal"));
+    Step("A split in each space: Ctrl+Alt+1 from Work's split shows Personal's two pages only", splitToSplit.Contains("2 visible (native 2) in Personal") && !splitToSplit.Contains("#work"), $"in Work: {workSplit} · in Personal: {splitToSplit} · " + Shot("space-split-to-split"));
+    ToSpace(2);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N); // the split comes apart; example.org is a page of its own again
+    Thread.Sleep(1500);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1); // example.org, Work's first tab
+    ToSpace(1);
+
+    foreach (var (keys, name, kind) in new[] { (new[] { VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_Y }, "History", "history"), (new[] { VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_J }, "Downloads", "downloads") })
+    {
+        Chord(keys);
+        Thread.Sleep(3000);
+        var pageShot = Shot("space-" + kind + "-open");
+        ToSpace(2);
+        var pageLeft = Settled(WorkAlone);
+        Step($"{name} page open in Personal, then Ctrl+Alt+2: Work shows only its own page, {name} does not stay on top", WorkAlone(pageLeft), $"{pageLeft} · {pageShot} · " + Shot("space-" + kind + "-left"));
+        ToSpace(1);
+    }
+
+    // A pin chosen in Personal, then over to Work and back.
+    var pinGrid = window.FindFirstDescendant(cf => cf.ByAutomationId("PinGrid"));
+    if (pinGrid is not null && pinGrid.BoundingRectangle.Height > 10) Mouse.Click(new Point(pinGrid.BoundingRectangle.Left + 24, pinGrid.BoundingRectangle.Top + 19));
+    else Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1);
+    Thread.Sleep(3000);
+    var onPin = Settled(c => c.Contains("in Personal") && c.Contains("1 visible"));
+    var pinShot = Shot("space-pin-open");
+    ToSpace(2);
+    var pinLeft = Settled(WorkAlone);
+    Step("Click Personal's pin, then Ctrl+Alt+2: Work shows only its own page, the pinned page does not stay on top", WorkAlone(pinLeft), $"on the pin: {onPin} · in Work: {pinLeft} · {pinShot} · " + Shot("space-pin-left"));
+    // And a pin of Work's own, clicked in Work, then over to Personal.
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_D);
+    Thread.Sleep(1500);
+    ToSpace(1);
+    var workPinLeft = Settled(c => c.Contains("1 visible (native 1) in Personal"));
+    Step("Pin Work's page and switch to Personal: only Personal's page shows", workPinLeft.Contains("1 visible (native 1) in Personal") && !workPinLeft.Contains("example.org"), workPinLeft + " · " + Shot("space-workpin-left"));
+
+    // Issue: scrollbars as Zen's: thin, no arrows, over the page.
+    ToSpace(2);
+    Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+    Thread.Sleep(1200);
+    Keyboard.Type("https://en.wikipedia.org/wiki/Web_browser");
+    Keyboard.Press(VirtualKeyShort.RETURN);
+    Thread.Sleep(7000);
+    var wb2 = window.BoundingRectangle;
+    Mouse.MoveTo(new Point(wb2.Right - 60, wb2.Top + wb2.Height / 2));
+    Mouse.Scroll(-5);
+    Thread.Sleep(400);
+    var pageBarShot = Shot("scrollbar-page");
+    Mouse.MoveTo(new Point(wb2.Right - 14, wb2.Top + wb2.Height / 2));
+    Thread.Sleep(600);
+    Step("A long page: its scrollbar is a thin bar over the page with no arrows, wider under the pointer", !app.HasExited, pageBarShot + " · " + Shot("scrollbar-page-hover"));
+    for (var k = 0; k < 18; k++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(400); Keyboard.Type("about:blank#" + k); Keyboard.Press(VirtualKeyShort.RETURN); Thread.Sleep(500); }
+    Thread.Sleep(1000);
+    var sideBar = window.FindFirstDescendant(cf => cf.ByAutomationId("TabScroll"))?.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.ScrollBar));
+    var sideShot = Shot("scrollbar-side");
+    if (sideBar is not null) { Mouse.MoveTo(CentreOf(sideBar)); Thread.Sleep(500); }
+    var barWidth = sideBar?.BoundingRectangle.Width ?? -1;
+    Step("Many tabs in the column: its scrollbar is a thin rounded thumb (no arrows, no track), at most 10 px wide", barWidth is > 0 and <= 10, $"scrollbar width {barWidth} · {sideShot} · " + Shot("scrollbar-side-hover"));
+    for (var k = 0; k < 19; k++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W); Thread.Sleep(250); }
+    ToSpace(1);
+
     var plus = window.FindFirstDescendant(cf => cf.ByAutomationId("NewSpace"));
     plus?.AsButton().Invoke();
     Thread.Sleep(1200);

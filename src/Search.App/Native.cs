@@ -9,6 +9,7 @@ static class Native
     [StructLayout(LayoutKind.Sequential)] public struct CursorAt { public int X, Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out CursorAt at);
     [DllImport("user32.dll")] static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool redraw);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
 
     /// <summary>
     /// The page's corners. A web view is a window of its own inside ours, so
