@@ -58,13 +58,16 @@ public partial class MainWindow
         libraryBuilt = true;
         foreach (var (id, name, glyph, _) in LibrarySections)
         {
-            var b = new Button { Style = (Style)FindResource("Door"), Content = glyph, ToolTip = name, Margin = new Thickness(0, 0, 0, 4), Width = 32, Height = 32 };
+            var face = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            face.Children.Add(new TextBlock { Text = glyph, FontSize = 17, HorizontalAlignment = HorizontalAlignment.Center });
+            face.Children.Add(new TextBlock { Text = name, FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"), FontSize = 10.5, Margin = new Thickness(0, 5, 0, 0), HorizontalAlignment = HorizontalAlignment.Center });
+            var b = new Button { Style = (Style)FindResource("Door"), Content = face, ToolTip = name, Margin = new Thickness(0, 0, 0, 4), Width = 64, Height = 56 };
             System.Windows.Automation.AutomationProperties.SetAutomationId(b, "Lib-" + id);
             System.Windows.Automation.AutomationProperties.SetName(b, name);
             var section = id;
             b.Click += (_, _) => ShowSection(section);
             railButtons[id] = b;
-            var wash = new Border { CornerRadius = new CornerRadius(9), Margin = new Thickness(0, 0, 0, 4), Child = b };
+            var wash = new Border { CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 0, 0, 6), Child = b };
             b.Margin = new Thickness(0);
             railWashes[id] = wash;
             LibraryRail.Children.Add(wash);

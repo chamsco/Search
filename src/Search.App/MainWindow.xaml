@@ -619,9 +619,9 @@
 
     <!-- The Library: the column widened, a rail of sections down its left, the section beside it. -->
     <Grid x:Name="LibraryHost" Grid.Column="0" Grid.RowSpan="3" Margin="0,52,0,0" Background="{DynamicResource Frame}" Visibility="Collapsed">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="82" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-      <StackPanel x:Name="LibraryRail" Margin="8,2,0,0" />
+      <StackPanel x:Name="LibraryRail" Margin="9,8,0,0" />
       <Border x:Name="LibraryFrame" Grid.Column="1" Margin="0,0,8,0" CornerRadius="10" Background="{DynamicResource Ground}" BorderBrush="{DynamicResource Hairline}" BorderThickness="0.5" ClipToBounds="True" />
       <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="10,6,10,8" Height="30">
         <Button Style="{StaticResource Door}" AutomationProperties.AutomationId="LibraryBack" AutomationProperties.Name="Back to tabs" Content="&#xE72B;" HorizontalAlignment="Left" Click="LibraryBack_Click" ToolTip="Back to tabs (Esc)" />
