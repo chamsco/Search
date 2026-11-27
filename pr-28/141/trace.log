@@ -1,0 +1,292 @@
+[08:49:34.563] stage shows 1 page(s) in Personal, live https://example.org/
+[08:49:34.575] ball still: animations are off
+[08:49:43.868] row press 1 at 117,139
+[08:49:43.894] stage shows 1 page(s) in Personal, live https://example.net/
+[08:49:44.269] row moved 2,-4
+[08:49:44.296] stage shows 1 page(s) in Personal, live https://example.org/
+[08:49:44.297] drag start Example Domain
+[08:49:44.335] page drop ready
+[08:49:44.354] drag hits 135 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.357] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,28 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.358] drag hits 135 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.359] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,28 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.366] drag hits 135 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.367] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,28 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.427] drag hits 135 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.427] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,28 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.461] drag hits 133 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.462] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,26 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.521] drag hits 133 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.522] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,26 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.584] drag hits 133 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.584] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,26 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.648] drag hits 133 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.648] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,26 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.653] drag hits 131 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.654] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=104,24 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.710] drag hits 131 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.710] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=104,24 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.771] drag hits 131 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.771] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=104,24 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.880] drag hits 129 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.880] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=105,22 ctx=Tab idx=0 drag=2 grp=
+[08:49:44.945] drag hits 129 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[08:49:44.946] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=105,22 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.007] drag hits 129 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[08:49:45.007] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=105,22 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.022] drag hits 127 TextBlock:T@113 Border:T@107 Border:T@107 Border:T@107
+[08:49:45.023] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.084] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.084] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.147] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.148] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.211] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.212] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.273] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.273] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.336] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.337] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.397] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.398] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.463] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.463] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.523] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.524] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.585] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.586] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.647] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.647] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.709] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.709] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.774] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.775] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.835] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.835] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.899] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.900] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:45.960] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:45.961] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.024] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.025] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.085] drag hits 127 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.086] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=106,20 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.111] drag hits 126 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.111] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=105,19 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.162] drag hits 126 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.162] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=105,19 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.227] drag hits 126 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.228] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=105,19 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.288] drag hits 126 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.288] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=105,19 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.349] drag hits 126 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.349] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=105,19 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.384] drag hits 125 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.384] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=104,18 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.446] drag hits 125 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.446] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=104,18 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.507] drag hits 125 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.507] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=104,18 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.572] drag hits 125 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.572] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=104,18 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.632] drag hits 125 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.632] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=104,18 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.655] drag hits 124 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.655] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,17 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.709] drag hits 124 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.709] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,17 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.772] drag hits 124 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.772] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,17 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.831] drag hits 123 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.832] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,16 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.881] drag hits 123 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.881] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,16 ctx=Tab idx=0 drag=2 grp=
+[08:49:46.946] drag hits 123 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:46.946] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,16 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.007] drag hits 123 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.008] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,16 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.023] drag hits 123 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.023] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,16 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.086] drag hits 123 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.086] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,16 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.148] drag hits 123 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.148] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,16 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.210] drag hits 123 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.210] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,16 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.215] drag hits 122 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.215] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,15 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.271] drag hits 122 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.271] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,15 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.335] drag hits 122 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.335] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,15 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.391] drag hits 122 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.392] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,15 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.445] drag hits 122 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.445] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,15 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.507] drag hits 122 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.507] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,15 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.567] drag hits 121 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.568] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,14 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.633] drag hits 121 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.633] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,14 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.693] drag hits 121 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.693] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,14 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.758] drag hits 121 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.758] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,14 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.759] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.760] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=100,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.821] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.821] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=100,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.883] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.883] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=100,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:47.945] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:47.945] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=100,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.007] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.008] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=100,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.069] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.070] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=100,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.096] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.096] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.148] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.149] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.209] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.210] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.273] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.274] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.335] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.335] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=101,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.352] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.352] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.415] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.415] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.476] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.476] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.537] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.537] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.602] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.602] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=102,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.608] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.608] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.664] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.664] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.724] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.724] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.789] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.789] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.851] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.851] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.912] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.913] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:48.977] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:48.977] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:49.036] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:49.036] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:49.101] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:49.101] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:49.161] drag hits 120 TextBlock:T@112 Border:T@108 Border:T@108 Border:T@107
+[08:49:49.162] drag over row rows=[T0,T1,T2] at=17,107 h=28 local=103,13 ctx=Tab idx=0 drag=2 grp=
+[08:49:49.192] split by drop Example Domain beside Example Domain
+[08:49:49.210] stage shows 2 page(s) in Personal, live https://example.net/
+[08:49:49.213] drag ended Move
+[08:49:51.749] stage shows 1 page(s) in Personal, live https://example.net/
+[08:49:54.987] row press 1 at 117,79
+[08:49:55.013] stage shows 1 page(s) in Personal, live https://example.org/
+[08:49:57.130] row press 1 at 117,139
+[08:49:57.158] stage shows 1 page(s) in Personal, live https://example.net/
+[08:49:57.546] row moved 4,0
+[08:49:57.575] stage shows 1 page(s) in Personal, live https://example.org/
+[08:49:57.576] drag start Example Domain
+[08:49:57.612] page drop ready
+[08:49:57.618] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:57.618] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=104,2 ctx=Tab idx=1 drag=2 grp=
+[08:49:57.722] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:57.722] drag over row rows=[T0,T1,T2] at=17,136.51688110443274 h=28 local=106,2.4831188955672587 ctx=Tab idx=1 drag=1 grp=
+[08:49:57.771] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:57.771] drag over row rows=[T0,T1,T2] at=17,136.98065657870023 h=28 local=106,2.019343421299766 ctx=Tab idx=1 drag=1 grp=
+[08:49:57.835] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:57.836] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=106,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:57.896] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:57.897] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=106,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:57.914] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:57.914] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=108,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:57.975] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:57.975] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=108,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.038] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.038] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=108,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.099] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.100] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=108,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.107] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.107] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=110,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.164] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.165] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=110,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.225] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.225] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=110,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.283] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.284] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.336] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.336] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.396] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.397] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.460] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.461] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.522] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.522] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.586] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.586] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.647] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.648] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.710] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.711] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.772] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.773] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.833] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.834] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.898] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.899] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:58.958] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:58.959] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.021] drag hits 139 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.022] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=112,2 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.085] drag hits 141 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.085] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=121,4 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.117] drag hits 148 TextBlock:T@143 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.117] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=139,11 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.149] drag hits 154 TextBlock:T@143 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.149] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=158,17 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.165] drag hits 154 TextBlock:T@143 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.165] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=158,17 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.225] drag hits 154 TextBlock:T@143 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.226] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=158,17 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.290] drag hits 154 TextBlock:T@143 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.290] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=158,17 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.349] drag hits 154 TextBlock:T@143 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.349] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=158,17 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.357] drag hits 157 TextBlock:T@143 Border:T@137 Border:T@137 Border:T@137
+[08:49:59.358] drag over row rows=[T0,T1,T2] at=17,137 h=28 local=167,20 ctx=Tab idx=1 drag=1 grp=
+[08:49:59.437] drag hits 170 Border:T@167 Border:T@167 Border:T@167
+[08:49:59.438] drag over row rows=[T0,T1,T2] at=17,167 h=28 local=205,3 ctx=Tab idx=2 drag=1 grp=
+[08:49:59.492] drag hits 170 Border:T@167 Border:T@167 Border:T@167
+[08:49:59.492] drag over row rows=[T0,T1,T2] at=17,167 h=28 local=205,3 ctx=Tab idx=2 drag=1 grp=
+[08:49:59.552] drag hits 170 Border:T@167 Border:T@167 Border:T@167
+[08:49:59.552] drag over row rows=[T0,T1,T2] at=17,167 h=28 local=205,3 ctx=Tab idx=2 drag=1 grp=
+[08:49:59.616] drag hits 170 Border:T@167 Border:T@167 Border:T@167
+[08:49:59.616] drag over row rows=[T0,T1,T2] at=17,167 h=28 local=205,3 ctx=Tab idx=2 drag=1 grp=
+[08:49:59.646] page drop over 0
+[08:49:59.647] drag hits 176 
+[08:49:59.661] drag hits 179 
+[08:49:59.677] drag hits 182 
+[08:50:01.888] page drop over 1
+[08:50:04.795] drag ended Move
+[08:50:04.805] split by page drop Example Domain at 1 of 2
+[08:50:04.813] stage shows 2 page(s) in Personal, live https://example.net/
+[08:50:06.049] stage shows 1 page(s) in Personal, live https://example.net/
+[08:50:10.502] stage shows 1 page(s) in Personal, live https://example.org/
+[08:50:10.506] split with new tab
+[08:50:10.513] stage shows 1 page(s) in Personal, live about:blank
+[08:50:15.376] brought Example Domain into the split
+[08:50:15.383] stage shows 2 page(s) in Personal, live https://example.net/
+[08:50:18.409] stage shows 1 page(s) in Personal, live https://example.net/
+[08:50:23.058] stage shows 1 page(s) in Personal, live https://example.org/
+[08:50:23.059] split with new tab
+[08:50:23.067] stage shows 1 page(s) in Personal, live about:blank
+[08:50:26.053] stage shows 1 page(s) in Personal, live https://example.org/
+[08:50:28.907] row press 1 at 117,79
