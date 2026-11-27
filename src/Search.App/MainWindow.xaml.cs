@@ -80,6 +80,7 @@ public partial class MainWindow : Window
         Shared.Downloads.Changed += OnDownloadsChanged;
         Closed += (_, _) => { Shared.Prefs.Changed -= ApplyPrefs; Shared.Perms.Changed -= OnPermsChanged; Shared.Styles.Changed -= OnStylesChanged; Marks.Changed -= OnBookmarksChanged; Shared.Downloads.Changed -= OnDownloadsChanged; };
         PreviewKeyDown += Window_PreviewKeyDown;
+        Loaded += (_, _) => Ball.Still = !Moves;
         PreviewMouseDown += Window_PreviewMouseDown;
         Stage.SizeChanged += (_, _) => RoundLiveView();
         InitLittle();

@@ -661,16 +661,19 @@
         <!-- An empty tab: the field alone in the middle of the page (Omnibox.swift). -->
         <Grid x:Name="Blank" Background="{DynamicResource Ground}" Visibility="Collapsed">
           <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="560" Margin="24,0">
+            <local:DotBall x:Name="Ball" Width="112" Height="112" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-164,0,0" />
             <Border x:Name="FieldSheet" Style="{StaticResource Sheet}" Padding="22,14" VerticalAlignment="Top">
               <Border.Effect>
                 <DropShadowEffect Color="Black" Opacity="0.06" BlurRadius="24" ShadowDepth="8" Direction="270" />
               </Border.Effect>
               <Grid Height="22">
                 <TextBlock x:Name="Placeholder" Text="Enter a web address" FontSize="15.5" Foreground="{DynamicResource Muted}" Opacity="0.75"
-                           VerticalAlignment="Center" IsHitTestVisible="False" />
-                <TextBox x:Name="BlankField" FontSize="15.5" BorderThickness="0" Background="Transparent" Padding="-2,0,0,0"
+                           VerticalAlignment="Center" IsHitTestVisible="False" Margin="0,0,34,0" />
+                <TextBox x:Name="BlankField" FontSize="15.5" BorderThickness="0" Background="Transparent" Padding="-2,0,0,0" Margin="0,0,34,0"
                          Foreground="{DynamicResource Ink}" CaretBrush="{DynamicResource Ink}" VerticalContentAlignment="Center"
                          PreviewKeyDown="BlankField_PreviewKeyDown" TextChanged="BlankField_TextChanged" />
+                <Button x:Name="MicDoor" Style="{StaticResource Door}" AutomationProperties.AutomationId="Dictate" AutomationProperties.Name="Dictate" Content="&#xE720;" FontSize="13"
+                        ToolTip="Speak the address or search" HorizontalAlignment="Right" Margin="0" Click="Mic_Click" />
               </Grid>
             </Border>
             <Canvas VerticalAlignment="Top" Margin="0,58,0,0">

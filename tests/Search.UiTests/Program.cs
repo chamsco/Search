@@ -80,7 +80,22 @@ try
     Step("Launch Search.exe with an empty data folder", window is not null, window?.Title);
     window!.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
     Thread.Sleep(4000);
-    Step("Empty tab shows the centred address field", true, Shot("new-tab"));
+    {
+        // The mark above the field is a ball of dots turning: two looks a moment apart differ, and the field has its microphone.
+        var screen = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+        var wb0 = window.BoundingRectangle; var area = new Rectangle((int)(wb0.Left + 232 + (wb0.Width - 240) / 2) - 70, screen.Height / 2 - 200, 140, 140);
+        Bitmap Look() { var bmp = new Bitmap(area.Width, area.Height); using var g = Graphics.FromImage(bmp); g.CopyFromScreen(area.Location, Point.Empty, area.Size); return bmp; }
+        using var one = Look(); Thread.Sleep(900); using var two = Look();
+        int changed = 0, dark = 0;
+        for (var y = 0; y < area.Height; y += 2) for (var x = 0; x < area.Width; x += 2)
+        {
+            var p1 = one.GetPixel(x, y); var p2 = two.GetPixel(x, y);
+            if (p1.R < 200) dark++;
+            if (Math.Abs(p1.R - p2.R) > 24) changed++;
+        }
+        var mic = window.FindFirstDescendant(cf => cf.ByAutomationId("Dictate")) is not null;
+        Step("Empty tab shows the centred address field with a ball of dots turning above it and a microphone in the field", mic && dark > 60 && changed > 8, $"mic {mic}, dots drawn {dark}, pixels that moved {changed} · " + Shot("new-tab"));
+    }
 
     Keyboard.Type("you");
     Thread.Sleep(2000);
