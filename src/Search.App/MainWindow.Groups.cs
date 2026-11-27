@@ -368,14 +368,16 @@ public partial class MainWindow
         e.Handled = true; App.Trace("drop on heading");
         if (e.Data.GetData(typeof(Tab)) is not Tab moving || (sender as FrameworkElement)?.DataContext is not RowHeading h || moving.IsBlank) return;
         var st = StateOf(space);
+        var all = carrying.Contains(moving) ? carrying.Where(m => !m.IsBlank).ToList() : [moving];
         if (h.IsFolder)
         {
-            if (!moving.IsPin) Pin(moving);
-            moving.FolderId = h.Id;
+            foreach (var m in all) { if (!m.IsPin) Pin(m); m.FolderId = h.Id; }
             RebuildRows(st);
             SaveSoon();
         }
-        else if (st.Groups.FirstOrDefault(g => g.Id == h.Id) is { } g && !moving.IsPin) AddToGroup(moving, g);
+        else if (st.Groups.FirstOrDefault(g => g.Id == h.Id) is { } g)
+            foreach (var m in all.Where(m => !m.IsPin)) AddToGroup(m, g);
+        dragging = null;
     }
 
     /// <summary>A row let go after being dragged: it is in the group (or the folder) it came to rest in.</summary>

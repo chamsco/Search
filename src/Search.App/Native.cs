@@ -6,6 +6,8 @@ static class Native
 {
     [DllImport("gdi32.dll")] static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int w, int h);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [StructLayout(LayoutKind.Sequential)] public struct CursorAt { public int X, Y; }
+    [DllImport("user32.dll")] public static extern bool GetCursorPos(out CursorAt at);
     [DllImport("user32.dll")] static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool redraw);
 
     /// <summary>

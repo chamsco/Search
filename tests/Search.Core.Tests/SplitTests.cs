@@ -155,3 +155,75 @@ public class ArchiveTests : IDisposable
         Assert.Equal(w, Assert.Single(WindowList.Load()).Id);
     }
 }
+
+public class SplitDropTests
+{
+    static Guid[] Ids(int n) => Enumerable.Range(0, n).Select(_ => Guid.NewGuid()).ToArray();
+
+    [Theory]
+    [InlineData(10, 0)]   // left half of the first page: first
+    [InlineData(300, 1)]  // right half of the first: between
+    [InlineData(450, 1)]  // left half of the second: between
+    [InlineData(790, 2)]  // right half of the second: last
+    public void APageLetGoOverASideGoesThere(double x, int want)
+    {
+        var s = new TabSplit(Ids(2));
+        Assert.Equal(want, s.DropIndex(x, 100, 800, 600, 10));
+    }
+
+    [Fact]
+    public void StackedPagesUseTheTopAndBottomHalves()
+    {
+        var s = new TabSplit(Ids(2), SplitAxis.Vertical);
+        Assert.Equal(0, s.DropIndex(400, 20, 800, 600, 10));
+        Assert.Equal(2, s.DropIndex(400, 590, 800, 600, 10));
+    }
+
+    [Fact]
+    public void InsertPutsThePageAtItsPlaceAndSharesEvenly()
+    {
+        var ids = Ids(3);
+        var s = new TabSplit(ids.Take(2));
+        Assert.True(s.Insert(ids[2], 0));
+        Assert.Equal([ids[2], ids[0], ids[1]], s.Tabs);
+        Assert.All(s.Sizes, x => Assert.Equal(1.0 / 3, x, 6));
+        Assert.False(s.Insert(ids[0], 1));
+    }
+
+    [Fact]
+    public void ReplaceKeepsThePlaceAndTheShare()
+    {
+        var ids = Ids(3);
+        var s = new TabSplit(ids.Take(2), sizes: [0.7, 0.3]) { Focused = ids[1] };
+        Assert.True(s.Replace(ids[1], ids[2]));
+        Assert.Equal([ids[0], ids[2]], s.Tabs);
+        Assert.Equal(0.3, s.Sizes[1], 6);
+        Assert.Equal(ids[2], s.Focused);
+        Assert.False(s.Replace(ids[0], ids[2]));
+    }
+}
+
+public class PickTests
+{
+    [Fact]
+    public void ShiftPicksEveryTabBetweenEitherWay()
+    {
+        string[] order = ["a", "b", "c", "d", "e"];
+        Assert.Equal(["b", "c", "d"], Picks.Range(order, "b", "d"));
+        Assert.Equal(["b", "c", "d"], Picks.Range(order, "d", "b"));
+        Assert.Equal(["c"], Picks.Range(order, null, "c"));
+        Assert.Empty(Picks.Range(order, "a", "z"));
+    }
+
+    [Fact]
+    public void CtrlAddsAndTakesAwayStartingFromThePageOnScreen()
+    {
+        string[] order = ["a", "b", "c", "d"];
+        var p = Picks.Toggle(order, [], "a", "c");
+        Assert.Equal(["a", "c"], p);
+        p = Picks.Toggle(order, p, "a", "d");
+        Assert.Equal(["a", "c", "d"], p);
+        p = Picks.Toggle(order, p, "a", "a");
+        Assert.Equal(["c", "d"], p);
+    }
+}
