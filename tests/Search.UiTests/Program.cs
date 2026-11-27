@@ -394,8 +394,9 @@ try
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(7000);
     var wb2 = window.BoundingRectangle;
-    var pageRight = (int)wb2.Right - 29; // the page card ends 29 px inside the window's frame (a maximised window reaches past the screen)
-    var edge = new Rectangle(pageRight - 60, (int)(wb2.Top + wb2.Height / 2) - 150, 80, 300); // the 20 px past the page are the desktop, which stays still and cancels out
+    var screenRight = System.Windows.Forms.Screen.PrimaryScreen!.Bounds.Right;
+    var pageRight = screenRight - 22; // the maximised window's page card ends 22 px inside the screen's edge (its frame reaches past); the run's screen is 1024 wide
+    var edge = new Rectangle(screenRight - 100, 40, 100, 640); // the thumb sits near the top after a few notches, so the strip is the page's whole height // the strip past the page is the desktop, which stays still and cancels out
     Bitmap Strip() { var bmp = new Bitmap(edge.Width, edge.Height); using var g = Graphics.FromImage(bmp); g.CopyFromScreen(edge.Location, Point.Empty, edge.Size); return bmp; }
     // Columns (counted in from the window's right edge) where two looks at the edge differ: where a bar is drawn in one and not the other.
     List<int> BarColumns(Bitmap a, Bitmap b)
@@ -405,7 +406,7 @@ try
         {
             var n = 0;
             for (var y = 0; y < edge.Height; y++) { var p1 = a.GetPixel(x, y); var p2 = b.GetPixel(x, y); if (Math.Abs(p1.R - p2.R) + Math.Abs(p1.G - p2.G) + Math.Abs(p1.B - p2.B) > 60) n++; }
-            if (n > 8) cols.Add(edge.Width - 20 - 1 - x);
+            if (n > 8) cols.Add(pageRight - (edge.Left + x) - 1);
         }
         return cols;
     }
@@ -419,7 +420,7 @@ try
     var pageIdleShot = Shot("scrollbar-page-idle");
     var shownCols = BarColumns(stripShown, stripIdle);
     Step("A long page, scrolled: a slim bar (at most 6 px) shows over the page at its right edge, with no arrows",
-        shownCols.Count is > 0 and <= 6 && shownCols.Min() >= 0, $"bar columns from the edge [{string.Join(",", shownCols)}] · {pageBarShot}");
+        shownCols.Count is > 0 and <= 6 && shownCols.Min() >= 0 && shownCols.Max() <= 10, $"bar columns from the edge [{string.Join(",", shownCols)}] · {pageBarShot}");
     var idleCols = BarColumns(stripIdle, Strip());
     Step("Leave the page alone for two seconds: the bar fades away", shownCols.Count > 0 && idleCols.Count == 0, $"columns still differing after idle [{string.Join(",", idleCols)}] · {pageIdleShot}");
     Mouse.MoveTo(new Point(pageRight - 30, wb2.Top + wb2.Height / 2));
