@@ -304,9 +304,11 @@ try
     plus?.AsButton().Invoke();
     Thread.Sleep(1200);
     Keyboard.Type("Travel");
+    Thread.Sleep(500);
+    var popupShot = Shot("space-popup");
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(2500);
-    Step("New Space popup: name it Travel, Enter: the space is made and opened", DataText("spaces.json").Contains("Travel"), Shot("space-new"));
+    Step("New Space popup: name it Travel, Enter: the space is made and opened", DataText("spaces.json").Contains("Travel"), popupShot + " · " + Shot("space-new"));
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_1);
 
     // A second profile, seeded the way Settings › Tabs makes it.
