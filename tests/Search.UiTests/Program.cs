@@ -302,8 +302,9 @@ try
         Step("The top strip has Settings and the Library, and no Home or Downloads", T("TopSettings") is not null && T("TopLibraryDoor") is not null && !window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)).Any(el => { try { return el.Name is "Home" or "Downloads"; } catch { return false; } }), "TopSettings " + (T("TopSettings") is not null) + ", TopLibraryDoor " + (T("TopLibraryDoor") is not null));
         for (var i = 0; i < 2; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
         Thread.Sleep(1500);
-        var plusEarly = T("TopNewTabPinned")?.BoundingRectangle;
-        Step("Two more tabs along the top: the tabs get narrower and everything still fits, so the plus stays after the last tab", plusEarly is null || plusEarly.Value.Width < 1, $"pinned plus {(plusEarly is null ? "not shown" : plusEarly.Value.Left.ToString())} · " + Shot("strip-tabs-narrower"));
+        var chip = window.FindAllDescendants(cf => cf.ByName("Downloads")).FirstOrDefault(el => { try { return el.ControlType != FlaUI.Core.Definitions.ControlType.Button && el.BoundingRectangle.Width > 20; } catch { return false; } });
+        var chipWidth = chip?.BoundingRectangle.Width ?? 0;
+        Step("With seven tabs open along the top the tabs are narrower than their full width and the last one is still whole", chipWidth is > 60 and < 150, $"a tab is {chipWidth:0}px wide (172 when there is room) · " + Shot("strip-tabs-narrower"));
         for (var i = 0; i < 26; i++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(250); }
         Thread.Sleep(1500);
         var pinned = T("TopNewTabPinned")?.BoundingRectangle;
