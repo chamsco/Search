@@ -339,6 +339,7 @@ public partial class MainWindow
         title.SetResourceReference(TextBlock.ForegroundProperty, "Ink");
         panel.Children.Add(title); panel.Children.Add(name); panel.Children.Add(dots); panel.Children.Add(shares); panel.Children.Add(create);
         var sheet = new Border { Style = (Style)FindResource("Sheet"), Padding = new Thickness(14), Width = 260, Margin = new Thickness(10), Child = panel, Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, Opacity = 0.10, BlurRadius = 18, ShadowDepth = 5, Direction = 270 } };
+        System.Windows.Documents.TextElement.SetFontFamily(sheet, (FontFamily)FindResource("Text")); // the anchor wears the glyph font, which a popup would inherit
         popup.Child = sheet;
         popup.IsOpen = true;
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
