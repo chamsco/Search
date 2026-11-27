@@ -80,7 +80,7 @@ public partial class MainWindow : Window
         Shared.Downloads.Changed += OnDownloadsChanged;
         Closed += (_, _) => { Shared.Prefs.Changed -= ApplyPrefs; Shared.Perms.Changed -= OnPermsChanged; Shared.Styles.Changed -= OnStylesChanged; Marks.Changed -= OnBookmarksChanged; Shared.Downloads.Changed -= OnDownloadsChanged; };
         PreviewKeyDown += Window_PreviewKeyDown;
-        Loaded += (_, _) => Ball.Still = !Moves;
+        Loaded += (_, _) => { Ball.Still = !Moves; SetMode(false); };
         PreviewMouseDown += Window_PreviewMouseDown;
         Stage.SizeChanged += (_, _) => RoundLiveView();
         InitLittle();
@@ -649,6 +649,17 @@ public partial class MainWindow : Window
             var empty = live is { IsBlank: true } ? live : null;
             Select(open);
             if (empty is not null) Close(empty);
+            return;
+        }
+        if (askMode && live is { IsBlank: true } && !string.IsNullOrWhiteSpace(text))
+        {
+            // Ask: the question goes to the AI site chosen in Settings.
+            var site = Shared.Prefs.Data.Ask;
+            App.Trace("ask " + site);
+            BlankField.Text = "";
+            SetMode(false);
+            EndEditing(commit: false);
+            Navigate(AskSites.Url(site, text));
             return;
         }
         var url = picked?.Url ?? Omnibox.Resolve(text, engine, customEngine);

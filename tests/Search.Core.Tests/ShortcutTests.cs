@@ -84,3 +84,14 @@ public class ShortcutTests
         Assert.False(s.IsChanged("file.print"));
     }
 }
+
+public class AskTests
+{
+    [Fact]
+    public void AskSendsTheQuestionToTheChosenSiteEscaped()
+    {
+        Assert.Equal("https://claude.ai/new?q=why%20is%20the%20sky%20blue%3F", AskSites.Url(AskSite.Claude, " why is the sky blue? "));
+        Assert.StartsWith("https://chatgpt.com/?q=", AskSites.Url(AskSite.ChatGPT, "a&b"));
+        Assert.Equal("https://www.perplexity.ai/search?q=a%26b", AskSites.Url(AskSite.Perplexity, "a&b"));
+    }
+}

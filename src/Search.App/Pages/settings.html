@@ -27,6 +27,7 @@ table { border-collapse: collapse; width: 100%; } td { padding: 7px 12px; border
 <section id="general"><h1>General</h1><p class="sub">How Search starts and where it looks.</p>
   <div class="group">
     <div class="line"><div class="label">Search engine<small>Used when you type words in the address field</small></div><select id="engine"></select></div>
+    <div class="line"><div class="label">Ask uses<small>The empty tab's Ask switch sends your question to this site, in a new tab</small></div><select id="ask"><option value="Claude">Claude</option><option value="ChatGPT">ChatGPT</option><option value="Perplexity">Perplexity</option></select></div>
     <div class="line" id="customLine" style="display:none"><div class="label">Custom address<small>Put %s or {searchTerms} where the words go</small></div><input type="text" id="custom" style="width:300px" placeholder="example.com/search?q=%s"></div>
     <div class="line"><div class="label">Suggestions from your search engine<small>Sent as you type; never for an address, never from a private tab</small></div><div class="switch" id="engineSuggests"></div></div>
     <div class="line"><div class="label">Site search with Tab<small>Type a site's name (youtube, wiki, github), press Tab, and search that site itself</small></div><div class="switch" id="siteSearch"></div></div>
@@ -173,6 +174,7 @@ window.addEventListener('hashchange', () => show(location.hash.slice(1))); show(
 const set = (key, value) => host.send('settings.set', { key, value });
 for (const id of ['engineSuggests','startFresh','bookmarksBar','httpsUpgrade','blockTrackers','siteSearch','siteStylesOn','pinsAsRows','spacesOn','littleLinks','peek','peekStays','pinsPeek','splitView','altSplit','askHello','fillFromCard']) { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); set(id, el.classList.contains('on')); }; }
 document.getElementById('peekClick').onchange = e => set('peekClick', e.target.value);
+document.getElementById('ask').onchange = e => set('ask', e.target.value);
 document.getElementById('engine').onchange = e => { set('engine', e.target.value); document.getElementById('customLine').style.display = e.target.value === 'Custom' ? '' : 'none'; };
 let customTimer; document.getElementById('custom').oninput = e => { clearTimeout(customTimer); customTimer = setTimeout(() => set('customEngine', e.target.value), 300); };
 document.querySelectorAll('#look button').forEach(b => b.onclick = () => { set('look', b.dataset.v); mark(b.dataset.v); });
@@ -237,6 +239,7 @@ host.on('settings', m => {
   document.getElementById('peekClick').value = m.peekClick;
   document.getElementById('proxyMode').value = m.proxyMode; document.getElementById('proxyServer').value = m.proxyServer || '';
   showProxy(m.proxyMode); document.getElementById('proxyUser').value = m.proxyUser || ''; document.getElementById('proxyPassword').placeholder = m.proxyHasPassword ? 'Kept — type to change' : '';
+  document.getElementById('ask').value = m.ask || 'Claude';
   document.getElementById('engine').value = m.engine; document.getElementById('custom').value = m.customEngine || '';
   document.getElementById('customLine').style.display = m.engine === 'Custom' ? '' : 'none';
   document.getElementById('dlpath').textContent = m.downloadFolder; mark(m.look);

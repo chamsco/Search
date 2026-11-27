@@ -120,6 +120,26 @@ try
     Thread.Sleep(4000);
     Step("Ctrl+T, type example.com, Enter: opens in a second tab", !app.HasExited, Shot("second-tab"));
 
+    {
+        // Ask: the switch at the right of the field; a question typed in Ask mode goes to the AI site chosen in Settings (Claude), in a tab of its own.
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
+        Thread.Sleep(1200);
+        var ask = window.FindFirstDescendant(cf => cf.ByAutomationId("ModeAsk"));
+        var hasSwitch = ask is not null && window.FindFirstDescendant(cf => cf.ByAutomationId("ModeSearch")) is not null;
+        if (ask is not null) { try { ask.Patterns.Invoke.Pattern.Invoke(); } catch { Mouse.Click(CentreOf(ask)); } }
+        Thread.Sleep(500);
+        var inAsk = Shot("ask-mode");
+        Keyboard.Type("why is the sky blue");
+        Thread.Sleep(600);
+        var typedShot = Shot("ask-typed");
+        Keyboard.Press(VirtualKeyShort.RETURN);
+        var askSent = Await(() => Trace6().Contains("ask Claude"), 8000);
+        Step("The field has a Search / Ask switch; a question in Ask mode is sent to the AI site chosen in Settings (Claude), in a tab", hasSwitch && askSent, $"switch {hasSwitch}, sent {askSent} · {inAsk} · {typedShot}");
+        Thread.Sleep(2500);
+        Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W);
+        Thread.Sleep(1500);
+    }
+
     var b = window.BoundingRectangle;
     // First row: below the 52-point strip, the address pill (38) and the page's actions (34), 10 in from the column's edge (maximised windows sit 7 in).
     var firstRow = new Point(b.Left + 7 + 80, b.Top + 7 + 52 + 14);
