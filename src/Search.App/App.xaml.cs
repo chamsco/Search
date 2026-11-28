@@ -22,6 +22,7 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, a) => Log(a.ExceptionObject as Exception);
 
         base.OnStartup(e);
+        OverlayScroll.Register();
         SessionEnding += (_, _) => Quitting = true;
 
         // One Search per data folder: a second launch (a link from another app, the Start menu) hands its address to the first.

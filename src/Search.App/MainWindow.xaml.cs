@@ -91,8 +91,8 @@ public partial class MainWindow : Window
     // MARK: - start and session
 
     /// <summary>
-    /// Pages' scrollbars as Zen's: a thin bar over the page that shows while scrolling and widens under the pointer,
-    /// no arrows, no track. Edge's own overlay bars, with Chromium's names for the same as a fallback.
+    /// Scroll boxes inside pages get Edge's overlay bars (thin, over the content, fading), with Chromium's names for the same as a fallback.
+    /// The page's own scrollbar is drawn by ScrollbarScript instead.
     /// </summary>
     const string ThinScrollbars = "--enable-features=msOverlayScrollbarWinStyle,msOverlayScrollbarWinStyleAnimation,OverlayScrollbar,FluentOverlayScrollbar";
 
@@ -286,6 +286,7 @@ public partial class MainWindow : Window
         core.Settings.IsStatusBarEnabled = true;
         core.Settings.AreDevToolsEnabled = true;
         ApplyColorScheme(core);
+        await InstallScrollbars(core);
         core.SetVirtualHostNameToFolderMapping(PagesHost, PagesDir, CoreWebView2HostResourceAccessKind.Allow);
         core.WebMessageReceived += (_, e) => OnPageMessage(t, core, e);
         core.DownloadStarting += OnDownloadStarting;

@@ -427,7 +427,7 @@ try
     var workPinLeft = Settled(c => c.Contains("1 visible (native 1) in Personal"));
     Step("Pin Work's page and switch to Personal: only Personal's page shows", workPinLeft.Contains("1 visible (native 1) in Personal") && !workPinLeft.Contains("example.org"), workPinLeft + " · " + Shot("space-workpin-left"));
 
-    // Issue: scrollbars as Zen's: thin, no arrows, over the page.
+    // Issues #27 and #31: scrollbars as Zen's: slim, over the page, gone when idle, wider and a step in from the edge under the pointer.
     ToSpace(2);
     Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T);
     Thread.Sleep(1200);
@@ -435,20 +435,64 @@ try
     Keyboard.Press(VirtualKeyShort.RETURN);
     Thread.Sleep(7000);
     var wb2 = window.BoundingRectangle;
-    Mouse.MoveTo(new Point(wb2.Right - 60, wb2.Top + wb2.Height / 2));
+    var screenRight = System.Windows.Forms.Screen.PrimaryScreen!.Bounds.Right;
+    var pageRight = screenRight - 22; // the maximised window's page card ends 22 px inside the screen's edge (its frame reaches past); the run's screen is 1024 wide
+    var edge = new Rectangle(screenRight - 100, 40, 100, 640); // the thumb sits near the top after a few notches, so the strip is the page's whole height // the strip past the page is the desktop, which stays still and cancels out
+    Bitmap Strip() { var bmp = new Bitmap(edge.Width, edge.Height); using var g = Graphics.FromImage(bmp); g.CopyFromScreen(edge.Location, Point.Empty, edge.Size); return bmp; }
+    // Columns (counted in from the window's right edge) where two looks at the edge differ: where a bar is drawn in one and not the other.
+    List<int> BarColumns(Bitmap a, Bitmap b)
+    {
+        var cols = new List<int>();
+        for (var x = 0; x < edge.Width; x++)
+        {
+            var n = 0;
+            for (var y = 0; y < edge.Height; y++) { var p1 = a.GetPixel(x, y); var p2 = b.GetPixel(x, y); if (Math.Abs(p1.R - p2.R) + Math.Abs(p1.G - p2.G) + Math.Abs(p1.B - p2.B) > 60) n++; }
+            if (n > 8) cols.Add(pageRight - (edge.Left + x) - 1);
+        }
+        return cols;
+    }
+    Mouse.MoveTo(new Point(wb2.Right - 300, wb2.Top + wb2.Height / 2));
     Mouse.Scroll(-5);
-    Thread.Sleep(400);
+    Thread.Sleep(350);
+    using var stripShown = Strip();
     var pageBarShot = Shot("scrollbar-page");
-    Mouse.MoveTo(new Point(wb2.Right - 14, wb2.Top + wb2.Height / 2));
-    Thread.Sleep(600);
-    Step("A long page: its scrollbar is a thin bar over the page with no arrows, wider under the pointer", !app.HasExited, pageBarShot + " · " + Shot("scrollbar-page-hover"));
+    Thread.Sleep(2200);
+    using var stripIdle = Strip();
+    var pageIdleShot = Shot("scrollbar-page-idle");
+    var shownCols = BarColumns(stripShown, stripIdle);
+    Step("A long page, scrolled: a slim bar (at most 6 px) shows over the page at its right edge, with no arrows",
+        shownCols.Count is > 0 and <= 6 && shownCols.Min() >= 0 && shownCols.Max() <= 10, $"bar columns from the edge [{string.Join(",", shownCols)}] · {pageBarShot}");
+    var idleCols = BarColumns(stripIdle, Strip());
+    Step("Leave the page alone for two seconds: the bar fades away", shownCols.Count > 0 && idleCols.Count == 0, $"columns still differing after idle [{string.Join(",", idleCols)}] · {pageIdleShot}");
+    Mouse.MoveTo(new Point(pageRight - 30, wb2.Top + wb2.Height / 2));
+    Thread.Sleep(200);
+    Mouse.MoveTo(new Point(pageRight - 14, wb2.Top + wb2.Height / 2 - 40));
+    Thread.Sleep(150);
+    Mouse.MoveTo(new Point(pageRight - 10, wb2.Top + wb2.Height / 2));
+    Thread.Sleep(150);
+    Mouse.MoveTo(new Point(pageRight - 9, wb2.Top + wb2.Height / 2 + 2));
+    Thread.Sleep(500);
+    using var stripHover = Strip();
+    var hoverCols = BarColumns(stripHover, stripIdle);
+    Step("Point at the page's edge: the bar comes back wider and a step in from the edge, easy to grab",
+        hoverCols.Count > shownCols.Count && shownCols.Count > 0 && hoverCols.Min() > shownCols.Min() && hoverCols.Max() > shownCols.Max(),
+        $"hover columns [{string.Join(",", hoverCols)}] vs scrolled [{string.Join(",", shownCols)}] · " + Shot("scrollbar-page-hover"));
     for (var k = 0; k < 18; k++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_T); Thread.Sleep(400); Keyboard.Type("about:blank#" + k); Keyboard.Press(VirtualKeyShort.RETURN); Thread.Sleep(500); }
     Thread.Sleep(1000);
-    var sideBar = window.FindFirstDescendant(cf => cf.ByAutomationId("TabScroll"))?.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.ScrollBar));
+    var tabScroll = window.FindFirstDescendant(cf => cf.ByAutomationId("TabScroll"));
+    var sideBar = tabScroll?.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.ScrollBar));
+    if (tabScroll is not null) { Mouse.MoveTo(new Point(tabScroll.BoundingRectangle.Left + 60, tabScroll.BoundingRectangle.Top + tabScroll.BoundingRectangle.Height / 2)); Thread.Sleep(300); Mouse.Scroll(-3); }
+    Thread.Sleep(350);
     var sideShot = Shot("scrollbar-side");
-    if (sideBar is not null) { Mouse.MoveTo(CentreOf(sideBar)); Thread.Sleep(500); }
+    var sideShown = Trace6().Contains("overlay bar shown in TabScroll");
+    Thread.Sleep(2000);
+    var sideHidden = Trace6().Contains("overlay bar hidden in TabScroll");
+    var sideIdleShot = Shot("scrollbar-side-idle");
     var barWidth = sideBar?.BoundingRectangle.Width ?? -1;
-    Step("Many tabs in the column: its scrollbar is a thin rounded thumb (no arrows, no track), at most 10 px wide", barWidth is > 0 and <= 10, $"scrollbar width {barWidth} · {sideShot} · " + Shot("scrollbar-side-hover"));
+    Step("Many tabs in the column, scrolled: its bar shows over the list (no gutter, at most 14 px to grab), then fades after a second",
+        barWidth is > 0 and <= 14 && sideShown && sideHidden, $"bar width {barWidth}, shown {sideShown}, hidden {sideHidden} · {sideShot} · {sideIdleShot}");
+    if (sideBar is not null) { Mouse.MoveTo(CentreOf(sideBar)); Thread.Sleep(500); }
+    Step("Point at the column's bar: it shows again, wider and a step in from the edge", Trace6().Split('\n').Count(l => l.Contains("overlay bar shown in TabScroll")) >= 2, Shot("scrollbar-side-hover"));
     for (var k = 0; k < 19; k++) { Chord(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_W); Thread.Sleep(250); }
     ToSpace(1);
 
